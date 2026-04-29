@@ -1,0 +1,24 @@
+# Frontend
+/frontend/node_modules
+/frontend/.nuxt
+/frontend/.output
+/frontend/.env
+/frontend/dist
+
+# Backend
+/backend/__pycache__
+/backend/*.py[cod]
+/backend/$py.class
+/backend/*.so
+/backend/.Python
+/backend/env/
+/backend/venv/
+/backend/.venv
+/backend/.env
+/backend/*.egg-info/
+/backend/dist/
+/backend/build/
+/backend/.pytest_cache/
+/backend/.coverage
+/backend/htmlcov/
+/backend/.ruff_cache/
