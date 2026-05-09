@@ -1,7 +1,21 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npm *)",
+      "Bash(pnpm *)",
+      "Bash(python *)",
+      "Bash(uvicorn *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "mcp__plugin_everything-claude-code_exa__web_search_exa",
+      "Bash(claude workflow *)",
+      "Bash(mkdir -p D:/Users/HongLinHe/Projects/MiniHES/.claude/skills/__TRACKED_VAR__)",
+      "Bash(cp -r 'D:/Users/HongLinHe/github/work-by-roles/skills/__TRACKED_VAR__/*' D:/Users/HongLinHe/Projects/MiniHES/.claude/skills/__TRACKED_VAR__/)",
+      "Bash(claude plugin *)",
+      "Bash(netstat -ano)"
     ]
   }
 }
