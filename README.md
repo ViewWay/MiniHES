@@ -1,112 +1,128 @@
-# MiniHES
+# MiniHES - 云端智能电表抄表系统
 
-Full-stack application: Nuxt 3 (frontend) + FastAPI (backend).
+> CloudMeters - 云端多表抄表与实验室测试管理平台
+
+面向公用事业（水、电、气、热）的实验室测试管理平台，支持样机管理、数据采集、数据分析、大屏监控、测试报告等全流程管理。
+
+## 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| 前端 | vue-vben-admin 5.7.0 (Vue 3 + TypeScript + Ant Design Vue + Vite) |
+| 图表 | ECharts |
+| 后端 | Python FastAPI |
+| 数据库 | PostgreSQL + Redis + InfluxDB (时序数据) |
+| 缓存 | Redis |
+| 任务队列 | Celery + Redis |
+
+## 系统架构
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         MiniHES 云端抄表系统                        │
+├─────────────────────────────────────────────────────────────────┤
+│  前端 (vue-vben-admin)                                            │
+│  ├── 设备管理     ├── 数据分析     ├── 大屏展示                      │
+│  ├── 采集任务     ├── 测试管理     ├── 告警管理                      │
+├─────────────────────────────────────────────────────────────────┤
+│  后端 (FastAPI)                                                   │
+│  ├── API 层        ├── 服务层        ├── 数据层                      │
+├─────────────────────────────────────────────────────────────────┤
+│  核心模块                                                         │
+│  ├── DLMS 协议栈   ├── 通信适配层     ├── 数据采集引擎               │
+│  ├── 设备管理      ├── 数据处理      └── 分析统计                    │
+├─────────────────────────────────────────────────────────────────┤
+│  通信适配层                                                       │
+│  ├── 红外  │ 4G/5G │ NB-IoT │ M-Bus │ LoRaWAN │ G3-PLC           │
+├─────────────────────────────────────────────────────────────────┤
+│  数据存储                                                         │
+│  ├── PostgreSQL (业务数据)  ├── InfluxDB (时序数据)  ├── Redis (缓存) │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ## 项目结构
 
 ```
 MiniHES/
-├── frontend/              # Nuxt 3 前端
-│   ├── pages/            # 页面路由 (文件系统路由)
-│   ├── components/       # Vue 组件
-│   ├── composables/      # 组合式函数
-│   ├── stores/           # Pinia 状态管理
-│   ├── server/api/       # 服务端 API 代理
-│   ├── types/            # TypeScript 类型
-│   └── nuxt.config.ts    # Nuxt 配置
+├── frontend/                  # 前端 (vue-vben-admin 5.7.0)
+│   ├── apps/web-antd/         # Ant Design Vue 应用
+│   │   └── src/
+│   │       ├── api/modules/   # API 接口 (7个模块)
+│   │       ├── views/         # 页面视图 (23个页面)
+│   │       ├── components/    # 共享组件
+│   │       ├── composables/   # 组合式函数 (WebSocket)
+│   │       ├── store/         # Pinia 状态管理
+│   │       └── router/        # 路由配置 (7个模块)
+│   ├── packages/              # 共享包
+│   └── pnpm-workspace.yaml
 │
-└── backend/              # FastAPI 后端
-    ├── app/
-    │   ├── api/          # API 路由
-    │   │   └── v1/
-    │   │       ├── endpoints/  # 端点实现
-    │   │       └── api.py      # 路由聚合
-    │   ├── core/         # 配置、安全、依赖
-    │   ├── models/       # SQLAlchemy 模型
-    │   ├── schemas/      # Pydantic 模型
-    │   ├── services/     # 业务逻辑
-    │   └── db/           # 数据库会话
-    └── tests/            # 测试
+├── backend/                   # 后端 (FastAPI)
+│   └── app/
+│       ├── api/v1/endpoints/  # API 端点
+│       ├── dlms/              # DLMS/COSEM 协议栈
+│       ├── adapters/          # 通信适配层
+│       ├── services/          # 业务逻辑
+│       ├── models/            # 数据模型
+│       ├── schemas/           # Pydantic 模型
+│       ├── core/              # 配置、安全
+│       └── db/                # 数据库会话
+│
+├── tasks/                     # 项目文档
+│   └── prd-cloud-metering-system.md  # PRD 文档
+│
+└── CLAUDE.md                  # Claude Code 指引
 ```
+
+## 业务模块
+
+| 模块 | 功能 |
+|------|------|
+| 样机管理 | 全生命周期管理（入库→测试→拆表→借用→维修→报废）、批量导入、附件管理 |
+| 数据采集 | 定时/循环/一次性任务、多维设备筛选、DLMS/Modbus/MQTT协议 |
+| 数据分析 | 11项每日分析检查、今日vs昨日对比、异常检测、PDF报告导出 |
+| 大屏展示 | 项目概览、项目详情、单表实时监控（深色主题） |
+| 测试管理 | 测试报告生成、PDF导出、邮件分发、缺陷跟踪 |
+| 告警系统 | 告警规则配置、实时告警监控、WebSocket推送 |
+| 系统管理 | RBAC权限、按钮级权限控制、操作审计日志 |
 
 ## 快速开始
-
-### 后端
-
-```bash
-cd backend
-pip install -r requirements.txt
-cp .env.example .env
-# 编辑 .env 配置数据库连接
-uvicorn main:app --reload
-```
 
 ### 前端
 
 ```bash
 cd frontend
 pnpm install
-cp .env.example .env
-pnpm dev
+pnpm dev:antd        # http://localhost:5666
 ```
 
-## 开发指南
+### 后端
 
-### 后端开发
-
-**添加新端点:**
-
-1. 在 `backend/app/api/v1/endpoints/` 创建路由文件
-2. 在 `backend/app/api/v1/api.py` 注册路由
-
-```python
-# endpoints/users.py
-from fastapi import APIRouter
-
-router = APIRouter()
-
-@router.get("/users")
-async def list_users():
-    return {"users": []}
-
-# api.py
-from app.api.v1.endpoints import users
-api_router.include_router(users.router, prefix="/users", tags=["users"])
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload   # http://localhost:8000
 ```
 
-**数据库操作:**
+## 环境配置
 
-使用 Async SQLAlchemy 进行异步数据库操作，业务逻辑放在 `services/` 目录。
+```bash
+# 前端 (frontend/apps/web-antd/.env.development)
+VITE_GLOB_API_URL=http://localhost:8000/api/v1
 
-### 前端开发
-
-**添加新页面:**
-
-在 `frontend/pages/` 创建 `.vue` 文件，自动生成路由。
-
-**API 调用:**
-
-使用 Nuxt 服务端 API 路由代理后端请求：
-
-```typescript
-// server/api/users.ts
-export default defineEventHandler(async () => {
-  const config = useRuntimeConfig()
-  const response = await fetch(`${config.public.apiBase}/users`)
-  return await response.json()
-})
-
-// 页面中使用
-const { data } = await useFetch('/api/users')
+# 后端
+DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/metering_db
+REDIS_URL=redis://localhost:6379/0
+INFLUXDB_URL=http://localhost:8086
 ```
 
-**状态管理:**
+## 通信协议
 
-使用 Pinia stores (`frontend/stores/`)。
+| 协议 | 适用设备 |
+|------|----------|
+| DLMS/COSEM | 智能电表 |
+| Modbus | 水/气表 |
+| MQTT | NB-IoT 设备 |
 
-## 访问地址
+## License
 
-- 前端: http://localhost:3000
-- 后端 API: http://localhost:8000
-- API 文档: http://localhost:8000/docs
-# MiniHES
+MIT
