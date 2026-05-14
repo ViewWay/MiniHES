@@ -1,157 +1,91 @@
-<div align="center">
-  <a href="https://github.com/anncwb/vue-vben-admin">
-    <img alt="VbenAdmin Logo" width="215" src="https://unpkg.com/@vbenjs/static-source@0.1.7/source/logo-v1.webp">
-  </a>
-  <br>
-  <br>
+# MiniHES - 云端智能电表抄表系统（前端）
 
-[![license](https://img.shields.io/github/license/anncwb/vue-vben-admin.svg)](LICENSE)
+> CloudMeters - 云端多表抄表与实验室测试管理平台
 
-  <h1>Vue Vben Admin</h1>
-</div>
+## 技术栈
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=vbenjs_vue-vben-admin&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=vbenjs_vue-vben-admin) ![codeql](https://github.com/vbenjs/vue-vben-admin/actions/workflows/codeql.yml/badge.svg) ![build](https://github.com/vbenjs/vue-vben-admin/actions/workflows/build.yml/badge.svg) ![ci](https://github.com/vbenjs/vue-vben-admin/actions/workflows/ci.yml/badge.svg) ![deploy](https://github.com/vbenjs/vue-vben-admin/actions/workflows/deploy.yml/badge.svg)
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| Vue | 3.x | 前端框架 |
+| TypeScript | 5.x | 类型安全 |
+| Ant Design Vue | 4.x | UI 组件库 |
+| Vite | 6.x | 构建工具 |
+| vue-vben-admin | 5.7.0 | 后台管理框架 |
+| ECharts | 5.x | 图表可视化 |
+| Pinia | 2.x | 状态管理 |
+| WebSocket | - | 实时数据推送 |
 
-**日本語** | [English](./README.md) | [中文](./README.zh-CN.md)
+## 业务模块
 
-## 紹介
+| 模块 | 页面 | 功能 |
+|------|------|------|
+| 仪表盘 | 数据概览、告警管理 | 统计概览、ECharts趋势图、告警实时监控 |
+| 设备管理 | 列表、详情、借用、维修 | 样机全生命周期管理、状态流转、借用审批、批量导入 |
+| 采集任务 | 列表、创建、日志、监控 | Cron/Interval/Once任务、多维设备筛选、实时进度 |
+| 数据分析 | 每日分析、对比分析、报告 | 11项分析检查、ECharts图表、PDF导出 |
+| 大屏展示 | 项目概览、项目详情、单表监控 | 深色主题、实时数据轮询、堆栈/EEPROM监控 |
+| 测试管理 | 测试列表、测试报告、缺陷管理 | 报告PDF导出、邮件分发、缺陷状态跟踪 |
+| 系统管理 | 用户、角色、日志、告警规则 | RBAC权限、按钮级权限控制、审计日志 |
 
-Vue Vben Adminは、最新の`vue3`、`vite`、`TypeScript`などの主流技術を使用して開発された、無料でオープンソースの中・後端テンプレートです。すぐに使える中・後端のフロントエンドソリューションとして、学習の参考にもなります。
+## 项目结构
 
-## アップグレード通知
-
-これは最新バージョン `5.0` であり、以前のバージョンとは互換性がありません。新しいプロジェクトを開始する場合は、最新バージョンを使用することをお勧めします。古いバージョンを表示したい場合は、[v2ブランチ](https://github.com/vbenjs/vue-vben-admin/tree/v2)を使用してください。
-
-## 特徴
-
-- **最新技術スタック**：Vue 3やViteなどの最先端フロントエンド技術で開発
-- **TypeScript**：アプリケーション規模のJavaScriptのための言語
-- **テーマ**：複数のテーマカラーが利用可能で、カスタマイズオプションも豊富
-- **国際化**：完全な内蔵国際化サポート
-- **権限管理**：動的ルートベースの権限生成ソリューションを内蔵
-
-## プレビュー
-
-- [Vben Admin](https://vben.pro/) - フルバージョンの中国語サイト
-
-テストアカウント：vben/123456
-
-<div align="center">
-  <img alt="VbenAdmin Logo" width="100%" src="https://anncwb.github.io/anncwb/images/preview1.png">
-  <img alt="VbenAdmin Logo" width="100%" src="https://anncwb.github.io/anncwb/images/preview2.png">
-  <img alt="VbenAdmin Logo" width="100%" src="https://anncwb.github.io/anncwb/images/preview3.png">
-</div>
-
-### Gitpodを使用
-
-Gitpod（GitHub用の無料オンライン開発環境）でプロジェクトを開き、すぐにコーディングを開始します。
-
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/vbenjs/vue-vben-admin)
-
-## ドキュメント
-
-[ドキュメント](https://doc.vben.pro/)
-
-## インストールと使用
-
-1. プロジェクトコードを取得
-
-```bash
-git clone https://github.com/vbenjs/vue-vben-admin.git
+```
+frontend/apps/web-antd/src/
+├── api/modules/          # API 接口模块 (7个)
+│   ├── alarm.ts          # 告警管理
+│   ├── analysis.ts       # 数据分析
+│   ├── meter.ts          # 设备管理
+│   ├── project.ts        # 项目管理
+│   ├── system.ts         # 系统管理
+│   ├── task.ts           # 采集任务
+│   └── test.ts           # 测试管理
+├── components/           # 共享组件
+│   ├── meter/            # StatusBadge, MeterCard, BorrowDialog
+│   └── task/             # TaskProgress, LogTimeline
+├── composables/          # 组合式函数
+│   └── useWebSocket.ts   # WebSocket 实时推送
+├── router/routes/modules/ # 路由模块 (7个)
+├── store/                # Pinia 状态管理
+│   ├── alarm.ts          # 告警 Store
+│   ├── meter.ts          # 设备 Store
+│   └── task.ts           # 任务 Store
+└── views/                # 页面视图 (23个)
+    ├── analysis/         # 数据分析
+    ├── dashboard/        # 仪表盘
+    ├── meter/            # 设备管理
+    ├── screen/           # 大屏展示
+    ├── system/           # 系统管理
+    ├── task/             # 采集任务
+    └── test/             # 测试管理
 ```
 
-2. 依存関係のインストール
+## 快速开始
 
 ```bash
-cd vue-vben-admin
-npm i -g corepack
+# 安装依赖
 pnpm install
+
+# 启动开发服务器
+pnpm dev:antd
+
+# 构建生产版本
+pnpm build:antd
 ```
 
-3. 実行
+## 环境配置
 
-```bash
-pnpm dev
-```
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `VITE_GLOB_API_URL` | 后端 API 地址 | `http://localhost:8000/api/v1` |
+| `VITE_APP_TITLE` | 应用标题 | MiniHES 云端智能电表抄表系统 |
+| `VITE_PORT` | 开发端口 | 5666 |
 
-4. ビルド
+## 通信协议支持
 
-```bash
-pnpm build
-```
+- **DLMS/COSEM** — 智能电表标准协议
+- **Modbus** — 通用工业协议（水/气表）
+- **MQTT** — NB-IoT 物联网协议
 
-## 変更ログ
+## License
 
-[CHANGELOG](https://github.com/vbenjs/vue-vben-admin/releases)
-
-## 貢献方法
-
-ご参加をお待ちしております！[Issueを提出](https://github.com/anncwb/vue-vben-admin/issues/new/choose)するか、Pull Requestを送信してください。
-
-**Pull Request プロセス：**
-
-1. コードをフォーク
-2. 自分のブランチを作成：`git checkout -b feat/xxxx`
-3. 変更をコミット：`git commit -am 'feat(function): add xxxxx'`
-4. ブランチをプッシュ：`git push origin feat/xxxx`
-5. `pull request`を送信
-
-## Git貢献提出規則
-
-参考 [vue](https://github.com/vuejs/vue/blob/dev/.github/COMMIT_CONVENTION.md) 規則 ([Angular](https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/conventional-changelog-angular))
-
-- `feat` 新機能の追加
-- `fix` 問題/バグの修正
-- `style` コードスタイルに関連し、実行結果に影響しない
-- `perf` 最適化/パフォーマンス向上
-- `refactor` リファクタリング
-- `revert` 変更の取り消し
-- `test` テスト関連
-- `docs` ドキュメント/注釈
-- `chore` 依存関係の更新/スキャフォールディング設定の変更など
-- `ci` 継続的インテグレーション
-- `types` 型定義ファイルの変更
-
-## ブラウザサポート
-
-ローカル開発には `Chrome 80+` ブラウザを推奨します
-
-モダンブラウザをサポートし、IEはサポートしません
-
-| [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/edge/edge_48x48.png" alt="Edge" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Edge | [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/firefox/firefox_48x48.png" alt="Firefox" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Firefox | [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/chrome/chrome_48x48.png" alt="Chrome" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Chrome | [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/safari/safari_48x48.png" alt="Safari" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Safari |
-| :-: | :-: | :-: | :-: |
-| 最新2バージョン | 最新2バージョン | 最新2バージョン | 最新2バージョン |
-
-## メンテナー
-
-[@Vben](https://github.com/anncwb)
-
-## スター歴史
-
-[![Star History Chart](https://api.star-history.com/svg?repos=vbenjs/vue-vben-admin&type=Date)](https://star-history.com/#vbenjs/vue-vben-admin&Date)
-
-## 寄付
-
-このプロジェクトが役に立つと思われた場合、作者にコーヒーを一杯おごってサポートを示すことができます！
-
-![donate](https://unpkg.com/@vbenjs/static-source@0.1.7/source/sponsor.png)
-
-<a style="display: block;width: 100px;height: 50px;line-height: 50px; color: #fff;text-align: center; background: #408aed;border-radius: 4px;" href="https://www.paypal.com/paypalme/cvvben">Paypal Me</a>
-
-## 貢献者
-
-<a href="https://openomy.app/github/vbenjs/vue-vben-admin" target="_blank" style="display: block; width: 100%;" align="center">
-  <img src="https://openomy.app/svg?repo=vbenjs/vue-vben-admin&chart=bubble&latestMonth=3" target="_blank" alt="Contribution Leaderboard" style="display: block; width: 100%;" />
- </a>
-
-<a href="https://github.com/vbenjs/vue-vben-admin/graphs/contributors">
-  <img alt="Contributors" src="https://contrib.rocks/image?repo=vbenjs/vue-vben-admin" />
-</a>
-
-## Discord
-
-- [Github Discussions](https://github.com/anncwb/vue-vben-admin/discussions)
-
-## ライセンス
-
-[MIT © Vben-2020](./LICENSE)
+MIT
