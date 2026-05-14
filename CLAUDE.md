@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **云端智能电表抄表系统** - DLMS/COSEM协议栈 + 多通信方式适配
 
-- **前端:** Nuxt 3
+- **前端:** vue-vben-admin 5.7.0 (Vue 3 + TypeScript + Ant Design Vue + Vite)
 - **后端:** FastAPI + Python
-- **数据库:** PostgreSQL/MySQL + MongoDB
+- **数据库:** PostgreSQL + Redis + InfluxDB
 
 ---
 
@@ -190,6 +190,6 @@ COLLECTOR_MAX_WORKERS=10
 # 后端
 cd backend && uvicorn main:app --reload
 
-# 前端
-cd frontend && pnpm dev
+# 前端 (vue-vben-admin)
+cd frontend && pnpm dev:antd
 ```
