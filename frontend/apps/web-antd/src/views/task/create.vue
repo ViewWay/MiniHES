@@ -9,6 +9,7 @@ import {
 import { createTask } from '#/api/modules/task';
 import type { TaskFormData } from '#/api/modules/task';
 import { getProjectList, getMeterTypes, getWireTypes } from '#/api/modules/project';
+import { getMeterList } from '#/api/modules/meter';
 
 const router = useRouter();
 const submitting = ref(false);
@@ -101,6 +102,10 @@ async function fetchMetadata() {
     projects.value = projRes.items || projRes || [];
     meterTypes.value = typeRes.items || typeRes || [];
     wireTypes.value = wireRes.items || wireRes || [];
+  } catch { /* defaults */ }
+  try {
+    const devRes = await getMeterList({ page: 1, page_size: 500 });
+    deviceList.value = devRes.items || [];
   } catch { /* defaults */ }
 }
 

@@ -6,7 +6,8 @@ import {
   Button, Card, Descriptions, DescriptionsItem, Tag, Tabs, TabPane, Timeline, TimelineItem,
   Table, Space, Modal, Form, Input, Upload, message, Popconfirm, Row, Col,
 } from 'ant-design-vue';
-import { getMeterDetail, changeMeterStatus, borrowMeter } from '#/api/modules/meter';
+import { getMeterDetail, changeMeterStatus, borrowMeter, getMeterStatusHistory, getMeterAttachments, uploadMeterAttachment } from '#/api/modules/meter';
+import type { UploadProps } from 'ant-design-vue';
 import StatusBadge from '#/components/meter/StatusBadge.vue';
 import BorrowDialog from '#/components/meter/BorrowDialog.vue';
 
@@ -28,17 +29,11 @@ const statusFlowOptions: Record<string, Array<{ value: string; label: string }>>
   repairing: [{ value: 'in_stock', label: '修好归库' }, { value: 'scrapped', label: '报废' }],
 };
 
-// Mock status history
-const statusHistory = ref([
-  { time: '2026-05-14 10:00:00', from: '入库', to: '挂表测试中', operator: '张三', reason: '开始Coral项目挂表测试' },
-  { time: '2026-05-01 09:00:00', from: '-', to: '在库', operator: '李四', reason: '样机入库登记' },
-]);
+// Status history (loaded from API)
+const statusHistory = ref<any[]>([]);
 
-// Mock attachments
-const attachments = ref([
-  { id: 1, name: '设备照片_正面.jpg', size: '2.3MB', uploaded_by: '张三', uploaded_at: '2026-05-01' },
-  { id: 2, name: '出厂检测报告.pdf', size: '1.1MB', uploaded_by: '李四', uploaded_at: '2026-05-01' },
-]);
+// Attachments (loaded from API)
+const attachments = ref<any[]>([]);
 
 const attachColumns = [
   { title: '文件名', dataIndex: 'name' },
@@ -60,8 +55,19 @@ async function fetchDetail() {
   const id = route.params.id;
   if (!id) return;
   loading.value = true;
-  try { meterDetail.value = await getMeterDetail(Number(id)); }
-  finally { loading.value = false; }
+  try {
+    meterDetail.value = await getMeterDetail(Number(id));
+    // Fetch status history
+    try {
+      const historyRes = await getMeterStatusHistory(Number(id));
+      statusHistory.value = historyRes.items || historyRes || [];
+    } catch { /* use empty */ }
+    // Fetch attachments
+    try {
+      const attachRes = await getMeterAttachments(Number(id));
+      attachments.value = attachRes.items || attachRes || [];
+    } catch { /* use empty */ }
+  } finally { loading.value = false; }
 }
 
 async function handleStatusChange() {
@@ -75,6 +81,29 @@ async function handleStatusChange() {
 }
 
 function goBack() { router.push('/meter/list'); }
+
+const uploading = ref(false);
+
+const handleUpload: UploadProps['customRequest'] = async (options) => {
+  const { file, onSuccess, onError } = options;
+  const meterId = Number(route.params.id);
+  try {
+    uploading.value = true;
+    await uploadMeterAttachment(meterId, file as File);
+    onSuccess?.(null);
+    message.success('上传成功');
+    // Refresh attachments
+    try {
+      const res = await getMeterAttachments(meterId);
+      attachments.value = res.items || res || [];
+    } catch { /* ignore */ }
+  } catch (err) {
+    onError?.(err as Error);
+    message.error('上传失败');
+  } finally {
+    uploading.value = false;
+  }
+};
 
 onMounted(() => { fetchDetail(); });
 </script>
@@ -174,8 +203,8 @@ onMounted(() => { fetchDetail(); });
               </template>
             </Table>
             <div style="margin-top: 16px; text-align: center">
-              <Upload :show-upload-list="false" accept=".jpg,.png,.pdf,.doc,.docx">
-                <Button>上传附件</Button>
+              <Upload :show-upload-list="false" accept=".jpg,.png,.pdf,.doc,.docx" :custom-request="handleUpload">
+                <Button :loading="uploading">上传附件</Button>
               </Upload>
             </div>
           </TabPane>

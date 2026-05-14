@@ -27,7 +27,7 @@ import {
 } from 'ant-design-vue';
 import { useRoute } from 'vue-router';
 
-import { getDailyAnalysis } from '#/api/modules/analysis';
+import { getDailyAnalysis, exportDailyReport } from '#/api/modules/analysis';
 
 const route = useRoute();
 
@@ -216,6 +216,35 @@ function generateDemoProfiles() {
   ];
 }
 
+const exporting = ref(false);
+
+async function handleExport() {
+  if (!searchForm.value.meter_id || !searchForm.value.date) {
+    message.warning('请先填写设备ID和日期');
+    return;
+  }
+  exporting.value = true;
+  try {
+    const blob: Blob = await exportDailyReport({
+      meter_id: searchForm.value.meter_id,
+      date: searchForm.value.date,
+    });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `日报分析_${searchForm.value.meter_id}_${searchForm.value.date}.pdf`;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    message.success('导出成功');
+  } catch {
+    message.error('导出失败，请重试');
+  } finally {
+    exporting.value = false;
+  }
+}
+
 const abnormalColumns = [
   { title: '时间', dataIndex: 'time', width: 180 },
   { title: '类型', dataIndex: 'type', width: 120 },
@@ -297,6 +326,11 @@ const analysisItems = ref([
 <template>
   <Page auto-content-height>
     <Card :bordered="false" title="每日数据分析" style="margin-bottom: 16px">
+      <template #extra>
+        <Button :loading="exporting" :disabled="!analysisData" @click="handleExport">
+          导出PDF报告
+        </Button>
+      </template>
       <Form layout="inline">
         <Form.Item label="设备ID">
           <InputNumber

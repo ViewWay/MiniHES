@@ -29,7 +29,9 @@
       "Bash(node -e \"const antd = require\\('ant-design-vue'\\); console.log\\('RangePicker:', typeof antd.RangePicker\\)\")",
       "Bash(cat)",
       "Bash(python3 /tmp/check_imports.py)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(git commit *)",
+      "Bash(echo \"EXIT: $?\")"
     ]
   }
 }

@@ -25,6 +25,7 @@ import {
   getAlarmList,
   getAlarmStats,
   handleAlarm as handleAlarmApi,
+  exportAlarms,
 } from '#/api/modules/alarm';
 
 // --- Polling ---
@@ -229,8 +230,37 @@ function resetFilter() {
   fetchAlarms();
 }
 
-function handleExport() {
-  message.info('正在导出告警数据，请稍候...');
+async function handleExport() {
+  try {
+    const params: AlarmListParams = {
+      page: currentPage.value,
+      page_size: pageSize.value,
+    };
+    if (filterSeverity.value) params.severity = filterSeverity.value;
+    if (filterAlarmType.value) params.alarm_type = filterAlarmType.value;
+    if (filterHandled.value !== undefined && filterHandled.value !== null) {
+      params.is_handled = filterHandled.value === 'true';
+    }
+    if (filterDateRange.value?.[0]) {
+      params.start_date = filterDateRange.value[0]?.format?.('YYYY-MM-DD') ?? String(filterDateRange.value[0]);
+    }
+    if (filterDateRange.value?.[1]) {
+      params.end_date = filterDateRange.value[1]?.format?.('YYYY-MM-DD') ?? String(filterDateRange.value[1]);
+    }
+
+    const blob: Blob = await exportAlarms(params);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `告警数据_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    message.success('导出成功');
+  } catch {
+    message.error('导出失败，请重试');
+  }
 }
 
 function startPolling() {

@@ -6,7 +6,7 @@ import {
   Button, Card, Form, Input, Select, Space, Table, Tag, message, Modal, Popconfirm,
   Row, Col, DatePicker, Upload,
 } from 'ant-design-vue';
-import { getMeterList, createMeter, changeMeterStatus } from '#/api/modules/meter';
+import { getMeterList, createMeter, changeMeterStatus, importMeters, exportMeters } from '#/api/modules/meter';
 import { getProjectList, getMeterTypes, getWireTypes } from '#/api/modules/project';
 import type { MeterListParams, MeterFormData } from '#/api/modules/meter';
 
@@ -124,6 +124,91 @@ async function handleChangeStatus(id: number, status: string) {
   } catch { message.error('状态变更失败'); }
 }
 
+// --- Batch import ---
+const showImportModal = ref(false);
+const importFileList = ref<any[]>([]);
+const importPreviewData = ref<any[]>([]);
+const importLoading = ref(false);
+
+const importColumns = [
+  { title: '出厂编号', dataIndex: 'serial_number', width: 140 },
+  { title: '表计名称', dataIndex: 'meter_name', width: 130 },
+  { title: '厂商', dataIndex: 'manufacturer', width: 100 },
+  { title: '型号', dataIndex: 'model', width: 100 },
+  { title: '协议', dataIndex: 'protocol', width: 80 },
+];
+
+function handleImportUpload(info: any) {
+  importFileList.value = info.fileList.slice(-1);
+  // Preview will be populated after server response
+  if (info.file.status === 'done' && info.file.response) {
+    importPreviewData.value = info.file.response?.items || [];
+  } else if (info.file.status === 'error') {
+    message.error('文件解析失败，请检查文件格式');
+  }
+}
+
+function handleBeforeUpload(file: File) {
+  const validTypes = [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+    'text/csv',
+  ];
+  const validExts = ['.xlsx', '.xls', '.csv'];
+  const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+  if (!validExts.includes(ext)) {
+    message.error('仅支持 .xlsx、.xls、.csv 文件');
+    return Upload.LIST_IGNORE;
+  }
+  return true;
+}
+
+async function handleImportConfirm() {
+  if (!importFileList.value.length) {
+    message.warning('请先上传文件');
+    return;
+  }
+  const file = importFileList.value[0]?.originFileObj || importFileList.value[0];
+  if (!file) {
+    message.warning('请先上传文件');
+    return;
+  }
+  importLoading.value = true;
+  try {
+    await importMeters(file);
+    message.success('批量导入成功');
+    showImportModal.value = false;
+    importFileList.value = [];
+    importPreviewData.value = [];
+    fetchData();
+  } catch {
+    message.error('批量导入失败');
+  } finally {
+    importLoading.value = false;
+  }
+}
+
+function handleDownloadTemplate() {
+  message.info('模板下载功能开发中，请联系管理员获取导入模板');
+}
+
+async function handleExportMeters() {
+  try {
+    const blob = await exportMeters({
+      ...searchForm.value,
+    });
+    const url = window.URL.createObjectURL(blob as any);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `样机列表_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    message.success('导出成功');
+  } catch {
+    message.error('导出失败');
+  }
+}
+
 onMounted(() => { fetchData(); fetchMetadata(); });
 </script>
 
@@ -156,7 +241,9 @@ onMounted(() => { fetchData(); fetchMetadata(); });
       </template>
       <template #extra>
         <Space>
-          <Button type="primary" @click="showCreateModal = true">样机入库</Button>
+          <Button type="primary" v-access:code="'meter:create'" @click="showCreateModal = true">样机入库</Button>
+          <Button v-access:code="'meter:create'" @click="showImportModal = true">批量导入</Button>
+          <Button @click="handleExportMeters">导出</Button>
           <Button @click="fetchData">刷新</Button>
         </Space>
       </template>
@@ -175,7 +262,7 @@ onMounted(() => { fetchData(); fetchMetadata(); });
               <Button type="link" size="small" @click="goToDetail(record.id)">详情</Button>
               <template v-for="flow in (statusFlowMap[record.current_status] || [])" :key="flow.status">
                 <Popconfirm :title="flow.confirm" @confirm="handleChangeStatus(record.id, flow.status)">
-                  <Button type="link" size="small">{{ flow.label }}</Button>
+                  <Button v-access:code="'meter:update'" type="link" size="small">{{ flow.label }}</Button>
                 </Popconfirm>
               </template>
             </Space>
@@ -236,6 +323,40 @@ onMounted(() => { fetchData(); fetchMetadata(); });
         </Row>
         <Form.Item label="备注"><Input.TextArea v-model:value="createForm.notes" :rows="2" /></Form.Item>
       </Form>
+    </Modal>
+
+    <!-- 批量导入 Modal - PRD US-001 -->
+    <Modal v-model:open="showImportModal" title="批量导入样机" width="720px" :maskClosable="false"
+      :footer="null">
+      <div style="margin-top: 16px">
+        <Upload
+          :file-list="importFileList"
+          :before-upload="handleBeforeUpload"
+          :custom-request="(options: any) => { options.onSuccess({}, options.file); }"
+          @change="handleImportUpload"
+          accept=".xlsx,.xls,.csv"
+          :max-count="1"
+        >
+          <Button type="primary">选择文件</Button>
+        </Upload>
+        <div style="margin: 8px 0; color: #999; font-size: 12px">
+          支持 .xlsx、.xls、.csv 格式
+          <Button type="link" size="small" @click="handleDownloadTemplate" style="padding: 0; margin-left: 8px">下载导入模板</Button>
+        </div>
+
+        <div v-if="importPreviewData.length > 0" style="margin-top: 16px">
+          <div style="margin-bottom: 8px; font-weight: 500">预览数据 ({{ importPreviewData.length }} 条)</div>
+          <Table :columns="importColumns" :data-source="importPreviewData" size="small"
+            :pagination="{ pageSize: 5 }" row-key="serial_number" />
+        </div>
+
+        <div style="margin-top: 16px; text-align: right">
+          <Space>
+            <Button @click="showImportModal = false">取消</Button>
+            <Button type="primary" :loading="importLoading" @click="handleImportConfirm">确认导入</Button>
+          </Space>
+        </div>
+      </div>
     </Modal>
   </Page>
 </template>

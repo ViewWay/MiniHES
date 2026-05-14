@@ -84,7 +84,7 @@ onMounted(() => { fetchData(); fetchPermissions(); });
     <Card :bordered="false" title="角色管理">
       <template #extra>
         <Space>
-          <Button type="primary" @click="openCreate">新增角色</Button>
+          <Button type="primary" v-access:code="'system:role:create'" @click="openCreate">新增角色</Button>
           <Button @click="fetchData">刷新</Button>
         </Space>
       </template>

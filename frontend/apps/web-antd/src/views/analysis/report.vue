@@ -23,7 +23,7 @@ import {
 } from 'ant-design-vue';
 import { useRouter } from 'vue-router';
 
-import { getAnalysisReports } from '#/api/modules/analysis';
+import { getAnalysisReports, exportAnalysisReport } from '#/api/modules/analysis';
 import { getProjectList } from '#/api/modules/project';
 
 const router = useRouter();
@@ -231,8 +231,19 @@ function handleViewDetail(record: any) {
   });
 }
 
-function handleExportPDF(record: any) {
-  message.info(`正在导出报告 ${record.report_number || record.id} 的PDF文件，请稍候...`);
+async function handleExportPDF(record: any) {
+  try {
+    const blob = await exportAnalysisReport(record.id);
+    const url = window.URL.createObjectURL(blob as any);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `分析报告_${record.report_number || record.id}.pdf`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    message.success('导出成功');
+  } catch {
+    message.error('导出失败');
+  }
 }
 
 function handlePageChange(page: number, size: number) {

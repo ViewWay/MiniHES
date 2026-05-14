@@ -27,3 +27,7 @@ export function getAnalysisReports(params?: { project_id?: number; page?: number
 export function exportAnalysisReport(id: number) {
   return requestClient.get(`/analysis/reports/${id}/export`, { responseType: 'blob' });
 }
+
+export function exportDailyReport(params: { meter_id?: number; date?: string }) {
+  return requestClient.get('/analysis/daily/export', { params, responseType: 'blob', responseReturn: 'body' });
+}

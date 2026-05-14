@@ -37,6 +37,15 @@ const routes: RouteRecordRaw[] = [
           title: '操作日志',
         },
       },
+      {
+        name: 'AlarmRule',
+        path: '/system/alarm-rule',
+        component: () => import('#/views/system/alarm-rule.vue'),
+        meta: {
+          icon: 'lucide:bell-ring',
+          title: '告警规则',
+        },
+      },
     ],
   },
 ];

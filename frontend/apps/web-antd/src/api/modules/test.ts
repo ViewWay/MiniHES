@@ -68,3 +68,11 @@ export function getDefects(params?: { test_id?: number; severity?: string; statu
 export function exportTestReport(id: number) {
   return requestClient.get(`/tests/${id}/report/export`, { responseType: 'blob' });
 }
+
+export function distributeReport(id: number, data: { recipients: string[]; message?: string }) {
+  return requestClient.post(`/tests/${id}/report/distribute`, data);
+}
+
+export function updateTestReport(id: number, data: any) {
+  return requestClient.put(`/tests/${id}/report`, data);
+}

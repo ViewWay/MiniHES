@@ -73,3 +73,7 @@ export function getAuditLogs(params?: {
 }) {
   return requestClient.get('/audit-logs', { params });
 }
+
+export function exportAuditLogs(params?: any) {
+  return requestClient.get('/audit-logs/export', { params, responseType: 'blob', responseReturn: 'body' });
+}

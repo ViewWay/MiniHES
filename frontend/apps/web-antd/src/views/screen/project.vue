@@ -143,6 +143,7 @@ function renderCharts() {
   const hourLabels = generateHourLabels(24);
 
   // --- Energy curve chart (multi-line for top 5 meters) ---
+  // TODO: Replace generateMockSeries with real data from InfluxDB API when available
   const topMeters = meters.value.slice(0, 5);
   const energySeries = topMeters.map((m) => ({
     name: m.meter_name || m.serial_number || `Meter ${m.id}`,
@@ -248,6 +249,7 @@ function renderCharts() {
   });
 
   // --- Power quality chart (voltage quality line) ---
+  // TODO: Replace generateMockSeries with real data from InfluxDB API when available
   renderPqChart({
     tooltip: { trigger: 'axis' },
     legend: {

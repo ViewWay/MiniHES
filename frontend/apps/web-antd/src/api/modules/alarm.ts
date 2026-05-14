@@ -29,3 +29,24 @@ export function handleAlarm(id: number, data: AlarmHandleData) {
 export function getAlarmStats() {
   return requestClient.get('/alarms/stats');
 }
+
+export function exportAlarms(params?: AlarmListParams) {
+  return requestClient.get('/alarms/export', { params, responseType: 'blob', responseReturn: 'body' });
+}
+
+// Alarm Rule APIs
+export function getAlarmRules(params?: { page?: number; page_size?: number; rule_type?: string }) {
+  return requestClient.get('/alarm-rules', { params });
+}
+
+export function createAlarmRule(data: any) {
+  return requestClient.post('/alarm-rules', data);
+}
+
+export function updateAlarmRule(id: number, data: any) {
+  return requestClient.put(`/alarm-rules/${id}`, data);
+}
+
+export function deleteAlarmRule(id: number) {
+  return requestClient.delete(`/alarm-rules/${id}`);
+}

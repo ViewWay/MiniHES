@@ -134,7 +134,7 @@ onMounted(() => {
     <Card :bordered="false" title="采集任务列表">
       <template #extra>
         <Space>
-          <Button type="primary" @click="router.push('/task/create')">创建任务</Button>
+          <Button type="primary" v-access:code="'task:create'" @click="router.push('/task/create')">创建任务</Button>
           <Button @click="fetchData">刷新</Button>
         </Space>
       </template>
@@ -208,7 +208,7 @@ onMounted(() => {
           </template>
           <template v-if="column.key === 'action'">
             <Space>
-              <Button type="link" size="small" @click="handleExecute(record.id)">
+              <Button v-access:code="'task:execute'" type="link" size="small" @click="handleExecute(record.id)">
                 执行
               </Button>
               <Button type="link" size="small" @click="router.push(`/task/logs?task_id=${record.id}`)">
@@ -218,7 +218,7 @@ onMounted(() => {
                 监控
               </Button>
               <Popconfirm title="确认删除此任务？" @confirm="handleDelete(record.id)">
-                <Button type="link" size="small" danger>删除</Button>
+                <Button v-access:code="'task:delete'" type="link" size="small" danger>删除</Button>
               </Popconfirm>
             </Space>
           </template>

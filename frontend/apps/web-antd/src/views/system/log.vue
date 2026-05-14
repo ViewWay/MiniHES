@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Button, Card, DatePicker, Form, Select, Space, Table, Tag, message } from 'ant-design-vue';
-import { getAuditLogs } from '#/api/modules/system';
+import { getAuditLogs, exportAuditLogs } from '#/api/modules/system';
 
 const RangePicker = DatePicker.RangePicker;
 
@@ -75,8 +75,27 @@ function handleReset() {
   fetchData();
 }
 
-function handleExport() {
-  message.info('导出功能开发中...');
+async function handleExport() {
+  try {
+    const params: Record<string, any> = { ...searchForm.value };
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.start_date = dateRange.value[0]?.format?.('YYYY-MM-DD') || dateRange.value[0];
+      params.end_date = dateRange.value[1]?.format?.('YYYY-MM-DD') || dateRange.value[1];
+    }
+
+    const blob: Blob = await exportAuditLogs(params);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `操作日志_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    message.success('导出成功');
+  } catch {
+    message.error('导出失败，请重试');
+  }
 }
 
 function handleTableChange(pag: any) {

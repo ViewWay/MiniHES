@@ -88,3 +88,31 @@ export function getRepairRecords(params?: { meter_id?: number; status?: string; 
 export function addRepairRecord(data: RepairFormData) {
   return requestClient.post('/meters/repairs', data);
 }
+
+export function getMeterStatusHistory(id: number) {
+  return requestClient.get(`/meters/${id}/status-history`);
+}
+
+export function getMeterAttachments(id: number) {
+  return requestClient.get(`/meters/${id}/attachments`);
+}
+
+export function uploadMeterAttachment(id: number, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return requestClient.post(`/meters/${id}/attachments`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+}
+
+export function importMeters(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return requestClient.post('/meters/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+}
+
+export function exportMeters(params?: MeterListParams) {
+  return requestClient.get('/meters/export', { params, responseType: 'blob' });
+}
