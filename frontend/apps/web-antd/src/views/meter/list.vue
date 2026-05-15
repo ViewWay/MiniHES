@@ -67,9 +67,12 @@ const statusFlowMap: Record<string, Array<{ status: string; label: string; confi
   in_stock: [
     { status: 'testing', label: '开始测试', confirm: '确认开始挂表测试？' },
     { status: 'borrowed', label: '借出', confirm: '确认借出？需走审批流程' },
+    { status: 'repairing', label: '送修', confirm: '确认送修？' },
+    { status: 'scrapped', label: '报废', confirm: '确认报废？报废后不可恢复' },
   ],
   testing: [
     { status: 'test_complete', label: '测试完成', confirm: '确认测试已完成？' },
+    { status: 'repairing', label: '送修', confirm: '确认送修？' },
   ],
   test_complete: [
     { status: 'in_stock', label: '拆表归库', confirm: '确认拆表归库？' },

@@ -116,3 +116,7 @@ export function importMeters(file: File) {
 export function exportMeters(params?: MeterListParams) {
   return requestClient.get('/meters/export', { params, responseType: 'blob' });
 }
+
+export function updateMeterComm(meterId: number, data: any) {
+  return requestClient.put(`/meters/${meterId}/communication`, data);
+}

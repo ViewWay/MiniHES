@@ -43,6 +43,26 @@ export function getWireTypes() {
   return requestClient.get('/wire-types');
 }
 
+export function updateProject(id: number, data: Partial<Project>) {
+  return requestClient.put(`/projects/${id}`, data);
+}
+
+export function deleteProject(id: number) {
+  return requestClient.delete(`/projects/${id}`);
+}
+
 export function getMeterPoints(params?: { protocol?: string }) {
   return requestClient.get('/meter-points', { params });
+}
+
+export function createMeterPoint(data: any) {
+  return requestClient.post('/meter-points', data);
+}
+
+export function updateMeterPoint(id: number, data: any) {
+  return requestClient.put(`/meter-points/${id}`, data);
+}
+
+export function deleteMeterPoint(id: number) {
+  return requestClient.delete(`/meter-points/${id}`);
 }

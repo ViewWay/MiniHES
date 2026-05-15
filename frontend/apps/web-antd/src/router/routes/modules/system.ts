@@ -38,6 +38,24 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'ProjectManage',
+        path: '/system/project',
+        component: () => import('#/views/system/project.vue'),
+        meta: {
+          icon: 'lucide:folder-kanban',
+          title: '项目管理',
+        },
+      },
+      {
+        name: 'MeterPoint',
+        path: '/system/meter-point',
+        component: () => import('#/views/system/meter-point.vue'),
+        meta: {
+          icon: 'lucide:cpu',
+          title: '采集点配置',
+        },
+      },
+      {
         name: 'AlarmRule',
         path: '/system/alarm-rule',
         component: () => import('#/views/system/alarm-rule.vue'),
