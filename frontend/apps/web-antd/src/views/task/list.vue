@@ -15,6 +15,7 @@ const pagination = ref({ current: 1, pageSize: 20 });
 const searchKeyword = ref('');
 const filterStatus = ref<string | undefined>(undefined);
 const filterTaskType = ref<string | undefined>(undefined);
+const filterTaskCategory = ref<string | undefined>(undefined);
 
 const taskStatusMap: Record<string, { color: string; text: string }> = {
   ready: { color: 'default', text: '就绪' },
@@ -25,6 +26,13 @@ const taskStatusMap: Record<string, { color: string; text: string }> = {
 };
 
 const taskTypeMap: Record<string, string> = { cron: '定时任务', interval: '循环任务', once: '一次性任务' };
+
+const taskCategoryMap: Record<string, { color: string; text: string }> = {
+  collection: { color: 'blue', text: '采集任务' },
+  analysis: { color: 'purple', text: '分析任务' },
+  report: { color: 'cyan', text: '报表任务' },
+  cleanup: { color: 'orange', text: '清理任务' },
+};
 
 const statusFilterOptions = [
   { value: 'ready', label: '就绪' },
@@ -40,9 +48,17 @@ const taskTypeFilterOptions = [
   { value: 'once', label: '一次性任务' },
 ];
 
+const taskCategoryFilterOptions = [
+  { value: 'collection', label: '采集任务' },
+  { value: 'analysis', label: '分析任务' },
+  { value: 'report', label: '报表任务' },
+  { value: 'cleanup', label: '清理任务' },
+];
+
 const columns = [
   { title: '任务名称', dataIndex: 'task_name', width: 200, ellipsis: true },
-  { title: '类型', dataIndex: 'task_type', key: 'task_type', width: 110 },
+  { title: '任务分类', dataIndex: 'task_category', key: 'task_category', width: 110 },
+  { title: '调度类型', dataIndex: 'task_type', key: 'task_type', width: 110 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '设备数', dataIndex: 'total_devices', width: 80, align: 'center' as const },
   { title: '成功率', dataIndex: 'success_rate', key: 'success_rate', width: 90, align: 'center' as const },
@@ -61,6 +77,7 @@ async function fetchData() {
     };
     if (filterStatus.value) params.status = filterStatus.value;
     if (filterTaskType.value) params.task_type = filterTaskType.value;
+    if (filterTaskCategory.value) params.task_category = filterTaskCategory.value;
     const res = await getTaskList(params as any);
     let items = res.items || [];
     // Client-side keyword filter
@@ -84,6 +101,7 @@ function handleReset() {
   searchKeyword.value = '';
   filterStatus.value = undefined;
   filterTaskType.value = undefined;
+  filterTaskCategory.value = undefined;
   pagination.value.current = 1;
   fetchData();
 }
@@ -131,7 +149,7 @@ onMounted(() => {
 
 <template>
   <Page auto-content-height>
-    <Card :bordered="false" title="采集任务列表">
+    <Card :bordered="false" title="任务列表">
       <template #extra>
         <Space>
           <Button type="primary" v-access:code="'task:create'" @click="router.push('/task/create')">创建任务</Button>
@@ -171,6 +189,16 @@ onMounted(() => {
               @change="handleSearch"
             />
           </Form.Item>
+          <Form.Item label="任务分类">
+            <Select
+              v-model:value="filterTaskCategory"
+              :options="taskCategoryFilterOptions"
+              allow-clear
+              placeholder="全部分类"
+              style="width: 140px"
+              @change="handleSearch"
+            />
+          </Form.Item>
           <Form.Item>
             <Space>
               <Button type="primary" @click="handleSearch">查询</Button>
@@ -187,9 +215,14 @@ onMounted(() => {
         :pagination="{ current: pagination.current, pageSize: pagination.pageSize, total, showSizeChanger: true, showTotal: (t: number) => `共 ${t} 条` }"
         row-key="id"
         @change="handleTableChange"
-        :scroll="{ x: 1300 }"
+        :scroll="{ x: 1400 }"
       >
         <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'task_category'">
+            <Tag :color="taskCategoryMap[record.task_category]?.color || 'default'">
+              {{ taskCategoryMap[record.task_category]?.text || record.task_category || '-' }}
+            </Tag>
+          </template>
           <template v-if="column.key === 'task_type'">
             <Tag>{{ taskTypeMap[record.task_type] || record.task_type }}</Tag>
           </template>

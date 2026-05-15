@@ -77,3 +77,30 @@ export function getAuditLogs(params?: {
 export function exportAuditLogs(params?: any) {
   return requestClient.get('/audit-logs/export', { params, responseType: 'blob', responseReturn: 'body' });
 }
+
+export interface ArchiveRecordParams {
+  page?: number;
+  page_size?: number;
+}
+
+export interface ArchiveFormData {
+  archive_type: string;
+  table_name: string;
+  days_to_archive: number;
+}
+
+export function getArchiveRecords(params?: ArchiveRecordParams) {
+  return requestClient.get('/data-archive', { params });
+}
+
+export function createArchive(data: ArchiveFormData) {
+  return requestClient.post('/data-archive', data);
+}
+
+export function getDbMonitorStats() {
+  return requestClient.get('/system/db-monitor');
+}
+
+export function getSystemHealth() {
+  return requestClient.get('/system/health');
+}

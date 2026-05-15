@@ -5,10 +5,12 @@ export interface TaskListParams {
   page_size?: number;
   status?: string;
   task_type?: string;
+  task_category?: string;
 }
 
 export interface TaskFormData {
   task_name: string;
+  task_category: 'collection' | 'analysis' | 'report' | 'cleanup';
   task_type: 'cron' | 'interval' | 'once';
   schedule_config: Record<string, any>;
   execution_content: Record<string, any>;

@@ -31,3 +31,29 @@ export function exportAnalysisReport(id: number) {
 export function exportDailyReport(params: { meter_id?: number; date?: string }) {
   return requestClient.get('/analysis/daily/export', { params, responseType: 'blob', responseReturn: 'body' });
 }
+
+export function getConsistencyCheck(params?: { project_id?: number }) {
+  return requestClient.get('/analysis/consistency', { params });
+}
+
+export function triggerConsistencyCheck() {
+  return requestClient.post('/analysis/consistency/check');
+}
+
+export interface DataQualityParams {
+  page?: number;
+  page_size?: number;
+  meter_id?: number;
+  start_date?: string;
+  end_date?: string;
+  min_score?: number;
+  project_id?: number;
+}
+
+export function getDataQuality(params?: DataQualityParams) {
+  return requestClient.get('/analysis/data-quality', { params });
+}
+
+export function exportDataQuality(params?: DataQualityParams) {
+  return requestClient.get('/analysis/data-quality/export', { params, responseType: 'blob', responseReturn: 'body' });
+}

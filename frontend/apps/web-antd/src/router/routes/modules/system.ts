@@ -64,6 +64,33 @@ const routes: RouteRecordRaw[] = [
           title: '告警规则',
         },
       },
+      {
+        name: 'DbMonitor',
+        path: '/system/db-monitor',
+        component: () => import('#/views/system/db-monitor.vue'),
+        meta: {
+          icon: 'lucide:database',
+          title: '数据库监控',
+        },
+      },
+      {
+        name: 'SystemHealth',
+        path: '/system/health',
+        component: () => import('#/views/system/health.vue'),
+        meta: {
+          icon: 'lucide:heart-pulse',
+          title: '系统健康',
+        },
+      },
+      {
+        name: 'DataArchive',
+        path: '/system/data-archive',
+        component: () => import('#/views/system/data-archive.vue'),
+        meta: {
+          icon: 'lucide:archive',
+          title: '数据归档',
+        },
+      },
     ],
   },
 ];

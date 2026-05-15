@@ -18,6 +18,7 @@ const currentStep = ref(0);
 // Step 1: Basic info
 const form = ref<TaskFormData>({
   task_name: '',
+  task_category: 'collection',
   task_type: 'interval',
   schedule_config: { interval: 120, unit: 'seconds' },
   execution_content: { action: 'read', points: ['1.0.0.0.0.255'] },
@@ -27,6 +28,27 @@ const form = ref<TaskFormData>({
   timeout: 300,
   is_enabled: true,
 });
+
+const taskCategoryOptions = [
+  { value: 'collection', label: '采集任务' },
+  { value: 'analysis', label: '分析任务' },
+  { value: 'report', label: '报表任务' },
+  { value: 'cleanup', label: '清理任务' },
+];
+
+const reportTemplateOptions = [
+  { value: 'daily', label: '日报模板' },
+  { value: 'weekly', label: '周报模板' },
+  { value: 'monthly', label: '月报模板' },
+  { value: 'custom', label: '自定义模板' },
+];
+
+const cleanupTargetTableOptions = [
+  { value: 'task_logs', label: '任务日志' },
+  { value: 'device_comm_logs', label: '通信日志' },
+  { value: 'raw_readings', label: '原始抄读数据' },
+  { value: 'temp_data', label: '临时数据' },
+];
 
 const taskTypeOptions = [
   { value: 'cron', label: '定时任务 (Cron表达式)' },
@@ -150,6 +172,12 @@ fetchMetadata();
         <Form :model="form" layout="vertical" style="max-width: 700px">
           <Form.Item label="任务名称" required><Input v-model:value="form.task_name" placeholder="如: Coral项目120秒采集" /></Form.Item>
 
+          <Form.Item label="任务分类" required>
+            <RadioGroup v-model:value="form.task_category">
+              <Radio v-for="opt in taskCategoryOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</Radio>
+            </RadioGroup>
+          </Form.Item>
+
           <Form.Item label="任务类型" required>
             <RadioGroup v-model:value="form.task_type">
               <Radio v-for="opt in taskTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</Radio>
@@ -168,6 +196,36 @@ fetchMetadata();
           <template v-if="form.task_type === 'cron'">
             <Form.Item label="Cron 表达式" help="格式: 秒 分 时 日 月 星期">
               <Input v-model:value="(form.schedule_config as any).cron" placeholder="0 30 2 * * ?（每天凌晨2:30）" />
+            </Form.Item>
+          </template>
+
+          <template v-if="form.task_category === 'cleanup'">
+            <Row :gutter="16">
+              <Col :span="12">
+                <Form.Item label="数据保留天数" help="超过保留期的数据将被清理">
+                  <InputNumber v-model:value="(form.execution_content as any).days_to_keep" :min="1" :max="3650" placeholder="如: 90" style="width: 100%" />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item label="目标表" help="选择需要清理的数据表">
+              <Select
+                v-model:value="(form.execution_content as any).target_tables"
+                mode="multiple"
+                :options="cleanupTargetTableOptions"
+                placeholder="选择要清理的表"
+                style="width: 100%"
+              />
+            </Form.Item>
+          </template>
+
+          <template v-if="form.task_category === 'report'">
+            <Form.Item label="报表模板" help="选择报表生成模板">
+              <Select
+                v-model:value="(form.execution_content as any).report_template"
+                :options="reportTemplateOptions"
+                placeholder="选择报表模板"
+                style="max-width: 300px"
+              />
             </Form.Item>
           </template>
 
@@ -241,7 +299,8 @@ fetchMetadata();
           <Form.Item label="任务确认">
             <Descriptions bordered :column="1" size="small">
               <DescriptionsItem label="任务名称">{{ form.task_name }}</DescriptionsItem>
-              <DescriptionsItem label="类型">{{ taskTypeOptions.find(t => t.value === form.task_type)?.label }}</DescriptionsItem>
+              <DescriptionsItem label="分类">{{ taskCategoryOptions.find(t => t.value === form.task_category)?.label }}</DescriptionsItem>
+              <DescriptionsItem label="调度类型">{{ taskTypeOptions.find(t => t.value === form.task_type)?.label }}</DescriptionsItem>
               <DescriptionsItem label="目标设备">{{ selectedDeviceIds.length }} 台</DescriptionsItem>
               <DescriptionsItem label="点位数">{{ (form.execution_content as any).points?.length || 0 }} 个</DescriptionsItem>
             </Descriptions>

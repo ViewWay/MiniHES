@@ -37,6 +37,24 @@ const routes: RouteRecordRaw[] = [
           title: '分析报告',
         },
       },
+      {
+        name: 'Consistency',
+        path: '/analysis/consistency',
+        component: () => import('#/views/analysis/consistency.vue'),
+        meta: {
+          icon: 'lucide:check-circle-2',
+          title: '一致性检查',
+        },
+      },
+      {
+        name: 'DataQuality',
+        path: '/analysis/data-quality',
+        component: () => import('#/views/analysis/data-quality.vue'),
+        meta: {
+          icon: 'lucide:shield-check',
+          title: '数据质量',
+        },
+      },
     ],
   },
 ];
