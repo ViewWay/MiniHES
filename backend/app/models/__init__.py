@@ -14,6 +14,7 @@ from .meter import (
 )
 from .meter_point import MeterPoint, MeterReading, ReadingDailySummary
 from .project import Project
+from .session import CollectionSession
 from .system import AuditLog, DataArchive
 from .task import DataQuality, Task, TaskDevice, TaskLog
 from .test import Defect, TestReport, TestTask
@@ -41,6 +42,7 @@ __all__ = [
     "MeterPoint",
     "MeterReading",
     "ReadingDailySummary",
+    "CollectionSession",
     "Task",
     "TaskLog",
     "TaskDevice",
