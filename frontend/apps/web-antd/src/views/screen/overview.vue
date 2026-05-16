@@ -21,6 +21,7 @@ import {
 
 import { getProjectList } from '#/api/modules/project';
 import { getMeterList } from '#/api/modules/meter';
+import { THEME_COLORS } from '#/constants';
 
 const router = useRouter();
 
@@ -297,99 +298,75 @@ function buildAlarmTrendOptions() {
 </script>
 
 <template>
-  <div style="background: #001529; min-height: 100vh; padding: 24px">
+  <div class="screen-page">
     <Spin :spinning="loading">
       <!-- Top statistics -->
       <Row :gutter="16" style="margin-bottom: 16px">
         <Col :span="4">
-          <Card
-            :bordered="false"
-            style="background: #00284d"
-            :body-style="{ padding: '20px' }"
-          >
+          <Card class="screen-card screen-card-sm" :bordered="false">
             <template #title>
-              <span style="color: #cccccc">项目总数</span>
+              <span class="screen-title">项目总数</span>
             </template>
             <Statistic
               :value="projects.length"
-              :value-style="{ color: '#ffffff' }"
+              :value-style="{ color: THEME_COLORS.PROCESSING }"
             />
           </Card>
         </Col>
         <Col :span="4">
-          <Card
-            :bordered="false"
-            style="background: #00284d"
-            :body-style="{ padding: '20px' }"
-          >
+          <Card class="screen-card screen-card-sm" :bordered="false">
             <template #title>
-              <span style="color: #cccccc">设备总数</span>
+              <span class="screen-title">设备总数</span>
             </template>
             <Statistic
               :value="totalMeters"
-              :value-style="{ color: '#ffffff' }"
+              :value-style="{ color: THEME_COLORS.PROCESSING }"
             />
           </Card>
         </Col>
         <Col :span="4">
-          <Card
-            :bordered="false"
-            style="background: #00284d"
-            :body-style="{ padding: '20px' }"
-          >
+          <Card class="screen-card screen-card-sm" :bordered="false">
             <template #title>
-              <span style="color: #cccccc">在线设备</span>
+              <span class="screen-title">在线设备</span>
             </template>
             <Statistic
               :value="onlineMeters"
-              :value-style="{ color: '#52c41a' }"
+              :value-style="{ color: THEME_COLORS.SUCCESS }"
             />
           </Card>
         </Col>
         <Col :span="4">
-          <Card
-            :bordered="false"
-            style="background: #00284d"
-            :body-style="{ padding: '20px' }"
-          >
+          <Card class="screen-card screen-card-sm" :bordered="false">
             <template #title>
-              <span style="color: #cccccc">离线设备</span>
+              <span class="screen-title">离线设备</span>
             </template>
             <Statistic
               :value="offlineMeters"
-              :value-style="{ color: '#ff4d4f' }"
+              :value-style="{ color: THEME_COLORS.ERROR }"
             />
           </Card>
         </Col>
         <Col :span="4">
-          <Card
-            :bordered="false"
-            style="background: #00284d"
-            :body-style="{ padding: '20px' }"
-          >
+          <Card class="screen-card screen-card-sm" :bordered="false">
             <template #title>
-              <span style="color: #cccccc">活跃告警</span>
+              <span class="screen-title">活跃告警</span>
             </template>
             <Statistic
               :value="alertCount"
-              :value-style="{ color: '#faad14' }"
+              :value-style="{ color: THEME_COLORS.WARNING }"
             />
           </Card>
         </Col>
         <Col :span="4">
-          <Card
-            :bordered="false"
-            style="background: #00284d"
-            :body-style="{ padding: '20px' }"
-          >
+          <Card class="screen-card screen-card-sm" :bordered="false">
             <template #title>
-              <span style="color: #cccccc">在线率</span>
+              <span class="screen-title">在线率</span>
             </template>
             <Statistic
               :value="onlineRate"
               suffix="%"
               :value-style="{
-                color: onlineRate >= 95 ? '#52c41a' : '#faad14',
+                color: onlineRate >= 95 ? THEME_COLORS.SUCCESS : THEME_COLORS.WARNING,
               }"
             />
           </Card>
@@ -399,17 +376,9 @@ function buildAlarmTrendOptions() {
       <!-- Main content -->
       <Row :gutter="16" style="margin-bottom: 16px">
         <Col :span="16">
-          <Card
-            :bordered="false"
-            style="background: #00284d"
-            :head-style="{
-              color: '#ffffff',
-              borderBottomColor: '#1f3a5c',
-            }"
-            :body-style="{ padding: '16px' }"
-          >
+          <Card class="screen-card" :bordered="false">
             <template #title>
-              <span style="color: #ffffff">项目状态概览</span>
+              <span style="color: var(--text)">项目状态概览</span>
             </template>
             <Table
               :columns="columns"
@@ -435,11 +404,11 @@ function buildAlarmTrendOptions() {
                           ? '已完成'
                           : record.status
                     "
-                    style="color: #cccccc"
+                    style="color: var(--text-sec)"
                   />
                 </template>
                 <template v-if="column.key === 'online'">
-                  <span style="color: #cccccc">
+                  <span class="screen-text">
                     {{ record.online_count ?? '-' }} /
                     {{ record.meter_count ?? '-' }}
                   </span>
@@ -448,7 +417,7 @@ function buildAlarmTrendOptions() {
                   <Tag v-if="record.alert_count > 0" color="red">
                     {{ record.alert_count }}
                   </Tag>
-                  <span v-else style="color: #52c41a">0</span>
+                  <span v-else :style="{ color: THEME_COLORS.SUCCESS }">0</span>
                 </template>
                 <template v-if="column.key === 'progress'">
                   <Progress
@@ -463,7 +432,7 @@ function buildAlarmTrendOptions() {
                 </template>
                 <template v-if="column.key === 'action'">
                   <a
-                    style="color: #40a9ff"
+                    class="screen-link"
                     @click="goToProject(record.id)"
                   >
                     详情大屏 →
@@ -477,48 +446,36 @@ function buildAlarmTrendOptions() {
         <Col :span="8">
           <!-- Online rate donut chart -->
           <Card
+            class="screen-card"
             :bordered="false"
-            style="margin-bottom: 16px; background: #00284d"
-            :head-style="{
-              color: '#ffffff',
-              borderBottomColor: '#1f3a5c',
-            }"
-            :body-style="{ padding: '16px' }"
+            style="margin-bottom: 16px"
           >
             <template #title>
-              <span style="color: #ffffff">设备在线率</span>
+              <span style="color: var(--text)">设备在线率</span>
             </template>
             <EchartsUI ref="onlineRateChartRef" height="200px" />
           </Card>
 
           <!-- Stack monitoring bar chart -->
           <Card
+            class="screen-card"
             :bordered="false"
-            style="margin-bottom: 16px; background: #00284d"
-            :head-style="{
-              color: '#ffffff',
-              borderBottomColor: '#1f3a5c',
-            }"
-            :body-style="{ padding: '16px' }"
+            style="margin-bottom: 16px"
           >
             <template #title>
-              <span style="color: #ffffff">堆栈监控</span>
+              <span style="color: var(--text)">堆栈监控</span>
             </template>
             <EchartsUI ref="stackChartRef" height="220px" />
           </Card>
 
           <!-- Alarm trend chart -->
           <Card
+            class="screen-card"
             :bordered="false"
-            style="margin-bottom: 16px; background: #00284d"
-            :head-style="{
-              color: '#ffffff',
-              borderBottomColor: '#1f3a5c',
-            }"
-            :body-style="{ padding: '16px' }"
+            style="margin-bottom: 16px"
           >
             <template #title>
-              <span style="color: #ffffff">告警趋势</span>
+              <span style="color: var(--text)">告警趋势</span>
             </template>
             <EchartsUI ref="alarmTrendChartRef" height="200px" />
           </Card>
@@ -528,23 +485,15 @@ function buildAlarmTrendOptions() {
       <!-- Event statistics -->
       <Row :gutter="16">
         <Col :span="24">
-          <Card
-            :bordered="false"
-            style="background: #00284d"
-            :head-style="{
-              color: '#ffffff',
-              borderBottomColor: '#1f3a5c',
-            }"
-            :body-style="{ padding: '16px' }"
-          >
+          <Card class="screen-card" :bordered="false">
             <template #title>
-              <span style="color: #ffffff">事件统计</span>
+              <span style="color: var(--text)">事件统计</span>
             </template>
             <Row :gutter="[16, 16]">
               <Col :span="6" v-for="e in eventStats" :key="e.type">
                 <Card
                   size="small"
-                  style="background: #001529"
+                  style="background: var(--bg)"
                   :body-style="{ padding: '16px' }"
                 >
                   <template #title>
@@ -567,3 +516,56 @@ function buildAlarmTrendOptions() {
     </Spin>
   </div>
 </template>
+
+<style scoped>
+.screen-page {
+  --bg: #001529;
+  --bg-card: #00284d;
+  --border: #1f3a5c;
+  --text: #ffffff;
+  --text-sec: #cccccc;
+
+  background: var(--bg);
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.screen-card {
+  background: var(--bg-card) !important;
+  border: none !important;
+}
+
+.screen-card :deep(.ant-card-head) {
+  color: var(--text);
+  border-bottom-color: var(--border);
+}
+
+.screen-card :deep(.ant-card-body) {
+  padding: 16px;
+}
+
+.screen-card-sm :deep(.ant-card-body) {
+  padding: 20px;
+}
+
+.screen-title {
+  color: var(--text-sec);
+}
+
+.screen-text {
+  color: var(--text-sec);
+}
+
+.screen-value {
+  color: var(--text);
+}
+
+.screen-link {
+  color: #40a9ff;
+  cursor: pointer;
+}
+
+.screen-link:hover {
+  color: #69b1ff;
+}
+</style>

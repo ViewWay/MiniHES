@@ -4,12 +4,13 @@ import { useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { Button, Card, Col, DatePicker, Form, Input, Row, Select, Space, Switch, Table, Tag, Popconfirm, message } from 'ant-design-vue';
 import { getTaskList, executeTask, toggleTask, deleteTask } from '#/api/modules/task';
+import { TASK_STATUS_MAP, TASK_TYPE_MAP, TASK_CATEGORY_MAP, DEFAULT_PAGE_SIZE, THEME_COLORS } from '#/constants';
 
 const router = useRouter();
 const loading = ref(false);
 const tableData = ref<any[]>([]);
 const total = ref(0);
-const pagination = ref({ current: 1, pageSize: 20 });
+const pagination = ref({ current: 1, pageSize: DEFAULT_PAGE_SIZE });
 
 // Search and filter state
 const searchKeyword = ref('');
@@ -17,43 +18,19 @@ const filterStatus = ref<string | undefined>(undefined);
 const filterTaskType = ref<string | undefined>(undefined);
 const filterTaskCategory = ref<string | undefined>(undefined);
 
-const taskStatusMap: Record<string, { color: string; text: string }> = {
-  ready: { color: 'default', text: '就绪' },
-  running: { color: 'blue', text: '执行中' },
-  paused: { color: 'orange', text: '已暂停' },
-  completed: { color: 'green', text: '已完成' },
-  failed: { color: 'red', text: '失败' },
-};
+const taskStatusMap = Object.fromEntries(
+  Object.entries(TASK_STATUS_MAP).map(([key, val]) => [key, { color: val.color, text: val.label }]),
+);
+const taskTypeMap = TASK_TYPE_MAP;
+const taskCategoryMap = Object.fromEntries(
+  Object.entries(TASK_CATEGORY_MAP).map(([key, val]) => [key, { color: val.color, text: val.label }]),
+);
 
-const taskTypeMap: Record<string, string> = { cron: '定时任务', interval: '循环任务', once: '一次性任务' };
+const statusFilterOptions = Object.entries(TASK_STATUS_MAP).map(([value, { label }]) => ({ value, label }));
 
-const taskCategoryMap: Record<string, { color: string; text: string }> = {
-  collection: { color: 'blue', text: '采集任务' },
-  analysis: { color: 'purple', text: '分析任务' },
-  report: { color: 'cyan', text: '报表任务' },
-  cleanup: { color: 'orange', text: '清理任务' },
-};
+const taskTypeFilterOptions = Object.entries(TASK_TYPE_MAP).map(([value, label]) => ({ value, label }));
 
-const statusFilterOptions = [
-  { value: 'ready', label: '就绪' },
-  { value: 'running', label: '执行中' },
-  { value: 'paused', label: '已暂停' },
-  { value: 'completed', label: '已完成' },
-  { value: 'failed', label: '失败' },
-];
-
-const taskTypeFilterOptions = [
-  { value: 'cron', label: '定时任务' },
-  { value: 'interval', label: '循环任务' },
-  { value: 'once', label: '一次性任务' },
-];
-
-const taskCategoryFilterOptions = [
-  { value: 'collection', label: '采集任务' },
-  { value: 'analysis', label: '分析任务' },
-  { value: 'report', label: '报表任务' },
-  { value: 'cleanup', label: '清理任务' },
-];
+const taskCategoryFilterOptions = Object.entries(TASK_CATEGORY_MAP).map(([value, { label }]) => ({ value, label }));
 
 const columns = [
   { title: '任务名称', dataIndex: 'task_name', width: 200, ellipsis: true },
@@ -232,7 +209,7 @@ onMounted(() => {
             </Tag>
           </template>
           <template v-if="column.key === 'success_rate'">
-            <span :style="{ color: record.success_rate >= 95 ? '#52c41a' : record.success_rate >= 80 ? '#faad14' : '#ff4d4f' }">
+            <span :style="{ color: record.success_rate >= 95 ? THEME_COLORS.SUCCESS : record.success_rate >= 80 ? THEME_COLORS.WARNING : THEME_COLORS.ERROR }">
               {{ record.success_rate != null ? `${record.success_rate}%` : '-' }}
             </span>
           </template>

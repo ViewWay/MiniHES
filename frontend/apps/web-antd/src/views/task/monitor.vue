@@ -5,6 +5,7 @@ import { Page } from '@vben/common-ui';
 import { Badge, Button, Card, Col, Descriptions, DescriptionsItem, Modal, Progress, Row, Space, Statistic, Table, Tag, message } from 'ant-design-vue';
 import { getTaskList, getTaskDetail } from '#/api/modules/task';
 import { useWebSocket } from '#/composables/useWebSocket';
+import { TASK_STATUS_MAP, TASK_TYPE_MAP, POLL_INTERVALS, THEME_COLORS } from '#/constants';
 
 const router = useRouter();
 const loading = ref(false);
@@ -20,15 +21,11 @@ const detailModalVisible = ref(false);
 const detailLoading = ref(false);
 const taskDetail = ref<any>(null);
 
-const taskStatusMap: Record<string, { color: string; text: string }> = {
-  ready: { color: 'default', text: '就绪' },
-  running: { color: 'blue', text: '执行中' },
-  paused: { color: 'orange', text: '已暂停' },
-  completed: { color: 'green', text: '已完成' },
-  failed: { color: 'red', text: '失败' },
-};
+const taskStatusMap = Object.fromEntries(
+  Object.entries(TASK_STATUS_MAP).map(([key, val]) => [key, { color: val.color, text: val.label }]),
+);
 
-const taskTypeMap: Record<string, string> = { cron: '定时任务', interval: '循环任务', once: '一次性任务' };
+const taskTypeMap = TASK_TYPE_MAP;
 
 const stats = computed(() => {
   const all = tasks.value;
@@ -81,7 +78,7 @@ function startPolling() {
   if (autoRefreshEnabled.value) {
     pollingTimer = setInterval(() => {
       fetchData();
-    }, 5000);
+    }, POLL_INTERVALS.TASK_MONITOR);
   }
 }
 
@@ -104,9 +101,9 @@ function toggleAutoRefresh() {
 }
 
 function getProgressColor(rate: number): string {
-  if (rate >= 95) return '#52c41a';
-  if (rate >= 80) return '#faad14';
-  return '#ff4d4f';
+  if (rate >= 95) return THEME_COLORS.SUCCESS;
+  if (rate >= 80) return THEME_COLORS.WARNING;
+  return THEME_COLORS.ERROR;
 }
 
 onMounted(() => {

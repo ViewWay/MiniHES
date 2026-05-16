@@ -28,6 +28,10 @@ import {
 import { useRoute } from 'vue-router';
 
 import { getDailyAnalysis, exportDailyReport } from '#/api/modules/analysis';
+import { useChartTheme } from '#/composables/useChartTheme';
+
+const { themedAxis, themedTooltip, themedLegend, watchThemeAndRerender } =
+  useChartTheme();
 
 const route = useRoute();
 
@@ -59,6 +63,9 @@ onMounted(() => {
     handleSearch();
   }
 });
+
+// Re-render charts when theme changes
+watchThemeAndRerender(renderCharts);
 
 async function handleSearch() {
   if (!searchForm.value.meter_id || !searchForm.value.date) {
@@ -93,14 +100,11 @@ function renderCharts() {
       left: 'center',
       textStyle: { fontSize: 14 },
     },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'cross' },
-    },
-    legend: {
+    tooltip: themedTooltip({ axisPointer: { type: 'cross' } }),
+    legend: themedLegend({
       bottom: 0,
       data: ['正向有功电能', '反向有功电能'],
-    },
+    }),
     grid: {
       top: 50,
       left: '3%',
@@ -108,15 +112,12 @@ function renderCharts() {
       bottom: 50,
       containLabel: true,
     },
-    xAxis: {
+    xAxis: themedAxis('x', {
       type: 'category',
       boundaryGap: false,
       data: xData,
-    },
-    yAxis: {
-      type: 'value',
-      name: 'kWh',
-    },
+    }),
+    yAxis: themedAxis('y', { type: 'value', name: 'kWh' }),
     series: [
       {
         name: '正向有功电能',
@@ -148,14 +149,13 @@ function renderCharts() {
       left: 'center',
       textStyle: { fontSize: 14 },
     },
-    tooltip: {
-      trigger: 'axis',
+    tooltip: themedTooltip({
       axisPointer: { type: 'shadow' },
       formatter: (params: any) => {
         const p = params[0];
         return `${p.axisValue}<br/>完整率: <b>${p.value}%</b>`;
       },
-    },
+    }),
     grid: {
       top: 50,
       left: '3%',
@@ -163,17 +163,17 @@ function renderCharts() {
       bottom: 10,
       containLabel: true,
     },
-    xAxis: {
+    xAxis: themedAxis('x', {
       type: 'category',
       data: profiles.map((p: any) => p.name),
       axisLabel: { rotate: 15 },
-    },
-    yAxis: {
+    }),
+    yAxis: themedAxis('y', {
       type: 'value',
       name: '完整率 (%)',
       min: 0,
       max: 100,
-    },
+    }),
     series: [
       {
         type: 'bar',

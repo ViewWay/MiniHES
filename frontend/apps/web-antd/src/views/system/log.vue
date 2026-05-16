@@ -3,13 +3,14 @@ import { ref, onMounted } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Button, Card, DatePicker, Form, Select, Space, Table, Tag, message } from 'ant-design-vue';
 import { getAuditLogs, exportAuditLogs } from '#/api/modules/system';
+import { DEFAULT_PAGE_SIZE } from '#/constants';
 
 const RangePicker = DatePicker.RangePicker;
 
 const loading = ref(false);
 const tableData = ref<any[]>([]);
 const total = ref(0);
-const pagination = ref({ current: 1, pageSize: 20 });
+const pagination = ref({ current: 1, pageSize: DEFAULT_PAGE_SIZE });
 const dateRange = ref<any>(null);
 const searchForm = ref({
   operation_type: undefined as string | undefined,
@@ -24,6 +25,11 @@ const opTypeMap: Record<string, { color: string; text: string }> = {
   LOGIN: { color: 'cyan', text: '登录' },
 };
 
+const opTypeOptions = Object.entries(opTypeMap).map(([value, { label }]) => ({
+  value,
+  label: label || value,
+}));
+
 const resourceTypeOptions = [
   { value: 'meter', label: '设备' },
   { value: 'task', label: '任务' },
@@ -34,6 +40,10 @@ const resourceTypeOptions = [
   { value: 'borrow', label: '借用' },
   { value: 'repair', label: '维修' },
 ];
+
+const resourceTypeMap = Object.fromEntries(
+  resourceTypeOptions.map(({ value, label }) => [value, label]),
+);
 
 const columns = [
   { title: '操作人', dataIndex: 'user_name', width: 100 },
@@ -60,6 +70,8 @@ async function fetchData() {
     const res = await getAuditLogs(params);
     tableData.value = res.items || [];
     total.value = res.total || 0;
+  } catch {
+    message.error('获取操作日志失败');
   } finally { loading.value = false; }
 }
 
@@ -122,7 +134,7 @@ onMounted(() => { fetchData(); });
       <Form layout="inline" :model="searchForm">
         <Form.Item label="操作类型">
           <Select v-model:value="searchForm.operation_type" allow-clear placeholder="全部" style="width: 120px"
-            :options="[{ value: 'CREATE', label: '创建' }, { value: 'UPDATE', label: '修改' }, { value: 'DELETE', label: '删除' }, { value: 'LOGIN', label: '登录' }]" />
+            :options="opTypeOptions" />
         </Form.Item>
         <Form.Item label="资源类型">
           <Select v-model:value="searchForm.resource_type" allow-clear placeholder="全部" style="width: 120px"
@@ -151,7 +163,7 @@ onMounted(() => { fetchData(); });
             <Tag :color="opTypeMap[record.operation_type]?.color">{{ opTypeMap[record.operation_type]?.text }}</Tag>
           </template>
           <template v-if="column.key === 'resource_type'">
-            <Tag>{{ record.resource_type }}</Tag>
+            <Tag>{{ resourceTypeMap[record.resource_type] || record.resource_type }}</Tag>
           </template>
         </template>
         <template #expandedRowRender="{ record }">

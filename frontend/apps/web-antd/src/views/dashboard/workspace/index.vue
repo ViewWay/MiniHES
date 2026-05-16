@@ -28,8 +28,18 @@ import {
   exportAlarms,
 } from '#/api/modules/alarm';
 
+import {
+  ALARM_SEVERITY_MAP,
+  ALARM_TYPE_MAP,
+  ALARM_SEVERITY_OPTIONS,
+  ALARM_TYPE_OPTIONS,
+  DEFAULT_PAGE_SIZE,
+  POLL_INTERVALS,
+  THEME_COLORS,
+} from '#/constants';
+
 // --- Polling ---
-const POLL_INTERVAL = 30_000;
+const POLL_INTERVAL = POLL_INTERVALS.ALARM;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 // --- State ---
@@ -37,7 +47,7 @@ const loading = ref(false);
 const alarms = ref<any[]>([]);
 const total = ref(0);
 const currentPage = ref(1);
-const pageSize = ref(20);
+const pageSize = ref(DEFAULT_PAGE_SIZE);
 
 // --- Filter state ---
 const filterSeverity = ref<string | undefined>(undefined);
@@ -49,30 +59,10 @@ const filterHandled = ref<string | undefined>(undefined);
 const statsLoading = ref(false);
 const statsData = ref<any>({});
 
-const severityMap: Record<string, { color: string; text: string }> = {
-  critical: { color: 'red', text: '严重' },
-  warning: { color: 'orange', text: '警告' },
-  info: { color: 'blue', text: '信息' },
-};
-
-const typeMap: Record<string, string> = {
-  threshold: '阈值告警',
-  anomaly: '数据异常',
-  communication: '通信告警',
-  stack: '堆栈告警',
-  eeprom: 'EEPROM告警',
-};
-
-const typeOptions = Object.entries(typeMap).map(([value, label]) => ({
-  value,
-  label,
-}));
-
-const severityOptions = [
-  { value: 'critical', label: '严重' },
-  { value: 'warning', label: '警告' },
-  { value: 'info', label: '信息' },
-];
+const severityMap = ALARM_SEVERITY_MAP;
+const typeMap = ALARM_TYPE_MAP;
+const typeOptions = ALARM_TYPE_OPTIONS;
+const severityOptions = ALARM_SEVERITY_OPTIONS;
 
 const handledOptions = [
   { value: 'false', label: '未处理' },
@@ -281,11 +271,21 @@ function stopPolling() {
 onMounted(async () => {
   await Promise.allSettled([fetchAlarms(), fetchStats()]);
   startPolling();
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 });
 
 onUnmounted(() => {
   stopPolling();
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
+
+function handleVisibilityChange() {
+  if (document.hidden) {
+    stopPolling();
+  } else {
+    startPolling();
+  }
+}
 </script>
 
 <template>

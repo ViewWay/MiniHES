@@ -1,0 +1,128 @@
+name: Test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: metering_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - run: uv sync
+      - run: uv run pytest --cov=app --cov-report=xml -v
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:test@localhost:5432/metering_test
+          REDIS_URL: redis://localhost:6379/0
+      - uses: codecov/codecov-action@v4
+        with:
+          file: backend/coverage.xml
+          flags: backend
+
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check:type
+      - name: Run Vitest
+        run: cd apps/web-antd && pnpm test -- --coverage
+      - uses: codecov/codecov-action@v4
+        with:
+          flags: frontend
+
+  e2e-test:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test]
+    defaults:
+      run:
+        working-directory: tests/e2e
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: metering_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: cd ../../frontend && pnpm install --frozen-lockfile
+      - run: cd ../../frontend && pnpm build:antd
+      - name: Start backend
+        run: |
+          cd ../../backend
+          pip install uv && uv sync
+          uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:test@localhost:5432/metering_test
+          REDIS_URL: redis://localhost:6379/0
+      - name: Start frontend preview
+        run: |
+          cd ../../frontend/apps/web-antd
+          pnpm preview --port 4173 &
+          sleep 3
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=chromium
+        env:
+          E2E_BASE_URL: http://localhost:4173
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-report
+          path: tests/e2e/test-results/
+          retention-days: 7

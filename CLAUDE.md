@@ -7,8 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **云端智能电表抄表系统** - DLMS/COSEM协议栈 + 多通信方式适配
 
 - **前端:** vue-vben-admin 5.7.0 (Vue 3 + TypeScript + Ant Design Vue + Vite)
-- **后端:** FastAPI + Python
+- **后端:** FastAPI + Python 3.12 (uv 管理)
 - **数据库:** PostgreSQL + Redis + InfluxDB
+- **包管理:** uv (后端), pnpm (前端)
+- **部署:** Docker Compose + systemd 双支持
+- **DLMS协议:** 使用私有库（替换当前简化实现）
+- **API响应:** 标准 HTTP 状态码 + 业务码（详见 `docs/design/tech-review-and-architecture.md`）
 
 ---
 
@@ -18,8 +22,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ┌─────────────────────────────────────────────────────────────────┐
 │                         MiniHES 云端抄表系统                        │
 ├─────────────────────────────────────────────────────────────────┤
-│  前端 (Nuxt 3)                                                   │
-│  ├── 设备管理     ├── 数据监控     ├── 报表分析                   │
+│  前端 (vue-vben-admin)                                            │
+│  ├── 设备管理     ├── 数据监控     ├── 报表分析     ├── 系统管理   │
 ├─────────────────────────────────────────────────────────────────┤
 │  后端 (FastAPI)                                                  │
 │  ├── API 层        ├── 服务层        ├── 数据层                   │
@@ -42,59 +46,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 MiniHES/
-├── frontend/              # Nuxt 3 前端
-│   ├── pages/
-│   │   ├── devices/       # 设备管理页面
-│   │   ├── monitor/       # 数据监控页面
-│   │   └── analysis/      # 分析报表页面
-│   └── components/
+├── frontend/              # vue-vben-admin 前端 (pnpm)
+│   ├── apps/
+│   │   ├── web-antd/     # 主应用 (Ant Design Vue)
+│   │   └── backend-mock/ # Mock API 服务
+│   └── packages/          # 共享包
 │
-└── backend/              # FastAPI 后端
-    ├── app/
-    │   ├── api/v1/
-    │   │   ├── endpoints/
-    │   │   │   ├── devices.py      # 设备管理 API
-    │   │   │   ├── collector.py    # 数据采集 API
-    │   │   │   └── analysis.py     # 分析统计 API
-    │   │   └── api.py
-    │   │
-    │   ├── dlms/                   # DLMS 协议栈
-    │   │   ├── protocol/
-    │   │   │   ├── apdu.py         # APDU 编解码
-    │   │   │   ├── acse.py         # ACSE 连接管理
-    │   │   │   └── cosem.py        # COSEM 接口
-    │   │   ├── obis.py            # OBIS 码定义
-    │   │   └── detector.py         # 自动检测
-    │   │
-    │   ├── adapters/               # 通信适配层
-    │   │   ├── base.py            # 抽象基类
-    │   │   ├── infrared.py        # 红外适配器
-    │   │   ├── cellular.py        # 4G/5G/NB-IoT
-    │   │   ├── mbus.py            # M-Bus
-    │   │   ├── lora.py            # LoRaWAN
-    │   │   └── plc.py             # G3-PLC
-    │   │
-    │   ├── services/
-    │   │   ├── collector/         # 数据采集服务
-    │   │   │   ├── scheduler.py   # 定时任务
-    │   │   │   └── executor.py    # 执行引擎
-    │   │   ├── device/            # 设备管理服务
-    │   │   │   ├── manager.py     # 设备管理器
-    │   │   │   └── registry.py    # 设备注册
-    │   │   ├── processor/         # 数据处理服务
-    │   │   │   └── parser.py      # 数据解析
-    │   │   └── analyzer/          # 分析统计服务
-    │   │
-    │   ├── models/                # 数据模型
-    │   │   ├── device.py          # 设备模型
-    │   │   ├── meter.py           # 电表模型
-    │   │   └── reading.py         # 抄读数据模型
-    │   │
-    │   ├── schemas/               # Pydantic 模型
-    │   ├── core/                  # 配置、安全
-    │   └── db/                    # 数据库会话
-    │
-    └── tests/
+├── backend/              # FastAPI 后端 (uv)
+│   ├── app/
+│   │   ├── api/v1/
+│   │   │   └── endpoints/
+│   │   │       ├── health.py     # 健康检查
+│   │   │       ├── devices.py    # 设备管理 API
+│   │   │       ├── collector.py  # 数据采集 API
+│   │   │       └── analysis.py   # 分析统计 API
+│   │   │
+│   │   ├── dlms/                 # DLMS 协议栈
+│   │   │   ├── protocol/
+│   │   │   │   ├── apdu.py       # APDU 编解码
+│   │   │   │   └── acse.py       # ACSE 连接管理
+│   │   │   └── obis.py          # OBIS 码定义
+│   │   │
+│   │   ├── adapters/             # 通信适配层
+│   │   │   ├── base.py          # 抽象基类
+│   │   │   ├── infrared.py      # 红外适配器
+│   │   │   └── cellular.py      # 4G/5G/NB-IoT
+│   │   │
+│   │   ├── services/             # 业务服务层
+│   │   ├── models/               # SQLAlchemy 数据模型
+│   │   ├── schemas/              # Pydantic 模型
+│   │   ├── core/                 # 配置、安全、认证
+│   │   └── db/                   # 数据库会话
+│   │
+│   ├── pyproject.toml            # uv 项目配置
+│   ├── requirements.txt          # 旧依赖文件 (已迁移到 pyproject.toml)
+│   └── .venv/                    # Python 3.12 虚拟环境
+│
+├── tests/                        # 测试
+│   ├── e2e/                      # Playwright E2E 测试
+│   └── backend/                  # pytest 后端测试
+│
+└── docs/                         # 项目文档
 ```
 
 ---
@@ -174,6 +166,13 @@ class NewAdapter(CommunicationAdapter):
 
 ---
 
+## 环境要求
+
+- Python >= 3.11 (通过 uv 管理，当前使用 3.12)
+- Node.js >= 18
+- uv (Python 包管理器)
+- pnpm (前端包管理器)
+
 ## 环境变量
 
 ```bash
@@ -184,11 +183,64 @@ DLMS_DEFAULT_TIMEOUT=30
 COLLECTOR_MAX_WORKERS=10
 ```
 
+## 后端依赖
+
+管理命令：
+```bash
+cd backend
+uv add <package>          # 添加运行时依赖
+uv add --dev <package>    # 添加开发依赖
+uv sync                   # 同步安装所有依赖
+uv run <command>          # 在虚拟环境中执行命令
+```
+
+运行时依赖：fastapi, uvicorn, pydantic, pydantic-settings, sqlalchemy, alembic, asyncpg, aiomysql, motor, redis, pyserial-asyncio, apscheduler, pandas, numpy, pyarrow, python-dotenv, python-multipart, passlib, python-jose, structlog
+
+开发依赖：pytest, pytest-asyncio, pytest-cov, httpx, ruff, black
+
+## 文档规范
+
+**所有项目文档必须放在 `docs/` 目录下**，按阶段产物和功能模块组织：
+
+```
+docs/
+├── planning/              # 项目规划
+│   ├── development-plan.md        # 开发排期计划
+│   ├── project-workflow.md        # 项目开发流程
+│   └── phase-overview.md          # 阶段概览
+│
+├── tasks/                 # 需求文档
+│   └── prd-cloud-metering-system.md
+│
+├── design/                # 设计文档
+│   └── tech-review-and-architecture.md
+│
+├── api/                   # API 文档（按模块）
+│   ├── auth.md
+│   ├── meters.md
+│   ├── tasks.md
+│   ├── analysis.md
+│   ├── alarms.md
+│   └── ...
+│
+├── guides/                # 开发指南
+│   └── testing-strategy.md
+│
+└── reports/               # 审查报告、复盘
+    └── ...
+```
+
+**规则**：
+- 禁止在项目根目录放文档文件（README.md 除外）
+- 禁止在 `docs/` 根目录直接放文件，必须进子目录
+- 文件名使用 kebab-case
+- 新建文档必须归入对应子目录
+
 ## 启动服务
 
 ```bash
 # 后端
-cd backend && uvicorn main:app --reload
+cd backend && uv run uvicorn main:app --reload
 
 # 前端 (vue-vben-admin)
 cd frontend && pnpm dev:antd

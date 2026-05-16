@@ -1,14 +1,36 @@
 from typing import List
+
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "MiniHES"
     API_V1_PREFIX: str = "/api/v1"
-    DATABASE_TYPE: str = "postgresql"
-    DATABASE_URL: str = ""
     DEBUG: bool = True
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:5666",
+        "http://localhost:5173",
+        "http://localhost:5320",
+    ]
+
+    DATABASE_URL: str = "postgresql+asyncpg://minihes:minihes@localhost:5432/minihes"
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 10
+
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    INFLUXDB_URL: str = "http://localhost:8086"
+    INFLUXDB_TOKEN: str = ""
+    INFLUXDB_ORG: str = "metering"
+    INFLUXDB_BUCKET: str = "metering"
+
+    SECRET_KEY: str = "change-me-in-production"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    COLLECTOR_MAX_WORKERS: int = 10
+    COLLECTOR_DEFAULT_TIMEOUT: int = 30
+    COLLECTOR_RETRY_TIMES: int = 3
 
     class Config:
         env_file = ".env"

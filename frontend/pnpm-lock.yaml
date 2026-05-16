@@ -533,6 +533,10 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      '@playwright/test':
+        specifier: 'catalog:'
+        version: 1.59.1
     devDependencies:
       '@changesets/changelog-github':
         specifier: 'catalog:'

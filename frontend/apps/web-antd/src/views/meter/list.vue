@@ -9,22 +9,16 @@ import {
 import { getMeterList, createMeter, changeMeterStatus, importMeters, exportMeters } from '#/api/modules/meter';
 import { getProjectList, getMeterTypes, getWireTypes } from '#/api/modules/project';
 import type { MeterListParams, MeterFormData } from '#/api/modules/meter';
+import { METER_STATUS_MAP, PROTOCOL_OPTIONS, DEFAULT_PAGE_SIZE } from '#/constants';
 
 const router = useRouter();
 const loading = ref(false);
 const tableData = ref<any[]>([]);
 const total = ref(0);
-const pagination = ref({ current: 1, pageSize: 20 });
+const pagination = ref({ current: 1, pageSize: DEFAULT_PAGE_SIZE });
 const expandedRowKeys = ref<number[]>([]);
 
-const statusMap: Record<string, { color: string; text: string }> = {
-  in_stock: { color: 'green', text: '在库' },
-  testing: { color: 'blue', text: '挂表测试中' },
-  test_complete: { color: 'cyan', text: '测试完成待拆' },
-  borrowed: { color: 'orange', text: '借出' },
-  repairing: { color: 'gold', text: '维修中' },
-  scrapped: { color: 'red', text: '报废' },
-};
+const statusMap = METER_STATUS_MAP;
 
 const statusOptions = Object.entries(statusMap).map(([value, { text }]) => ({ value, label: text }));
 
@@ -44,11 +38,7 @@ const projects = ref<any[]>([]);
 const meterTypes = ref<any[]>([]);
 const wireTypes = ref<any[]>([]);
 
-const protocolOptions = [
-  { value: 'DLMS', label: 'DLMS/COSEM' },
-  { value: 'Modbus', label: 'Modbus' },
-  { value: 'MQTT', label: 'MQTT' },
-];
+const protocolOptions = PROTOCOL_OPTIONS;
 
 const columns = [
   { title: '出厂编号', dataIndex: 'serial_number', key: 'serial_number', width: 140 },
@@ -91,6 +81,8 @@ async function fetchData() {
     });
     tableData.value = res.items || [];
     total.value = res.total || 0;
+  } catch {
+    message.error('获取设备列表失败');
   } finally { loading.value = false; }
 }
 
@@ -111,6 +103,10 @@ function handleTableChange(pag: any) { pagination.value.current = pag.current; p
 function goToDetail(id: number) { router.push(`/meter/detail/${id}`); }
 
 async function handleCreate() {
+  if (!createForm.value.serial_number || !createForm.value.meter_name) {
+    message.warning('请填写出厂编号和表计名称');
+    return;
+  }
   try {
     await createMeter(createForm.value);
     message.success('样机入库成功');
@@ -204,7 +200,9 @@ async function handleExportMeters() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `样机列表_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.append(a);
     a.click();
+    a.remove();
     window.URL.revokeObjectURL(url);
     message.success('导出成功');
   } catch {

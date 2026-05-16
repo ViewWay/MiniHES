@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { EchartsUIType } from '@vben/plugins/echarts';
 
-import { onMounted, onUnmounted, ref, computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
@@ -18,6 +18,9 @@ import {
 } from 'ant-design-vue';
 
 import { getDbMonitorStats } from '#/api/modules/system';
+import { useChartTheme } from '#/composables/useChartTheme';
+
+const { themedAxis, themedTooltip, themedGauge, watchThemeAndRerender } = useChartTheme();
 
 // --- State ---
 const loading = ref(false);
@@ -134,13 +137,12 @@ function renderCharts() {
       left: 'center',
       textStyle: { fontSize: 14 },
     },
-    tooltip: {
-      trigger: 'axis',
+    tooltip: themedTooltip({
       formatter: (params: any) => {
         const p = params[0];
         return `${p.axisValue}<br/>连接数: <b>${p.value}</b>`;
       },
-    },
+    }),
     grid: {
       top: 50,
       left: '3%',
@@ -148,16 +150,16 @@ function renderCharts() {
       bottom: 10,
       containLabel: true,
     },
-    xAxis: {
+    xAxis: themedAxis('x', {
       type: 'category',
       data: timeLabels,
       boundaryGap: false,
-    },
-    yAxis: {
+    }),
+    yAxis: themedAxis('y', {
       type: 'value',
       name: '连接数',
       min: 0,
-    },
+    }),
     series: [
       {
         name: '连接数',
@@ -197,13 +199,12 @@ function renderCharts() {
       left: 'center',
       textStyle: { fontSize: 14 },
     },
-    tooltip: {
-      trigger: 'axis',
+    tooltip: themedTooltip({
       formatter: (params: any) => {
         const p = params[0];
         return `${p.axisValue}<br/>写入: <b>${p.value} points/s</b>`;
       },
-    },
+    }),
     grid: {
       top: 50,
       left: '3%',
@@ -211,16 +212,16 @@ function renderCharts() {
       bottom: 10,
       containLabel: true,
     },
-    xAxis: {
+    xAxis: themedAxis('x', {
       type: 'category',
       data: timeLabels,
       boundaryGap: false,
-    },
-    yAxis: {
+    }),
+    yAxis: themedAxis('y', {
       type: 'value',
       name: 'points/s',
       min: 0,
-    },
+    }),
     series: [
       {
         name: '写入速率',
@@ -274,18 +275,17 @@ function renderCharts() {
             ],
           },
         },
-        axisTick: { distance: -16, lineStyle: { color: '#aaa', width: 1 } },
-        splitLine: { distance: -16, lineStyle: { color: '#aaa', width: 2 } },
-        axisLabel: { distance: 22, color: '#aaa', fontSize: 10 },
-        detail: {
-          valueAnimation: true,
-          formatter: '{value}%',
-          fontSize: 18,
-          offsetCenter: [0, '30%'],
-          color: memPct > 80 ? '#ff4d4f' : memPct > 60 ? '#faad14' : '#52c41a',
-        },
+        ...themedGauge({
+          detail: {
+            valueAnimation: true,
+            formatter: '{value}%',
+            fontSize: 18,
+            offsetCenter: [0, '30%'],
+            color: memPct > 80 ? '#ff4d4f' : memPct > 60 ? '#faad14' : '#52c41a',
+          },
+          title: { offsetCenter: [0, '50%'] },
+        }),
         data: [{ value: memPct, name: '内存使用率' }],
-        title: { offsetCenter: [0, '50%'], fontSize: 12, color: '#999' },
       },
     ],
   });
@@ -320,18 +320,17 @@ function renderCharts() {
             ],
           },
         },
-        axisTick: { distance: -16, lineStyle: { color: '#aaa', width: 1 } },
-        splitLine: { distance: -16, lineStyle: { color: '#aaa', width: 2 } },
-        axisLabel: { distance: 22, color: '#aaa', fontSize: 10 },
-        detail: {
-          valueAnimation: true,
-          formatter: '{value}%',
-          fontSize: 18,
-          offsetCenter: [0, '30%'],
-          color: hitRate < 80 ? '#ff4d4f' : hitRate < 95 ? '#faad14' : '#52c41a',
-        },
+        ...themedGauge({
+          detail: {
+            valueAnimation: true,
+            formatter: '{value}%',
+            fontSize: 18,
+            offsetCenter: [0, '30%'],
+            color: hitRate < 80 ? '#ff4d4f' : hitRate < 95 ? '#faad14' : '#52c41a',
+          },
+          title: { offsetCenter: [0, '50%'] },
+        }),
         data: [{ value: hitRate, name: '缓存命中率' }],
-        title: { offsetCenter: [0, '50%'], fontSize: 12, color: '#999' },
       },
     ],
   });
@@ -341,6 +340,7 @@ function renderCharts() {
 onMounted(() => {
   fetchData();
   pollTimer = setInterval(fetchData, 30_000);
+  watchThemeAndRerender(renderCharts);
 });
 
 onUnmounted(() => {

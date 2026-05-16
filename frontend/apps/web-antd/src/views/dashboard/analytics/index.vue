@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { EchartsUIType } from '@vben/plugins/echarts';
 
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
@@ -26,6 +26,8 @@ import {
 import { getMeterList } from '#/api/modules/meter';
 import { getProjectList } from '#/api/modules/project';
 import { getTaskList } from '#/api/modules/task';
+import { ALARM_SEVERITY_MAP, ALARM_TYPE_MAP } from '#/constants';
+import { useChartTheme } from '#/composables/useChartTheme';
 
 // --- Stats ---
 const statsLoading = ref(false);
@@ -59,24 +61,17 @@ const alarmColumns = [
   { title: '时间', dataIndex: 'created_at', width: 160 },
 ];
 
-const severityMap: Record<string, { color: string; text: string }> = {
-  critical: { color: 'red', text: '严重' },
-  warning: { color: 'orange', text: '警告' },
-  info: { color: 'blue', text: '信息' },
-};
+const severityMap = Object.fromEntries(
+  Object.entries(ALARM_SEVERITY_MAP).map(([key, val]) => [key, { color: val.color, text: val.label }]),
+);
 
-const typeMap: Record<string, string> = {
-  threshold: '阈值告警',
-  anomaly: '数据异常',
-  communication: '通信告警',
-  stack: '堆栈告警',
-  eeprom: 'EEPROM告警',
-};
+const typeMap = ALARM_TYPE_MAP;
 
 // --- Chart ---
 const trendChartRef = ref<EchartsUIType>();
 const { renderEcharts: renderTrendChart } = useEcharts(trendChartRef);
 const trendLoading = ref(false);
+const { themedAxis, themedTooltip, watchThemeAndRerender } = useChartTheme();
 
 // --- Fetch functions ---
 async function fetchStats() {
@@ -185,13 +180,12 @@ async function fetchTrendChart() {
         left: 'center',
         textStyle: { fontSize: 14 },
       },
-      tooltip: {
-        trigger: 'axis',
+      tooltip: themedTooltip({
         formatter: (params: any) => {
           const p = params[0];
           return `${p.axisValue}<br/>成功率: <b>${p.value}%</b>`;
         },
-      },
+      }),
       grid: {
         top: 50,
         left: '3%',
@@ -199,19 +193,8 @@ async function fetchTrendChart() {
         bottom: 10,
         containLabel: true,
       },
-      xAxis: {
-        type: 'category',
-        data: days,
-        boundaryGap: false,
-      },
-      yAxis: {
-        type: 'value',
-        name: '成功率 (%)',
-        min: 0,
-        max: 100,
-        splitNumber: 5,
-        axisLabel: { formatter: '{value}%' },
-      },
+      xAxis: themedAxis('x', { type: 'category', data: days, boundaryGap: false }),
+      yAxis: themedAxis('y', { type: 'value', name: '成功率 (%)', min: 0, max: 100, splitNumber: 5, axisLabel: { formatter: '{value}%' } }),
       series: [
         {
           name: '成功率',
@@ -258,7 +241,7 @@ async function fetchTrendChart() {
         left: 'center',
         textStyle: { fontSize: 14 },
       },
-      tooltip: { trigger: 'axis' },
+      tooltip: themedTooltip(),
       grid: {
         top: 50,
         left: '3%',
@@ -266,13 +249,8 @@ async function fetchTrendChart() {
         bottom: 10,
         containLabel: true,
       },
-      xAxis: { type: 'category', data: days },
-      yAxis: {
-        type: 'value',
-        min: 0,
-        max: 100,
-        axisLabel: { formatter: '{value}%' },
-      },
+      xAxis: themedAxis('x', { type: 'category', data: days }),
+      yAxis: themedAxis('y', { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}%' } }),
       series: [{ type: 'line', data: [0, 0, 0, 0, 0, 0, 0], smooth: true }],
     });
   } finally {
@@ -289,7 +267,10 @@ async function loadAll() {
   ]);
 }
 
-onMounted(loadAll);
+onMounted(() => {
+  loadAll();
+  watchThemeAndRerender(fetchTrendChart);
+});
 </script>
 
 <template>

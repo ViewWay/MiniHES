@@ -6,10 +6,12 @@ import {
 } from 'ant-design-vue';
 import type { TableColumnType } from 'ant-design-vue';
 import { getMeterList, getRepairRecords, addRepairRecord } from '#/api/modules/meter';
+import { DEFAULT_PAGE_SIZE, METADATA_FETCH_SIZE, THEME_COLORS } from '#/constants';
 
 const loading = ref(false);
 const tableData = ref<any[]>([]);
-const pagination = ref({ current: 1, pageSize: 20 });
+const total = ref(0);
+const pagination = ref({ current: 1, pageSize: DEFAULT_PAGE_SIZE });
 
 // Filters
 const filterStatus = ref<string | undefined>(undefined);
@@ -64,7 +66,7 @@ const completedCount = computed(() => {
 
 async function fetchMeters() {
   try {
-    const res = await getMeterList({ page: 1, page_size: 200 });
+    const res = await getMeterList({ page: 1, page_size: METADATA_FETCH_SIZE });
     meters.value = res.items || [];
   } catch { /* ignore */ }
 }
@@ -72,13 +74,20 @@ async function fetchMeters() {
 async function fetchData() {
   loading.value = true;
   try {
-    const params: any = { status: filterStatus.value };
+    const params: any = {
+      page: pagination.value.current,
+      page_size: pagination.value.pageSize,
+      status: filterStatus.value,
+    };
     if (dateRange.value) {
       params.start_date = dateRange.value[0];
       params.end_date = dateRange.value[1];
     }
     const res = await getRepairRecords(params);
     tableData.value = res.items || [];
+    total.value = res.total || 0;
+  } catch {
+    message.error('获取维修记录失败');
   } finally {
     loading.value = false;
   }
@@ -134,6 +143,12 @@ onMounted(() => {
   fetchData();
   fetchMeters();
 });
+
+function handleTableChange(pag: any) {
+  pagination.value.current = pag.current;
+  pagination.value.pageSize = pag.pageSize;
+  fetchData();
+}
 </script>
 
 <template>
@@ -153,17 +168,17 @@ onMounted(() => {
         </Col>
         <Col :span="6">
           <Card size="small">
-            <Statistic title="待维修" :value="pendingCount" :value-style="{ color: '#fa8c16' }" />
+            <Statistic title="待维修" :value="pendingCount" :value-style="{ color: THEME_COLORS.ORANGE }" />
           </Card>
         </Col>
         <Col :span="6">
           <Card size="small">
-            <Statistic title="维修中" :value="inProgressCount" :value-style="{ color: '#1677ff' }" />
+            <Statistic title="维修中" :value="inProgressCount" :value-style="{ color: THEME_COLORS.PROCESSING }" />
           </Card>
         </Col>
         <Col :span="6">
           <Card size="small">
-            <Statistic title="已完成" :value="completedCount" :value-style="{ color: '#52c41a' }" />
+            <Statistic title="已完成" :value="completedCount" :value-style="{ color: THEME_COLORS.SUCCESS }" />
           </Card>
         </Col>
       </Row>
@@ -196,8 +211,14 @@ onMounted(() => {
         :columns="columns"
         :data-source="tableData"
         :loading="loading"
-        :pagination="pagination"
+        :pagination="{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total,
+          showSizeChanger: true,
+        }"
         row-key="id"
+        @change="handleTableChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'cost'">

@@ -39,8 +39,8 @@ export function deleteUser(id: number) {
   return requestClient.delete(`/users/${id}`);
 }
 
-export function resetUserPassword(id: number, password: string) {
-  return requestClient.post(`/users/${id}/reset-password`, { password });
+export function resetUserPassword(id: number) {
+  return requestClient.post(`/users/${id}/reset-password`);
 }
 
 export function getRoleList(params?: { page?: number }) {

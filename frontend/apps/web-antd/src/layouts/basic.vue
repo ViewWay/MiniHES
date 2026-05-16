@@ -5,9 +5,9 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { AuthenticationLoginExpiredModal } from '@vben/common-ui';
-import { VBEN_DOC_URL, VBEN_GITHUB_URL } from '@vben/constants';
+import { VBEN_GITHUB_URL } from '@vben/constants';
 import { useWatermark } from '@vben/hooks';
-import { BookOpenText, CircleHelp, SvgGithubIcon } from '@vben/icons';
+import { CircleHelp, SvgGithubIcon } from '@vben/icons';
 import {
   BasicLayout,
   LockScreen,
@@ -25,53 +25,35 @@ import LoginForm from '#/views/_core/authentication/login.vue';
 const notifications = ref<NotificationItem[]>([
   {
     id: 1,
-    avatar: 'https://avatar.vercel.sh/vercel.svg?text=VB',
-    date: '3小时前',
-    isRead: true,
-    message: '描述信息描述信息描述信息',
-    title: '收到了 14 份新周报',
+    avatar: 'https://avatar.vercel.sh/vercel.svg?text=MT',
+    date: '10分钟前',
+    isRead: false,
+    message: '编号 MT-2024-0087 的电表采集任务已完成',
+    title: '采集任务完成',
   },
   {
     id: 2,
     avatar: 'https://avatar.vercel.sh/1',
-    date: '刚刚',
+    date: '30分钟前',
     isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '朱偏右 回复了你',
+    message: '设备 SN-38921 通信异常，已自动触发告警',
+    title: '设备通信告警',
   },
   {
     id: 3,
     avatar: 'https://avatar.vercel.sh/1',
-    date: '2024-01-01',
+    date: '1小时前',
     isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '曲丽丽 评论了你',
+    message: '2024年1月数据一致性校验完成，发现2处异常',
+    title: '数据质量报告',
   },
   {
     id: 4,
     avatar: 'https://avatar.vercel.sh/satori',
-    date: '1天前',
-    isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '代办提醒',
-  },
-  {
-    id: 5,
-    avatar: 'https://avatar.vercel.sh/satori',
-    date: '1天前',
-    isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '跳转Workspace示例',
-    link: '/workspace',
-  },
-  {
-    id: 6,
-    avatar: 'https://avatar.vercel.sh/satori',
-    date: '1天前',
-    isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '跳转外部链接示例',
-    link: 'https://doc.vben.pro',
+    date: '2小时前',
+    isRead: true,
+    message: '3台设备进入维修状态，请及时处理',
+    title: '维修工单提醒',
   },
 ]);
 
@@ -92,15 +74,6 @@ const menus = computed(() => [
     },
     icon: 'lucide:user',
     text: $t('page.auth.profile'),
-  },
-  {
-    handler: () => {
-      openWindow(VBEN_DOC_URL, {
-        target: '_blank',
-      });
-    },
-    icon: BookOpenText,
-    text: $t('ui.widgets.document'),
   },
   {
     handler: () => {
@@ -223,8 +196,8 @@ watch(
         :avatar
         :menus
         :text="userStore.userInfo?.realName"
-        description="ann.vben@gmail.com"
-        tag-text="Pro"
+        description="admin@minihes.local"
+        tag-text="Admin"
         @logout="handleLogout"
       />
     </template>

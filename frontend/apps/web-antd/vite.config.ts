@@ -1,6 +1,10 @@
 import { defineConfig } from '@vben/vite-config';
 
 export default defineConfig(async () => {
+  const isMock = process.env.VITE_NITRO_MOCK !== 'false';
+  const realApiUrl =
+    process.env.VITE_REAL_API_URL || 'http://localhost:8000';
+
   return {
     application: {},
     vite: {
@@ -9,8 +13,9 @@ export default defineConfig(async () => {
           '/api': {
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/api/, ''),
-            // mock代理目标地址
-            target: 'http://localhost:5320/api',
+            target: isMock
+              ? 'http://localhost:5320/api'
+              : `${realApiUrl}/api`,
             ws: true,
           },
         },

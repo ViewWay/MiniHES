@@ -1,0 +1,180 @@
+import datetime
+
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.database import Base, TimestampMixin
+
+
+class MeterType(Base, TimestampMixin):
+    __tablename__ = "dev_meter_type"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100))
+    code: Mapped[str] = mapped_column(String(50), unique=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+
+    meters: Mapped[list["Meter"]] = relationship(back_populates="meter_type")
+
+
+class WireType(Base, TimestampMixin):
+    __tablename__ = "dev_wire_type"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100))
+    code: Mapped[str] = mapped_column(String(50), unique=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+
+
+class Meter(Base, TimestampMixin):
+    __tablename__ = "dev_meter"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    serial_number: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    meter_name: Mapped[str] = mapped_column(String(100))
+    meter_type_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("dev_meter_type.id"), nullable=True
+    )
+    project_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("dev_project.id"), nullable=True
+    )
+    protocol: Mapped[str] = mapped_column(String(20), default="DLMS")
+    line_type: Mapped[str] = mapped_column(String(20), default="single_phase")
+    manufacturer: Mapped[str] = mapped_column(String(100), default="")
+    model: Mapped[str] = mapped_column(String(100), default="")
+    firmware_version: Mapped[str] = mapped_column(String(50), default="")
+    hardware_version: Mapped[str] = mapped_column(String(50), default="")
+    frame_number: Mapped[str] = mapped_column(String(50), default="")
+    location: Mapped[str] = mapped_column(String(200), default="")
+    current_status: Mapped[str] = mapped_column(String(20), default="in_stock", index=True)
+    factory_date: Mapped[str | None] = mapped_column(Date, nullable=True)
+    purchase_date: Mapped[str | None] = mapped_column(Date, nullable=True)
+    warranty_date: Mapped[str | None] = mapped_column(Date, nullable=True)
+    notes: Mapped[str] = mapped_column(Text, default="")
+    created_by: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id"), nullable=True
+    )
+
+    project: Mapped["Project | None"] = relationship(back_populates="meters")
+    meter_type: Mapped["MeterType | None"] = relationship(back_populates="meters")
+    comm: Mapped["MeterComm | None"] = relationship(back_populates="meter", uselist=False, cascade="all, delete-orphan")
+    snapshot: Mapped["MeterSnapshot | None"] = relationship(back_populates="meter", uselist=False, cascade="all, delete-orphan")
+    status_history: Mapped[list["MeterStatusHistory"]] = relationship(back_populates="meter", cascade="all, delete-orphan")
+    attachments: Mapped[list["MeterAttachment"]] = relationship(back_populates="meter", cascade="all, delete-orphan")
+
+
+class MeterComm(Base, TimestampMixin):
+    __tablename__ = "dev_meter_comm"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    meter_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("dev_meter.id", ondelete="CASCADE"), unique=True
+    )
+    protocol: Mapped[str] = mapped_column(String(20), default="DLMS")
+    connection_type: Mapped[str] = mapped_column(String(20), default="tcp")
+    host: Mapped[str] = mapped_column(String(255), default="")
+    port: Mapped[int] = mapped_column(Integer, default=4059)
+    device_address: Mapped[str] = mapped_column(String(50), default="")
+    baud_rate: Mapped[int] = mapped_column(Integer, default=9600)
+    parity: Mapped[str] = mapped_column(String(10), default="none")
+    data_bits: Mapped[int] = mapped_column(Integer, default=8)
+    stop_bits: Mapped[int] = mapped_column(Integer, default=1)
+    auth_config: Mapped[dict | None] = mapped_column(JSON, default=None)
+    timeout: Mapped[int] = mapped_column(Integer, default=30)
+    retry_times: Mapped[int] = mapped_column(Integer, default=3)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    meter: Mapped["Meter"] = relationship(back_populates="comm")
+
+
+class MeterSnapshot(Base, TimestampMixin):
+    __tablename__ = "dev_meter_snapshot"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    meter_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("dev_meter.id", ondelete="CASCADE"), unique=True
+    )
+    online_status: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_comm_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    signal_strength: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    firmware_version: Mapped[str] = mapped_column(String(50), default="")
+    error_code: Mapped[str] = mapped_column(String(20), default="")
+    stack_usage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    eeprom_write_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_data_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    meter: Mapped["Meter"] = relationship(back_populates="snapshot")
+
+
+class MeterStatusHistory(Base):
+    __tablename__ = "dev_meter_status"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id", ondelete="CASCADE"), index=True)
+    old_status: Mapped[str] = mapped_column(String(20), default="")
+    new_status: Mapped[str] = mapped_column(String(20))
+    reason: Mapped[str] = mapped_column(String(200), default="")
+    changed_by: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id"), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    meter: Mapped["Meter"] = relationship(back_populates="status_history")
+
+
+class MeterBorrow(Base, TimestampMixin):
+    __tablename__ = "dev_meter_borrow"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id"), index=True)
+    borrower_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id"), nullable=True
+    )
+    borrow_reason: Mapped[str] = mapped_column(String(200))
+    expected_return_date: Mapped[str | None] = mapped_column(Date, nullable=True)
+    actual_return_date: Mapped[str | None] = mapped_column(Date, nullable=True)
+    dept_approver_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id"), nullable=True
+    )
+    lab_approver_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id"), nullable=True
+    )
+    approval_status: Mapped[str] = mapped_column(String(20), default="pending_department")
+
+    meter: Mapped["Meter"] = relationship()
+    borrower: Mapped["User | None"] = relationship(foreign_keys=[borrower_id])
+
+
+class MeterRepair(Base, TimestampMixin):
+    __tablename__ = "dev_meter_repair"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id"), index=True)
+    description: Mapped[str] = mapped_column(Text)
+    cost: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="in_progress")
+    repaired_by: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id"), nullable=True
+    )
+
+    meter: Mapped["Meter"] = relationship()
+
+
+class MeterAttachment(Base):
+    __tablename__ = "dev_meter_attachment"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id", ondelete="CASCADE"), index=True)
+    filename: Mapped[str] = mapped_column(String(200))
+    file_path: Mapped[str] = mapped_column(String(500))
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    uploaded_by: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id"), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    meter: Mapped["Meter"] = relationship(back_populates="attachments")

@@ -4,13 +4,14 @@ import { useRoute, useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { Badge, Button, Card, DatePicker, Descriptions, DescriptionsItem, Modal, Space, Table, Tag, Tooltip, message } from 'ant-design-vue';
 import { getTaskLogs, getTaskDeviceLog } from '#/api/modules/task';
+import { DEFAULT_PAGE_SIZE, POLL_INTERVALS, THEME_COLORS } from '#/constants';
 
 const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
 const tableData = ref<any[]>([]);
 const total = ref(0);
-const pagination = ref({ current: 1, pageSize: 20 });
+const pagination = ref({ current: 1, pageSize: DEFAULT_PAGE_SIZE });
 
 // Auto-refresh state
 let pollingTimer: ReturnType<typeof setInterval> | null = null;
@@ -59,11 +60,16 @@ async function fetchData() {
   if (!taskId.value) return;
   loading.value = true;
   try {
-    const res = await getTaskLogs({
+    const params: any = {
       task_id: taskId.value,
       page: pagination.value.current,
       page_size: pagination.value.pageSize,
-    });
+    };
+    if (dateRange.value) {
+      params.start_date = dateRange.value[0];
+      params.end_date = dateRange.value[1];
+    }
+    const res = await getTaskLogs(params);
     tableData.value = res.items || [];
     total.value = res.total || 0;
   } finally {
@@ -96,7 +102,7 @@ function startPolling() {
   if (autoRefreshEnabled.value) {
     pollingTimer = setInterval(() => {
       fetchData();
-    }, 10000);
+    }, POLL_INTERVALS.TASK_LOGS);
   }
 }
 
@@ -140,11 +146,21 @@ function handleDateRangeChange(dates: any) {
 onMounted(() => {
   fetchData();
   startPolling();
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 });
 
 onUnmounted(() => {
   stopPolling();
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
+
+function handleVisibilityChange() {
+  if (document.hidden) {
+    stopPolling();
+  } else {
+    startPolling();
+  }
+}
 </script>
 
 <template>

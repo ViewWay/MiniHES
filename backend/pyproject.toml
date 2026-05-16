@@ -1,0 +1,65 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "MiniHES Backend - Cloud Metering System"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiomysql==0.2.0",
+    "alembic>=1.18.4",
+    "apscheduler==3.10.4",
+    "asyncpg==0.30.0",
+    "fastapi==0.115.0",
+    "influxdb-client>=1.50.0",
+    "motor==3.6.0",
+    "numpy==1.26.0",
+    "pandas==2.2.0",
+    "passlib[bcrypt]>=1.7.4",
+    "psycopg2-binary>=2.9.12",
+    "pyarrow>=24.0.0",
+    "pydantic==2.10.0",
+    "pydantic-settings==2.6.0",
+    "pyserial-asyncio==0.6",
+    "python-dotenv==1.0.0",
+    "python-jose[cryptography]>=3.5.0",
+    "python-multipart==0.0.12",
+    "redis==5.2.0",
+    "sqlalchemy==2.0.36",
+    "structlog>=25.5.0",
+    "uvicorn[standard]==0.32.0",
+]
+
+[dependency-groups]
+dev = [
+    "aiosqlite>=0.22.1",
+    "alembic>=1.18.4",
+    "black==24.10.0",
+    "faker>=40.18.0",
+    "httpx==0.28.0",
+    "locust>=2.39.1",
+    "pytest==8.3.0",
+    "pytest-asyncio==0.24.0",
+    "pytest-cov==6.0.0",
+    "ruff==0.8.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]

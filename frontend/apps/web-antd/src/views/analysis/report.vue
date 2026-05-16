@@ -322,8 +322,8 @@ watch(selectedProject, () => {
             style="width: 140px"
             @change="
               (val: any) => {
-                if (!dateRange) dateRange = [null, null];
-                dateRange[0] = val;
+                if (!dateRange.value) dateRange.value = [null, null];
+                dateRange.value[0] = val;
               }
             "
           />
@@ -334,8 +334,8 @@ watch(selectedProject, () => {
             style="width: 140px"
             @change="
               (val: any) => {
-                if (!dateRange) dateRange = [null, null];
-                dateRange[1] = val;
+                if (!dateRange.value) dateRange.value = [null, null];
+                dateRange.value[1] = val;
               }
             "
           />
