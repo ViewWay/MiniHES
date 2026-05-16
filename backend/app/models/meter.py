@@ -37,8 +37,12 @@ class Meter(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     serial_number: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     meter_name: Mapped[str] = mapped_column(String(100))
-    meter_type_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("dev_meter_type.id", ondelete="SET NULL"), nullable=True)
-    project_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("dev_project.id", ondelete="SET NULL"), nullable=True, index=True)
+    meter_type_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("dev_meter_type.id", ondelete="SET NULL"), nullable=True
+    )
+    project_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("dev_project.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     protocol: Mapped[str] = mapped_column(String(20), default="DLMS")
     line_type: Mapped[str] = mapped_column(String(20), default="single_phase")
     manufacturer: Mapped[str] = mapped_column(String(100), default="")
@@ -52,7 +56,9 @@ class Meter(Base, TimestampMixin):
     purchase_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
     warranty_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str] = mapped_column(Text, default="")
-    created_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True)
+    created_by: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True
+    )
 
     project: Mapped["Project | None"] = relationship(back_populates="meters")
     meter_type: Mapped["MeterType | None"] = relationship(back_populates="meters")
@@ -116,7 +122,9 @@ class MeterStatusHistory(Base):
     old_status: Mapped[str] = mapped_column(String(20), default="")
     new_status: Mapped[str] = mapped_column(String(20))
     reason: Mapped[str] = mapped_column(String(200), default="")
-    changed_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True)
+    changed_by: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     meter: Mapped["Meter"] = relationship(back_populates="status_history")
@@ -128,12 +136,18 @@ class MeterBorrow(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id", ondelete="RESTRICT"), index=True)
-    borrower_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True)
+    borrower_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True
+    )
     borrow_reason: Mapped[str] = mapped_column(String(200))
     expected_return_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
     actual_return_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
-    dept_approver_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True)
-    lab_approver_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True)
+    dept_approver_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True
+    )
+    lab_approver_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True
+    )
     approval_status: Mapped[str] = mapped_column(String(20), default="pending_department")
 
     meter: Mapped["Meter"] = relationship()
@@ -149,7 +163,9 @@ class MeterRepair(Base, TimestampMixin):
     description: Mapped[str] = mapped_column(Text)
     cost: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     status: Mapped[str] = mapped_column(String(20), default="in_progress")
-    repaired_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True)
+    repaired_by: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True
+    )
 
     meter: Mapped["Meter"] = relationship()
 
@@ -163,7 +179,9 @@ class MeterAttachment(Base):
     filename: Mapped[str] = mapped_column(String(200))
     file_path: Mapped[str] = mapped_column(String(500))
     size: Mapped[int] = mapped_column(Integer, default=0)
-    uploaded_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True)
+    uploaded_by: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     meter: Mapped["Meter"] = relationship(back_populates="attachments")

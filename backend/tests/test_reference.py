@@ -29,7 +29,7 @@ def test_create_meter_point(client: TestClient, auth_headers):
         "/api/v1/meter-points",
         json={
             "meter_id": 1,
-            "obis_code": "1.0.99.1.0.255",
+            "obis_code": f"1.0.99.1.{uuid.uuid4().hex[:4]}",
             "point_name": "测试采集点",
             "point_type": "register",
             "unit": "kWh",
@@ -45,7 +45,7 @@ def test_update_meter_point(client: TestClient, auth_headers):
         "/api/v1/meter-points",
         json={
             "meter_id": 1,
-            "obis_code": "UPD-001",
+            "obis_code": f"UPD-{uuid.uuid4().hex[:6]}",
             "point_name": "更新前",
         },
         headers=auth_headers,
@@ -60,7 +60,7 @@ def test_delete_meter_point(client: TestClient, auth_headers):
         "/api/v1/meter-points",
         json={
             "meter_id": 1,
-            "obis_code": "DEL-001",
+            "obis_code": f"DEL-{uuid.uuid4().hex[:6]}",
             "point_name": "待删除",
         },
         headers=auth_headers,

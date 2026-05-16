@@ -61,7 +61,9 @@ class Permission(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(100))
     code: Mapped[str] = mapped_column(String(100), unique=True)
     type: Mapped[str] = mapped_column(String(20))  # menu, button, api
-    parent_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_permission.id", ondelete="SET NULL"), nullable=True)
+    parent_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sys_permission.id", ondelete="SET NULL"), nullable=True
+    )
     path: Mapped[str] = mapped_column(String(200), default="")
     icon: Mapped[str] = mapped_column(String(100), default="")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
@@ -87,7 +89,10 @@ class UserRole(Base):
 
 class RolePermission(Base):
     __tablename__ = "sys_role_permission"
-    __table_args__ = (UniqueConstraint("role_id", "permission_id", name="uq_role_permission"), {"comment": "角色权限关联表"})
+    __table_args__ = (
+        UniqueConstraint("role_id", "permission_id", name="uq_role_permission"),
+        {"comment": "角色权限关联表"},
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     role_id: Mapped[int] = mapped_column(Integer, ForeignKey("sys_role.id", ondelete="CASCADE"))

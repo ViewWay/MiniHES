@@ -20,7 +20,9 @@ class AuditLog(Base):
     new_values: Mapped[dict | None] = mapped_column(JSON, default=None)
     ip_address: Mapped[str] = mapped_column(String(50), default="")
     user_agent: Mapped[str] = mapped_column(String(500), default="")
-    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
 
 
 class DataArchive(Base, TimestampMixin):
