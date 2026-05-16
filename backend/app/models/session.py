@@ -16,7 +16,9 @@ class CollectionSession(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id", ondelete="RESTRICT"), index=True)
-    project_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("dev_project.id", ondelete="SET NULL"), nullable=True)
+    project_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("dev_project.id", ondelete="SET NULL"), nullable=True
+    )
     task_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("col_task.id", ondelete="SET NULL"), nullable=True)
 
     # MongoDB 定位
@@ -34,7 +36,9 @@ class CollectionSession(Base, TimestampMixin):
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
 
     # 采集结果统计
-    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)  # pending, running, completed, failed
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending", index=True
+    )  # pending, running, completed, failed
     total_read: Mapped[int] = mapped_column(Integer, default=0)
     total_success: Mapped[int] = mapped_column(Integer, default=0)
     total_failed: Mapped[int] = mapped_column(Integer, default=0)
