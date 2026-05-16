@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AlarmOut(BaseModel):
@@ -30,3 +30,21 @@ class AlarmStatsOut(BaseModel):
     warning_count: int
     info_count: int
     active: int
+
+
+class AlarmRuleCreate(BaseModel):
+    rule_name: str = Field(..., max_length=100)
+    rule_type: str = Field(..., max_length=50)  # threshold, anomaly, communication
+    point_code: str = Field("", max_length=50)
+    condition_config: dict | None = None
+    severity: str = Field(..., max_length=20)  # critical, warning, info
+    is_enabled: bool = True
+
+
+class AlarmRuleUpdate(BaseModel):
+    rule_name: str | None = Field(None, max_length=100)
+    rule_type: str | None = None
+    point_code: str | None = None
+    condition_config: dict | None = None
+    severity: str | None = None
+    is_enabled: bool | None = None

@@ -67,7 +67,7 @@ async def create_meter_point(body: dict, db: DbSession = ..., _user: CurrentUser
         retention_days=body.get("retention_days", 365),
     )
     db.add(point)
-    await db.commit()
+    await db.flush()
     return success({"id": point.id})
 
 
@@ -84,7 +84,6 @@ async def update_meter_point(point_id: int, body: dict, db: DbSession = ..., _us
         if hasattr(point, attr):
             setattr(point, attr, value)
 
-    await db.commit()
     return success(None)
 
 
@@ -95,5 +94,4 @@ async def delete_meter_point(point_id: int, db: DbSession = ..., _user: CurrentU
     if not point:
         return success(None)
     await db.delete(point)
-    await db.commit()
     return success(None)

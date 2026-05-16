@@ -1,51 +1,23 @@
 import csv
 import io
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
-from app.models.alarm import Alarm, AlarmRule
+from app.models.alarm import Alarm
+from app.services import alarm_service
 
 router = APIRouter(prefix="/alarms", tags=["alarms"])
 
 
 @router.get("/stats")
 async def alarm_stats(db: DbSession = ...):
-    total_result = await db.execute(select(func.count()).select_from(Alarm))
-    total = total_result.scalar() or 0
-
-    unhandled_result = await db.execute(
-        select(func.count()).select_from(Alarm).where(Alarm.is_handled == False)
-    )
-    unhandled_count = unhandled_result.scalar() or 0
-
-    critical_result = await db.execute(
-        select(func.count()).select_from(Alarm).where(Alarm.severity == "critical")
-    )
-    critical_count = critical_result.scalar() or 0
-
-    warning_result = await db.execute(
-        select(func.count()).select_from(Alarm).where(Alarm.severity == "warning")
-    )
-    warning_count = warning_result.scalar() or 0
-
-    info_result = await db.execute(
-        select(func.count()).select_from(Alarm).where(Alarm.severity == "info")
-    )
-    info_count = info_result.scalar() or 0
-
-    return success({
-        "total": total,
-        "unhandled_count": unhandled_count,
-        "critical_count": critical_count,
-        "warning_count": warning_count,
-        "info_count": info_count,
-        "active": unhandled_count,
-    })
+    data = await alarm_service.get_alarm_stats(db)
+    return success(data)
 
 
 @router.get("")
@@ -59,29 +31,11 @@ async def list_alarms(
     start_date: str = Query(default=None),
     end_date: str = Query(default=None),
 ):
-    stmt = select(Alarm)
-    count_stmt = select(func.count()).select_from(Alarm)
-
-    if severity:
-        stmt = stmt.where(Alarm.severity == severity)
-        count_stmt = count_stmt.where(Alarm.severity == severity)
-    if alarm_type:
-        stmt = stmt.where(Alarm.alarm_type == alarm_type)
-        count_stmt = count_stmt.where(Alarm.alarm_type == alarm_type)
-    if is_handled is not None:
-        handled = is_handled.lower() == "true"
-        stmt = stmt.where(Alarm.is_handled == handled)
-        count_stmt = count_stmt.where(Alarm.is_handled == handled)
-
-    total_result = await db.execute(count_stmt)
-    total = total_result.scalar() or 0
-
-    stmt = stmt.order_by(Alarm.id.desc()).offset((page - 1) * page_size).limit(page_size)
-    result = await db.execute(stmt)
-    alarms = result.scalars().all()
-
-    items = [_alarm_to_dict(a) for a in alarms]
-    return success({"items": items, "total": total})
+    data = await alarm_service.list_alarms(
+        db, page=page, page_size=page_size,
+        severity=severity, alarm_type=alarm_type, is_handled=is_handled,
+    )
+    return success(data)
 
 
 @router.get("/export")
@@ -119,38 +73,11 @@ async def export_alarms(
 
 @router.get("/{alarm_id}")
 async def get_alarm(alarm_id: int, db: DbSession = ...):
-    result = await db.execute(select(Alarm).where(Alarm.id == alarm_id))
-    a = result.scalar_one_or_none()
-    if not a:
-        return success(None)
-    return success(_alarm_to_dict(a))
+    data = await alarm_service.get_alarm(db, alarm_id)
+    return success(data)
 
 
 @router.post("/{alarm_id}/handle")
 async def handle_alarm(alarm_id: int, body: dict, db: DbSession = ..., _user: CurrentUser = ...):
-    result = await db.execute(select(Alarm).where(Alarm.id == alarm_id))
-    a = result.scalar_one_or_none()
-    if not a:
-        return success(None)
-    a.is_handled = True
-    a.handled_by = body.get("handled_by")
-    a.handled_at = datetime.now(timezone.utc)
-    await db.commit()
-    return success({"success": True})
-
-
-def _alarm_to_dict(a: Alarm) -> dict:
-    return {
-        "id": a.id,
-        "meter_id": a.meter_id,
-        "rule_id": a.rule_id,
-        "alarm_type": a.alarm_type,
-        "severity": a.severity,
-        "alarm_message": a.alarm_message,
-        "alarm_value": float(a.alarm_value) if a.alarm_value is not None else None,
-        "threshold_value": float(a.threshold_value) if a.threshold_value is not None else None,
-        "is_handled": a.is_handled,
-        "handled_by": a.handled_by,
-        "handled_at": a.handled_at.strftime("%Y-%m-%d %H:%M:%S") if a.handled_at else None,
-        "created_at": a.created_at.strftime("%Y-%m-%d %H:%M:%S") if a.created_at else "",
-    }
+    data = await alarm_service.handle_alarm(db, alarm_id, handled_by=body.get("handled_by"))
+    return success(data)

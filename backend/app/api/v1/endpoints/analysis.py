@@ -23,6 +23,11 @@ async def daily_analysis(meter_id: int = Query(default=1)):
     })
 
 
+@router.get("/daily/export")
+async def export_daily_analysis(meter_id: int = Query(default=1)):
+    return success({"message": "日报数据导出功能待实现"})
+
+
 @router.post("/compare")
 async def compare_analysis(body: dict):
     return success({"id": 1, **body})
@@ -83,6 +88,11 @@ async def data_quality(
     return success({"items": items, "total": len(items)})
 
 
+@router.get("/data-quality/export")
+async def export_data_quality():
+    return success({"message": "数据质量导出功能待实现"})
+
+
 @router.get("/reports")
 async def list_reports():
     items = [
@@ -104,3 +114,8 @@ async def list_reports():
         },
     ]
     return success({"items": items, "total": len(items)})
+
+
+@router.get("/reports/{report_id}/export")
+async def export_report(report_id: int):
+    return success({"message": "报告导出功能待实现"})

@@ -1,11 +1,9 @@
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Query
-from sqlalchemy import func, select
 
 from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
-from app.models.task import Task, TaskLog, TaskDevice
+from app.schemas.task import TaskCreate, TaskUpdate, TaskToggle
+from app.services import task_service
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -20,144 +18,49 @@ async def list_tasks(
     status: str = Query(default=None),
     is_enabled: bool = Query(default=None),
 ):
-    stmt = select(Task)
-    count_stmt = select(func.count()).select_from(Task)
-
-    if task_type:
-        stmt = stmt.where(Task.task_type == task_type)
-        count_stmt = count_stmt.where(Task.task_type == task_type)
-    if is_enabled is not None:
-        stmt = stmt.where(Task.is_enabled == is_enabled)
-        count_stmt = count_stmt.where(Task.is_enabled == is_enabled)
-
-    total_result = await db.execute(count_stmt)
-    total = total_result.scalar() or 0
-
-    running_count_result = await db.execute(
-        select(func.count()).select_from(Task).where(Task.is_enabled == True)
+    data = await task_service.list_tasks(
+        db, page=page, page_size=page_size, task_type=task_type, is_enabled=is_enabled,
     )
-    running_count = running_count_result.scalar() or 0
-
-    stmt = stmt.order_by(Task.id).offset((page - 1) * page_size).limit(page_size)
-    result = await db.execute(stmt)
-    tasks = result.scalars().all()
-
-    items = [_task_to_dict(t) for t in tasks]
-    return success({"items": items, "total": total, "running_count": running_count})
+    return success(data)
 
 
 @router.post("")
-async def create_task(body: dict, db: DbSession = ..., _user: CurrentUser = ...):
-    t = Task(**body)
-    db.add(t)
-    await db.commit()
-    await db.refresh(t)
-    return success({"id": t.id, **_task_to_dict(t)})
+async def create_task(body: TaskCreate, db: DbSession = ..., _user: CurrentUser = ...):
+    data = await task_service.create_task(db, body.model_dump())
+    return success(data)
 
 
 @router.get("/{task_id}")
 async def get_task(task_id: int, db: DbSession = ...):
-    result = await db.execute(select(Task).where(Task.id == task_id))
-    t = result.scalar_one_or_none()
-    if not t:
-        return success(None)
-    return success(_task_to_dict(t))
+    data = await task_service.get_task(db, task_id)
+    return success(data)
 
 
 @router.put("/{task_id}")
-async def update_task(task_id: int, body: dict, db: DbSession = ..., _user: CurrentUser = ...):
-    result = await db.execute(select(Task).where(Task.id == task_id))
-    t = result.scalar_one_or_none()
-    if not t:
-        return success(None)
-    for key, value in body.items():
-        if hasattr(t, key):
-            setattr(t, key, value)
-    await db.commit()
-    return success(_task_to_dict(t))
+async def update_task(task_id: int, body: TaskUpdate, db: DbSession = ..., _user: CurrentUser = ...):
+    data = await task_service.update_task(db, task_id, body.model_dump(exclude_unset=True))
+    return success(data)
 
 
 @router.delete("/{task_id}")
 async def delete_task(task_id: int, db: DbSession = ..., _user: CurrentUser = ...):
-    result = await db.execute(select(Task).where(Task.id == task_id))
-    t = result.scalar_one_or_none()
-    if t:
-        await db.delete(t)
-        await db.commit()
+    await task_service.delete_task(db, task_id)
     return success({"success": True})
 
 
 @router.post("/{task_id}/execute")
 async def execute_task(task_id: int, db: DbSession = ..., body: dict = None):
-    result = await db.execute(select(Task).where(Task.id == task_id))
-    t = result.scalar_one_or_none()
-    if not t:
-        return success(None)
-    now = datetime.now(timezone.utc)
-    log = TaskLog(
-        task_id=task_id,
-        start_time=now,
-        end_time=now,
-        duration_ms=100,
-        status="completed",
-        total_devices=1,
-        success_devices=1,
-        failed_devices=0,
-    )
-    db.add(log)
-    t.last_execute_time = now
-    await db.commit()
-    await db.refresh(log)
-    return success({"success": True, "execution_id": log.id})
+    data = await task_service.execute_task(db, task_id)
+    return success(data)
 
 
 @router.get("/{task_id}/logs")
 async def get_task_logs(task_id: int, db: DbSession = ...):
-    result = await db.execute(
-        select(TaskLog).where(TaskLog.task_id == task_id).order_by(TaskLog.id.desc())
-    )
-    items = [
-        {
-            "id": l.id,
-            "task_id": l.task_id,
-            "status": l.status,
-            "start_time": l.start_time.strftime("%Y-%m-%d %H:%M:%S") if l.start_time else "",
-            "end_time": l.end_time.strftime("%Y-%m-%d %H:%M:%S") if l.end_time else "",
-            "duration_ms": l.duration_ms,
-            "total_devices": l.total_devices,
-            "success_devices": l.success_devices,
-            "failed_devices": l.failed_devices,
-        }
-        for l in result.scalars().all()
-    ]
-    return success({"items": items, "total": len(items)})
+    data = await task_service.get_task_logs(db, task_id)
+    return success(data)
 
 
 @router.patch("/{task_id}/toggle")
-async def toggle_task(task_id: int, body: dict, db: DbSession = ..., _user: CurrentUser = ...):
-    result = await db.execute(select(Task).where(Task.id == task_id))
-    t = result.scalar_one_or_none()
-    if not t:
-        return success(None)
-    t.is_enabled = body.get("is_enabled", not t.is_enabled)
-    await db.commit()
-    return success({"success": True, "is_enabled": t.is_enabled})
-
-
-def _task_to_dict(t: Task) -> dict:
-    return {
-        "id": t.id,
-        "task_name": t.task_name,
-        "task_type": t.task_type,
-        "schedule_config": t.schedule_config or {},
-        "execution_content": t.execution_content or {},
-        "filter_config": t.filter_config or {},
-        "priority": t.priority,
-        "retry_times": t.retry_times,
-        "timeout": t.timeout,
-        "is_enabled": t.is_enabled,
-        "last_execute_time": t.last_execute_time.strftime("%Y-%m-%d %H:%M:%S") if t.last_execute_time else None,
-        "next_execute_time": t.next_execute_time.strftime("%Y-%m-%d %H:%M:%S") if t.next_execute_time else None,
-        "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S") if t.created_at else "",
-        "updated_at": t.updated_at.strftime("%Y-%m-%d %H:%M:%S") if t.updated_at else "",
-    }
+async def toggle_task(task_id: int, body: TaskToggle, db: DbSession = ..., _user: CurrentUser = ...):
+    is_enabled = await task_service.toggle_task(db, task_id, body.is_enabled)
+    return success({"success": True, "is_enabled": is_enabled})

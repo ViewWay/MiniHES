@@ -6,6 +6,27 @@
 
 ---
 
+## [0.4.0] - 2026-05-16
+
+### 新增
+- Service 层补全：alarm_service、task_service、test_service、defect_service（4 个新文件）
+- Pydantic Schema 补全：alarm（AlarmRuleCreate/Update）、test（TestTaskCreate/Update、TestReportCreate/Update、DefectCreate/Update）、analysis（CompareRequest、ConsistencyCheckRequest）
+- Analysis 端点补全：`/daily/export`、`/data-quality/export`、`/reports/{id}/export`
+- 前端切真实后端 API（`VITE_NITRO_MOCK=false`）
+
+### 变更
+- 6 个端点重构为调用 service 层：alarms、alarm_rules、defects、tasks、task_logs、tests
+- alarm_rules、defects、tasks、tests 端点使用 Pydantic Schema 替换 `body: dict`
+- reference.py 移除手动 `await db.commit()`，统一由 `get_db` 自动管理事务
+- Service 层统一使用 `flush()` + 依赖注入 `get_db` 自动 commit/rollback
+
+### 统计
+- Service 文件：11 → 15 个（+4）
+- Schema 文件：6 → 8 个（+2）
+- 后端路由：99 个
+- 测试：36 个全部通过
+- 前端 API：65 个接口全部对齐真实后端
+
 ## [0.3.0] - 2026-05-16
 
 ### 新增
