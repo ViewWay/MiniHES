@@ -163,6 +163,34 @@ async def seed():
                     dev_lead_id=2,
                     status="active",
                 ),
+                Project(
+                    name="LoRaWAN远传电表通信测试",
+                    description="LoRaWAN低功耗广域网抄表测试",
+                    test_lead_id=2,
+                    dev_lead_id=2,
+                    status="active",
+                ),
+                Project(
+                    name="RS485集中抄表系统测试",
+                    description="RS485总线集中器+多表位抄表验证",
+                    test_lead_id=3,
+                    dev_lead_id=2,
+                    status="planning",
+                ),
+                Project(
+                    name="DLMS协议安全性评估",
+                    description="DLMS/COSEM认证加密安全性测试",
+                    test_lead_id=2,
+                    dev_lead_id=2,
+                    status="testing",
+                ),
+                Project(
+                    name="三相多功能表精度校验",
+                    description="三相表计量精度全量程校验",
+                    test_lead_id=3,
+                    dev_lead_id=2,
+                    status="active",
+                ),
             ]
         )
         await session.flush()
