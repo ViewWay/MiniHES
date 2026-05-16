@@ -1,19 +1,4 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from app.core.dependencies import get_current_user  # noqa: F401
 
-from app.core.security import decode_token
-
-security = HTTPBearer()
-
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> dict:
-    token = credentials.credentials
-    payload = decode_token(token)
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-        )
-    return payload
+# 兼容旧代码引用: from app.core.auth import get_current_user
+# 新代码请使用: from app.core.dependencies import CurrentUser, DbSession
