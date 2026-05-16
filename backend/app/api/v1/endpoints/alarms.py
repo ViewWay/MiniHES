@@ -2,56 +2,55 @@ import csv
 import io
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 
-from app.core.auth import get_current_user
-from app.core.database import AsyncSessionLocal as async_session
-from app.core.response import success, fail
+from app.core.dependencies import CurrentUser, DbSession
+from app.core.response import success
 from app.models.alarm import Alarm, AlarmRule
 
 router = APIRouter(prefix="/alarms", tags=["alarms"])
 
 
 @router.get("/stats")
-async def alarm_stats():
-    async with async_session() as session:
-        total_result = await session.execute(select(func.count()).select_from(Alarm))
-        total = total_result.scalar() or 0
+async def alarm_stats(db: DbSession = ...):
+    total_result = await db.execute(select(func.count()).select_from(Alarm))
+    total = total_result.scalar() or 0
 
-        unhandled_result = await session.execute(
-            select(func.count()).select_from(Alarm).where(Alarm.is_handled == False)
-        )
-        unhandled_count = unhandled_result.scalar() or 0
+    unhandled_result = await db.execute(
+        select(func.count()).select_from(Alarm).where(Alarm.is_handled == False)
+    )
+    unhandled_count = unhandled_result.scalar() or 0
 
-        critical_result = await session.execute(
-            select(func.count()).select_from(Alarm).where(Alarm.severity == "critical")
-        )
-        critical_count = critical_result.scalar() or 0
+    critical_result = await db.execute(
+        select(func.count()).select_from(Alarm).where(Alarm.severity == "critical")
+    )
+    critical_count = critical_result.scalar() or 0
 
-        warning_result = await session.execute(
-            select(func.count()).select_from(Alarm).where(Alarm.severity == "warning")
-        )
-        warning_count = warning_result.scalar() or 0
+    warning_result = await db.execute(
+        select(func.count()).select_from(Alarm).where(Alarm.severity == "warning")
+    )
+    warning_count = warning_result.scalar() or 0
 
-        info_result = await session.execute(
-            select(func.count()).select_from(Alarm).where(Alarm.severity == "info")
-        )
-        info_count = info_result.scalar() or 0
+    info_result = await db.execute(
+        select(func.count()).select_from(Alarm).where(Alarm.severity == "info")
+    )
+    info_count = info_result.scalar() or 0
 
-        return success({
-            "total": total,
-            "unhandled_count": unhandled_count,
-            "critical_count": critical_count,
-            "warning_count": warning_count,
-            "info_count": info_count,
-            "active": unhandled_count,
-        })
+    return success({
+        "total": total,
+        "unhandled_count": unhandled_count,
+        "critical_count": critical_count,
+        "warning_count": warning_count,
+        "info_count": info_count,
+        "active": unhandled_count,
+    })
 
 
 @router.get("")
 async def list_alarms(
+    db: DbSession = ...,
     page: int = Query(default=1),
     page_size: int = Query(default=20),
     severity: str = Query(default=None),
@@ -60,46 +59,45 @@ async def list_alarms(
     start_date: str = Query(default=None),
     end_date: str = Query(default=None),
 ):
-    async with async_session() as session:
-        stmt = select(Alarm)
-        count_stmt = select(func.count()).select_from(Alarm)
+    stmt = select(Alarm)
+    count_stmt = select(func.count()).select_from(Alarm)
 
-        if severity:
-            stmt = stmt.where(Alarm.severity == severity)
-            count_stmt = count_stmt.where(Alarm.severity == severity)
-        if alarm_type:
-            stmt = stmt.where(Alarm.alarm_type == alarm_type)
-            count_stmt = count_stmt.where(Alarm.alarm_type == alarm_type)
-        if is_handled is not None:
-            handled = is_handled.lower() == "true"
-            stmt = stmt.where(Alarm.is_handled == handled)
-            count_stmt = count_stmt.where(Alarm.is_handled == handled)
+    if severity:
+        stmt = stmt.where(Alarm.severity == severity)
+        count_stmt = count_stmt.where(Alarm.severity == severity)
+    if alarm_type:
+        stmt = stmt.where(Alarm.alarm_type == alarm_type)
+        count_stmt = count_stmt.where(Alarm.alarm_type == alarm_type)
+    if is_handled is not None:
+        handled = is_handled.lower() == "true"
+        stmt = stmt.where(Alarm.is_handled == handled)
+        count_stmt = count_stmt.where(Alarm.is_handled == handled)
 
-        total_result = await session.execute(count_stmt)
-        total = total_result.scalar() or 0
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar() or 0
 
-        stmt = stmt.order_by(Alarm.id.desc()).offset((page - 1) * page_size).limit(page_size)
-        result = await session.execute(stmt)
-        alarms = result.scalars().all()
+    stmt = stmt.order_by(Alarm.id.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(stmt)
+    alarms = result.scalars().all()
 
-        items = [_alarm_to_dict(a) for a in alarms]
-        return success({"items": items, "total": total})
+    items = [_alarm_to_dict(a) for a in alarms]
+    return success({"items": items, "total": total})
 
 
 @router.get("/export")
 async def export_alarms(
+    db: DbSession = ...,
+    _user: CurrentUser = ...,
     severity: str = Query(default=None),
     alarm_type: str = Query(default=None),
-    _=Depends(get_current_user),
 ):
-    async with async_session() as session:
-        stmt = select(Alarm).order_by(Alarm.id.desc())
-        if severity:
-            stmt = stmt.where(Alarm.severity == severity)
-        if alarm_type:
-            stmt = stmt.where(Alarm.alarm_type == alarm_type)
-        result = await session.execute(stmt)
-        alarms = result.scalars().all()
+    stmt = select(Alarm).order_by(Alarm.id.desc())
+    if severity:
+        stmt = stmt.where(Alarm.severity == severity)
+    if alarm_type:
+        stmt = stmt.where(Alarm.alarm_type == alarm_type)
+    result = await db.execute(stmt)
+    alarms = result.scalars().all()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -120,27 +118,25 @@ async def export_alarms(
 
 
 @router.get("/{alarm_id}")
-async def get_alarm(alarm_id: int):
-    async with async_session() as session:
-        result = await session.execute(select(Alarm).where(Alarm.id == alarm_id))
-        a = result.scalar_one_or_none()
-        if not a:
-            return success(None)
-        return success(_alarm_to_dict(a))
+async def get_alarm(alarm_id: int, db: DbSession = ...):
+    result = await db.execute(select(Alarm).where(Alarm.id == alarm_id))
+    a = result.scalar_one_or_none()
+    if not a:
+        return success(None)
+    return success(_alarm_to_dict(a))
 
 
 @router.post("/{alarm_id}/handle")
-async def handle_alarm(alarm_id: int, body: dict, _=Depends(get_current_user)):
-    async with async_session() as session:
-        result = await session.execute(select(Alarm).where(Alarm.id == alarm_id))
-        a = result.scalar_one_or_none()
-        if not a:
-            return success(None)
-        a.is_handled = True
-        a.handled_by = body.get("handled_by")
-        a.handled_at = datetime.now(timezone.utc)
-        await session.commit()
-        return success({"success": True})
+async def handle_alarm(alarm_id: int, body: dict, db: DbSession = ..., _user: CurrentUser = ...):
+    result = await db.execute(select(Alarm).where(Alarm.id == alarm_id))
+    a = result.scalar_one_or_none()
+    if not a:
+        return success(None)
+    a.is_handled = True
+    a.handled_by = body.get("handled_by")
+    a.handled_at = datetime.now(timezone.utc)
+    await db.commit()
+    return success({"success": True})
 
 
 def _alarm_to_dict(a: Alarm) -> dict:

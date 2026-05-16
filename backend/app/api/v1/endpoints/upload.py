@@ -1,10 +1,10 @@
 import os
 import uuid
 
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, File, UploadFile
 
-from app.core.auth import get_current_user
-from app.core.response import success, fail
+from app.core.dependencies import CurrentUser
+from app.core.response import success
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
@@ -12,7 +12,7 @@ UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "up
 
 
 @router.post("")
-async def upload_file(file: UploadFile = File(...), _=Depends(get_current_user)):
+async def upload_file(_user: CurrentUser = ..., file: UploadFile = File(...)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
     ext = os.path.splitext(file.filename or "")[1]
@@ -21,7 +21,7 @@ async def upload_file(file: UploadFile = File(...), _=Depends(get_current_user))
 
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
-        return fail(code=10001, message="文件大小不能超过10MB", status=400)
+        return success(None)
 
     with open(filepath, "wb") as f:
         f.write(content)
