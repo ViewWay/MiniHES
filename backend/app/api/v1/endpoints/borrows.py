@@ -1,46 +1,30 @@
-from datetime import date
+from fastapi import APIRouter
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
-
-from app.core.auth import get_current_user
-from app.core.database import AsyncSessionLocal as async_session
-from app.core.response import success, fail
-from app.models.meter import MeterBorrow
+from app.core.dependencies import CurrentUser, DbSession
+from app.core.response import success
+from app.schemas.meter import BorrowApproval
+from app.services import borrow_service
 
 router = APIRouter(prefix="/borrows", tags=["borrows"])
 
 
 @router.post("/{borrow_id}/approve")
-async def approve_borrow(borrow_id: int, body: dict, _=Depends(get_current_user)):
-    async with async_session() as session:
-        result = await session.execute(select(MeterBorrow).where(MeterBorrow.id == borrow_id))
-        borrow = result.scalar_one_or_none()
-        if not borrow:
-            return fail(code=10001, message="借出记录不存在", status=404)
-
-        approved = body.get("approved", True)
-        if approved:
-            if borrow.approval_status == "pending_department":
-                borrow.approval_status = "pending_lab"
-            elif borrow.approval_status == "pending_lab":
-                borrow.approval_status = "approved"
-        else:
-            borrow.approval_status = "rejected"
-
-        await session.commit()
-        return success({"id": borrow.id, "approval_status": borrow.approval_status})
+async def approve_borrow(
+    db: DbSession,
+    borrow_id: int,
+    body: BorrowApproval,
+    user: CurrentUser,
+):
+    data = await borrow_service.approve_borrow(
+        db,
+        borrow_id=borrow_id,
+        approved=body.approved,
+        approver_id=user.id,
+    )
+    return success(data)
 
 
 @router.post("/{borrow_id}/return")
-async def return_borrow(borrow_id: int, _=Depends(get_current_user)):
-    async with async_session() as session:
-        result = await session.execute(select(MeterBorrow).where(MeterBorrow.id == borrow_id))
-        borrow = result.scalar_one_or_none()
-        if not borrow:
-            return fail(code=10001, message="借出记录不存在", status=404)
-
-        borrow.actual_return_date = date.today()
-        borrow.approval_status = "returned"
-        await session.commit()
-        return success({"id": borrow.id})
+async def return_borrow(db: DbSession, borrow_id: int, _user: CurrentUser):
+    data = await borrow_service.return_borrow(db, borrow_id=borrow_id)
+    return success(data)
