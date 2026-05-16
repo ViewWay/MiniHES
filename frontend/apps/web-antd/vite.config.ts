@@ -1,9 +1,11 @@
+import { loadEnv } from 'vite';
+
 import { defineConfig } from '@vben/vite-config';
 
-export default defineConfig(async () => {
-  const isMock = process.env.VITE_NITRO_MOCK !== 'false';
-  const realApiUrl =
-    process.env.VITE_REAL_API_URL || 'http://localhost:8000';
+export default defineConfig(async ({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const isMock = env.VITE_NITRO_MOCK !== 'false';
+  const realApiUrl = env.VITE_REAL_API_URL || 'http://localhost:8000';
 
   return {
     application: {},

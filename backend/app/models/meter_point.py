@@ -11,15 +11,18 @@ from app.core.database import Base, TimestampMixin
 class MeterPoint(Base, TimestampMixin):
     __tablename__ = "dev_meter_point"
     __table_args__ = (
-        UniqueConstraint("meter_id", "obis_code", name="uq_meter_point_obis"),
+        UniqueConstraint("meter_id", "obis_code", "attribute_id", name="uq_meter_point_obis"),
         {"comment": "测量点定义表"},
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id", ondelete="CASCADE"), index=True)
     obis_code: Mapped[str] = mapped_column(String(30))
+    class_id: Mapped[int] = mapped_column(Integer, default=1)
+    attribute_id: Mapped[int] = mapped_column(Integer, default=2)
     point_name: Mapped[str] = mapped_column(String(100))
-    point_type: Mapped[str] = mapped_column(String(50))  # register, profile, attribute
+    module: Mapped[str] = mapped_column(String(50), default="")  # Clock, Energy, Instantaneous, etc.
+    point_type: Mapped[str] = mapped_column(String(50), default="register")  # register, profile, attribute
     data_type: Mapped[str] = mapped_column(String(20), default="numeric")  # numeric, int, string
     unit: Mapped[str] = mapped_column(String(20), default="")
     scaler: Mapped[int] = mapped_column(Integer, default=0)
