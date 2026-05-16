@@ -8,6 +8,7 @@ from app.core.database import Base, TimestampMixin
 
 class TestTask(Base, TimestampMixin):
     __tablename__ = "lab_test_task"
+    __table_args__ = {"comment": "测试任务表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     test_name: Mapped[str] = mapped_column(String(100))
@@ -25,6 +26,7 @@ class TestTask(Base, TimestampMixin):
 
 class Defect(Base):
     __tablename__ = "lab_defect"
+    __table_args__ = {"comment": "缺陷记录表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     test_id: Mapped[int] = mapped_column(Integer, ForeignKey("lab_test_task.id"), index=True)
@@ -43,6 +45,7 @@ class Defect(Base):
 
 class TestReport(Base, TimestampMixin):
     __tablename__ = "lab_test_report"
+    __table_args__ = {"comment": "测试报告表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     test_id: Mapped[int] = mapped_column(Integer, ForeignKey("lab_test_task.id"), unique=True)

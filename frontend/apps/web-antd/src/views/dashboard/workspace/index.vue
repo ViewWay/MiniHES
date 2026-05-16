@@ -35,7 +35,6 @@ import {
   ALARM_TYPE_OPTIONS,
   DEFAULT_PAGE_SIZE,
   POLL_INTERVALS,
-  THEME_COLORS,
 } from '#/constants';
 
 // --- Polling ---
@@ -52,7 +51,7 @@ const pageSize = ref(DEFAULT_PAGE_SIZE);
 // --- Filter state ---
 const filterSeverity = ref<string | undefined>(undefined);
 const filterAlarmType = ref<string | undefined>(undefined);
-const filterDateRange = ref<[any, any] | null>(null);
+const filterDateRange = ref<any>(null);
 const filterHandled = ref<string | undefined>(undefined);
 
 // --- Stats ---
@@ -70,7 +69,7 @@ const handledOptions = [
 ];
 
 // --- Table columns ---
-const columns = [
+const columns: any[] = [
   { title: '告警ID', dataIndex: 'id', width: 80 },
   { title: '设备', dataIndex: 'meter_name', width: 130, ellipsis: true },
   {
@@ -413,7 +412,7 @@ function handleVisibilityChange() {
             <Tag
               :color="severityMap[record.severity]?.color ?? 'default'"
             >
-              {{ severityMap[record.severity]?.text ?? record.severity }}
+              {{ severityMap[record.severity]?.label ?? record.severity }}
             </Tag>
           </template>
           <template v-if="column.key === 'is_handled'">

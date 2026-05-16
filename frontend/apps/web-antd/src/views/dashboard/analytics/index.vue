@@ -227,7 +227,7 @@ async function fetchTrendChart() {
             ],
           },
         },
-      ],
+      ] as any,
     });
   } catch {
     const days = Array.from({ length: 7 }, (_, i) => {
@@ -251,7 +251,7 @@ async function fetchTrendChart() {
       },
       xAxis: themedAxis('x', { type: 'category', data: days }),
       yAxis: themedAxis('y', { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}%' } }),
-      series: [{ type: 'line', data: [0, 0, 0, 0, 0, 0, 0], smooth: true }],
+      series: [{ type: 'line', data: [0, 0, 0, 0, 0, 0, 0], smooth: true }] as any,
     });
   } finally {
     trendLoading.value = false;

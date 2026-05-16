@@ -25,7 +25,7 @@ const opTypeMap: Record<string, { color: string; text: string }> = {
   LOGIN: { color: 'cyan', text: '登录' },
 };
 
-const opTypeOptions = Object.entries(opTypeMap).map(([value, { label }]) => ({
+const opTypeOptions = Object.entries(opTypeMap).map(([value, { text: label }]) => ({
   value,
   label: label || value,
 }));

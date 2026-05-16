@@ -36,7 +36,7 @@ const pageSize = ref(10);
 
 // Filters
 const projectOptions = ref<{ label: string; value: number }[]>([]);
-const dateRange = ref<[any, any] | null>(null);
+const dateRange = ref<any>(null);
 const selectedProject = ref<number | undefined>(undefined);
 
 // Chart refs

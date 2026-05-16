@@ -3,7 +3,6 @@ import type { EchartsUIType } from '@vben/plugins/echarts';
 
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Page } from '@vben/common-ui';
 
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
 
@@ -113,7 +112,7 @@ onMounted(async () => {
 });
 
 // Stack usage bar chart
-function buildStackOptions() {
+function buildStackOptions(): any {
   const categories = ['协议栈', '采集引擎', '数据解析', '任务队列', '通信缓冲'];
   const used = [72, 58, 45, 63, 38];
   const remaining = used.map((v) => 100 - v);
@@ -186,7 +185,7 @@ function buildStackOptions() {
 }
 
 // Online rate donut chart
-function buildOnlineRateOptions() {
+function buildOnlineRateOptions(): any {
   const online = onlineMeters.value;
   const offline = offlineMeters.value;
 
@@ -235,7 +234,7 @@ function buildOnlineRateOptions() {
 }
 
 // Alarm trend bar chart (last 7 days)
-function buildAlarmTrendOptions() {
+function buildAlarmTrendOptions(): any {
   const days: string[] = [];
   const alarmData: number[] = [];
   const now = new Date();

@@ -39,7 +39,7 @@ describe('task constants', () => {
 
     it('should include medium priority (5)', () => {
       expect(TASK_PRIORITY_MAP['5']).toBeDefined();
-      expect(TASK_PRIORITY_MAP['5'].label).toBe('中');
+      expect(TASK_PRIORITY_MAP['5']!.label).toBe('中');
     });
   });
 

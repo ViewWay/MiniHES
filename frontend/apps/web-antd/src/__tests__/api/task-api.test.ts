@@ -113,22 +113,24 @@ describe('task API module', () => {
 
   describe('toggleTask', () => {
     it('should call PATCH /tasks/:id/toggle', async () => {
-      vi.mocked(requestClient.patch).mockResolvedValue({});
+      vi.mocked(requestClient.request).mockResolvedValue({});
 
       await toggleTask(1, true);
 
-      expect(requestClient.patch).toHaveBeenCalledWith('/tasks/1/toggle', {
-        is_enabled: true,
+      expect(requestClient.request).toHaveBeenCalledWith('/tasks/1/toggle', {
+        data: { is_enabled: true },
+        method: 'PATCH',
       });
     });
 
     it('should send false when disabling', async () => {
-      vi.mocked(requestClient.patch).mockResolvedValue({});
+      vi.mocked(requestClient.request).mockResolvedValue({});
 
       await toggleTask(1, false);
 
-      expect(requestClient.patch).toHaveBeenCalledWith('/tasks/1/toggle', {
-        is_enabled: false,
+      expect(requestClient.request).toHaveBeenCalledWith('/tasks/1/toggle', {
+        data: { is_enabled: false },
+        method: 'PATCH',
       });
     });
   });

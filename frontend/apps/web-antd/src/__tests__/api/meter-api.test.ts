@@ -8,11 +8,7 @@ import {
   createMeter,
   updateMeter,
   changeMeterStatus,
-  borrowMeter,
-  getBorrowRecords,
   getRepairRecords,
-  addRepairRecord,
-  exportMeters,
 } from '#/api/modules/meter';
 
 vi.mock('#/api/request', () => ({

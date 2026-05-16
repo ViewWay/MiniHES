@@ -46,7 +46,7 @@ export function executeTask(id: number, data?: { device_ids?: number[] }) {
 }
 
 export function toggleTask(id: number, enabled: boolean) {
-  return requestClient.patch(`/tasks/${id}/toggle`, { is_enabled: enabled });
+  return requestClient.request(`/tasks/${id}/toggle`, { data: { is_enabled: enabled }, method: 'PATCH' });
 }
 
 export function getTaskLogs(params: { task_id: number; page?: number; page_size?: number }) {

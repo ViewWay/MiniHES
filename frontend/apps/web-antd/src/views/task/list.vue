@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
-import { Button, Card, Col, DatePicker, Form, Input, Row, Select, Space, Switch, Table, Tag, Popconfirm, message } from 'ant-design-vue';
+import { Button, Card, Form, Input, Select, Space, Switch, Table, Tag, Popconfirm, message } from 'ant-design-vue';
 import { getTaskList, executeTask, toggleTask, deleteTask } from '#/api/modules/task';
 import { TASK_STATUS_MAP, TASK_TYPE_MAP, TASK_CATEGORY_MAP, DEFAULT_PAGE_SIZE, THEME_COLORS } from '#/constants';
 
@@ -214,7 +214,7 @@ onMounted(() => {
             </span>
           </template>
           <template v-if="column.key === 'is_enabled'">
-            <Switch :checked="record.is_enabled" size="small" @change="(v: boolean) => handleToggle(record.id, v)" />
+            <Switch :checked="record.is_enabled" size="small" @change="(v: any) => handleToggle(record.id, !!v)" />
           </template>
           <template v-if="column.key === 'action'">
             <Space>

@@ -79,7 +79,7 @@ function formatPointType(type: string) {
   return map[type] || type;
 }
 
-const columns = [
+const columns: any[] = [
   { title: '点号(OBIS)', dataIndex: 'point_code', width: 160 },
   { title: '点名', dataIndex: 'point_name', width: 150 },
   { title: '类型', dataIndex: 'point_type', key: 'point_type', width: 100 },

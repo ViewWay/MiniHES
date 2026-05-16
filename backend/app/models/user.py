@@ -6,6 +6,7 @@ from app.core.database import Base, TimestampMixin
 
 class Department(Base, TimestampMixin):
     __tablename__ = "sys_department"
+    __table_args__ = {"comment": "部门表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100))
@@ -21,6 +22,7 @@ class Department(Base, TimestampMixin):
 
 class User(Base, TimestampMixin):
     __tablename__ = "sys_user"
+    __table_args__ = {"comment": "用户表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True)
@@ -38,6 +40,7 @@ class User(Base, TimestampMixin):
 
 class Role(Base, TimestampMixin):
     __tablename__ = "sys_role"
+    __table_args__ = {"comment": "角色表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(50))
@@ -52,17 +55,19 @@ class Role(Base, TimestampMixin):
 
 class Permission(Base, TimestampMixin):
     __tablename__ = "sys_permission"
+    __table_args__ = {"comment": "权限表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100))
     code: Mapped[str] = mapped_column(String(100), unique=True)
     type: Mapped[str] = mapped_column(String(20))  # menu, button, api
-    parent_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    parent_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_permission.id", ondelete="SET NULL"), nullable=True)
     path: Mapped[str] = mapped_column(String(200), default="")
     icon: Mapped[str] = mapped_column(String(100), default="")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(20), default="active")
 
+    children: Mapped[list["Permission"]] = relationship(backref="parent", remote_side="Permission.id")
     role_permissions: Mapped[list["RolePermission"]] = relationship(
         back_populates="permission", cascade="all, delete-orphan"
     )
@@ -70,7 +75,7 @@ class Permission(Base, TimestampMixin):
 
 class UserRole(Base):
     __tablename__ = "sys_user_role"
-    __table_args__ = (UniqueConstraint("user_id", "role_id", name="uq_user_role"),)
+    __table_args__ = (UniqueConstraint("user_id", "role_id", name="uq_user_role"), {"comment": "用户角色关联表"})
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("sys_user.id", ondelete="CASCADE"))
@@ -82,7 +87,7 @@ class UserRole(Base):
 
 class RolePermission(Base):
     __tablename__ = "sys_role_permission"
-    __table_args__ = (UniqueConstraint("role_id", "permission_id", name="uq_role_permission"),)
+    __table_args__ = (UniqueConstraint("role_id", "permission_id", name="uq_role_permission"), {"comment": "角色权限关联表"})
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     role_id: Mapped[int] = mapped_column(Integer, ForeignKey("sys_role.id", ondelete="CASCADE"))

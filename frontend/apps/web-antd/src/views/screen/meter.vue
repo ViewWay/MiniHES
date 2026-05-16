@@ -446,32 +446,32 @@ onUnmounted(() => {
         <Row :gutter="16" style="margin-bottom: 16px">
           <Col :span="4">
             <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="电压A (V)" :value="meterData.voltage_a" :precision="1" value-style="color: #5470c6" />
+              <Statistic title="电压A (V)" :value="meterData.voltage_a" :precision="1" :value-style="{ color: '#5470c6' }" />
             </Card>
           </Col>
           <Col :span="4">
             <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="电压B (V)" :value="meterData.voltage_b" :precision="1" value-style="color: #91cc75" />
+              <Statistic title="电压B (V)" :value="meterData.voltage_b" :precision="1" :value-style="{ color: '#91cc75' }" />
             </Card>
           </Col>
           <Col :span="4">
             <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="电压C (V)" :value="meterData.voltage_c" :precision="1" value-style="color: #fac858" />
+              <Statistic title="电压C (V)" :value="meterData.voltage_c" :precision="1" :value-style="{ color: '#fac858' }" />
             </Card>
           </Col>
           <Col :span="4">
             <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="频率 (Hz)" :value="meterData.frequency" :precision="2" value-style="color: #fff" />
+              <Statistic title="频率 (Hz)" :value="meterData.frequency" :precision="2" :value-style="{ color: '#fff' }" />
             </Card>
           </Col>
           <Col :span="4">
             <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="堆栈使用" :value="meterData.stack_usage" suffix="%" value-style="color: #69b1ff" />
+              <Statistic title="堆栈使用" :value="meterData.stack_usage" suffix="%" :value-style="{ color: '#69b1ff' }" />
             </Card>
           </Col>
           <Col :span="4">
             <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="EEPROM写入" :value="meterData.eeprom_writes" value-style="color: #fff" />
+              <Statistic title="EEPROM写入" :value="meterData.eeprom_writes" :value-style="{ color: '#fff' }" />
             </Card>
           </Col>
         </Row>

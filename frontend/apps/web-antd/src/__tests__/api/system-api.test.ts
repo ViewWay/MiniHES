@@ -134,7 +134,6 @@ describe('system API module', () => {
         page: 1,
         page_size: 20,
         operation_type: 'CREATE',
-        resource_type: 'meter',
       });
 
       expect(requestClient.get).toHaveBeenCalledWith('/audit-logs', {

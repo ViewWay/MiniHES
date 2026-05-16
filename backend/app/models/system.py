@@ -8,6 +8,7 @@ from app.core.database import Base, TimestampMixin
 
 class AuditLog(Base):
     __tablename__ = "sys_audit_log"
+    __table_args__ = {"comment": "操作审计日志表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("sys_user.id"), index=True)
@@ -19,11 +20,12 @@ class AuditLog(Base):
     new_values: Mapped[dict | None] = mapped_column(JSON, default=None)
     ip_address: Mapped[str] = mapped_column(String(50), default="")
     user_agent: Mapped[str] = mapped_column(String(500), default="")
-    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
 class DataArchive(Base, TimestampMixin):
     __tablename__ = "sys_data_archive"
+    __table_args__ = {"comment": "数据归档记录表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     archive_type: Mapped[str] = mapped_column(String(20))  # postgresql, influxdb

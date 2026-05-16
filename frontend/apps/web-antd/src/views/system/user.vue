@@ -49,7 +49,7 @@ const formState = ref<UserFormData>({
   password: '',
 });
 
-const columns = [
+const columns: any[] = [
   { title: '用户名', dataIndex: 'username', width: 120 },
   { title: '姓名', dataIndex: 'name', width: 100 },
   { title: '邮箱', dataIndex: 'email', width: 200 },

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   METER_STATUS_MAP,
-  METER_TYPE_MAP,
   PROTOCOL_OPTIONS,
   COMMUNICATION_TYPE_MAP,
   STATUS_FLOW_OPTIONS,
@@ -21,8 +20,8 @@ describe('meter constants', () => {
       ];
       for (const status of requiredStatuses) {
         expect(METER_STATUS_MAP[status]).toBeDefined();
-        expect(METER_STATUS_MAP[status].label).toBeTruthy();
-        expect(METER_STATUS_MAP[status].color).toBeTruthy();
+        expect(METER_STATUS_MAP[status]!.label).toBeTruthy();
+        expect(METER_STATUS_MAP[status]!.color).toBeTruthy();
       }
     });
 

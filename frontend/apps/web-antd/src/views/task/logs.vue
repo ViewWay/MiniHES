@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { Badge, Button, Card, DatePicker, Descriptions, DescriptionsItem, Modal, Space, Table, Tag, Tooltip, message } from 'ant-design-vue';
 import { getTaskLogs, getTaskDeviceLog } from '#/api/modules/task';
-import { DEFAULT_PAGE_SIZE, POLL_INTERVALS, THEME_COLORS } from '#/constants';
+import { DEFAULT_PAGE_SIZE, POLL_INTERVALS } from '#/constants';
 
 const route = useRoute();
 const router = useRouter();
@@ -41,8 +41,6 @@ const logStatusMap: Record<string, { color: string; text: string }> = {
 };
 
 const taskId = computed(() => Number(route.query.task_id) || 0);
-
-const hasRunningLogs = computed(() => tableData.value.some((r: any) => r.status === 'running'));
 
 const columns = [
   { title: '开始时间', dataIndex: 'start_time', width: 170, sorter: true },
@@ -122,11 +120,6 @@ function toggleAutoRefresh() {
     stopPolling();
     message.info('已关闭自动刷新');
   }
-}
-
-function formatDate(val: string | null | undefined): string {
-  if (!val) return '-';
-  return val;
 }
 
 function formatDuration(ms: number | null | undefined): string {

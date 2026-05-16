@@ -148,7 +148,7 @@ onUnmounted(() => {
       </Col>
       <Col :span="5">
         <Card>
-          <Statistic title="执行中" :value="stats.running" value-style="color: #1890ff">
+          <Statistic title="执行中" :value="stats.running" :value-style="{ color: '#1890ff' }">
             <template #prefix>
               <Badge status="processing" />
             </template>
@@ -157,12 +157,12 @@ onUnmounted(() => {
       </Col>
       <Col :span="5">
         <Card>
-          <Statistic title="已完成" :value="stats.completed" value-style="color: #52c41a" />
+          <Statistic title="已完成" :value="stats.completed" :value-style="{ color: '#52c41a' }" />
         </Card>
       </Col>
       <Col :span="5">
         <Card>
-          <Statistic title="失败" :value="stats.failed" value-style="color: #ff4d4f" />
+          <Statistic title="失败" :value="stats.failed" :value-style="{ color: '#ff4d4f' }" />
         </Card>
       </Col>
       <Col :span="4">
@@ -209,7 +209,7 @@ onUnmounted(() => {
               :percent="record.success_rate || 0"
               :stroke-color="getProgressColor(record.success_rate || 0)"
               :size="'small'"
-              :format="(percent: number) => `${percent}%`"
+              :format="(percent?: number) => `${percent ?? 0}%`"
             />
           </template>
           <template v-if="column.key === 'action'">

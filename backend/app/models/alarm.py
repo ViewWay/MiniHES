@@ -8,6 +8,7 @@ from app.core.database import Base, TimestampMixin
 
 class AlarmRule(Base, TimestampMixin):
     __tablename__ = "sys_alarm_rule"
+    __table_args__ = {"comment": "告警规则表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     rule_name: Mapped[str] = mapped_column(String(100))
@@ -22,6 +23,7 @@ class AlarmRule(Base, TimestampMixin):
 
 class Alarm(Base):
     __tablename__ = "sys_alarm_record"
+    __table_args__ = {"comment": "告警记录表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id"), index=True)

@@ -65,7 +65,7 @@ function formatStatus(status: string) {
   return map[status] || status;
 }
 
-const columns = [
+const columns: any[] = [
   { title: '项目名称', dataIndex: 'name', width: 160 },
   { title: '描述', dataIndex: 'description', ellipsis: true },
   { title: '测试负责人', dataIndex: 'test_leader', width: 120 },

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import {
   Button, Card, Form, Input, Select, Space, Table, Tag, message, Modal, Popconfirm,
-  Row, Col, DatePicker, Upload,
+  Row, Col, Upload,
 } from 'ant-design-vue';
 import { getMeterList, createMeter, changeMeterStatus, importMeters, exportMeters } from '#/api/modules/meter';
 import { getProjectList, getMeterTypes, getWireTypes } from '#/api/modules/project';
@@ -16,11 +16,10 @@ const loading = ref(false);
 const tableData = ref<any[]>([]);
 const total = ref(0);
 const pagination = ref({ current: 1, pageSize: DEFAULT_PAGE_SIZE });
-const expandedRowKeys = ref<number[]>([]);
 
 const statusMap = METER_STATUS_MAP;
 
-const statusOptions = Object.entries(statusMap).map(([value, { text }]) => ({ value, label: text }));
+const statusOptions = Object.entries(statusMap).map(([value, { label }]) => ({ value, label }));
 
 const searchForm = ref<MeterListParams>({ keyword: '', status: undefined, project_id: undefined });
 
@@ -40,7 +39,7 @@ const wireTypes = ref<any[]>([]);
 
 const protocolOptions = PROTOCOL_OPTIONS;
 
-const columns = [
+const columns: any[] = [
   { title: '出厂编号', dataIndex: 'serial_number', key: 'serial_number', width: 140 },
   { title: '表计名称', dataIndex: 'meter_name', key: 'meter_name', width: 150 },
   { title: '项目', dataIndex: 'project_name', key: 'project_name', width: 120 },
@@ -117,7 +116,7 @@ async function handleCreate() {
 
 async function handleChangeStatus(id: number, status: string) {
   try {
-    await changeMeterStatus(id, { status, reason: `状态变更为${statusMap[status]?.text}` });
+    await changeMeterStatus(id, { status, reason: `状态变更为${statusMap[status]?.label}` });
     message.success('状态变更成功');
     fetchData();
   } catch { message.error('状态变更失败'); }
@@ -148,11 +147,6 @@ function handleImportUpload(info: any) {
 }
 
 function handleBeforeUpload(file: File) {
-  const validTypes = [
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-excel',
-    'text/csv',
-  ];
   const validExts = ['.xlsx', '.xls', '.csv'];
   const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
   if (!validExts.includes(ext)) {
@@ -255,7 +249,7 @@ onMounted(() => { fetchData(); fetchMetadata(); });
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'current_status'">
             <Tag :color="statusMap[record.current_status]?.color">
-              {{ statusMap[record.current_status]?.text || record.current_status }}
+              {{ statusMap[record.current_status]?.label || record.current_status }}
             </Tag>
           </template>
           <template v-if="column.key === 'action'">

@@ -6,7 +6,7 @@ import {
   Button, Card, Descriptions, DescriptionsItem, Tag, Tabs, TabPane, Timeline, TimelineItem,
   Table, Space, Modal, Form, Input, Upload, message, Popconfirm, Row, Col, Select, InputNumber, Switch,
 } from 'ant-design-vue';
-import { getMeterDetail, updateMeter, changeMeterStatus, borrowMeter, getMeterStatusHistory, getMeterAttachments, uploadMeterAttachment, updateMeterComm } from '#/api/modules/meter';
+import { getMeterDetail, updateMeter, changeMeterStatus, getMeterStatusHistory, getMeterAttachments, uploadMeterAttachment, updateMeterComm } from '#/api/modules/meter';
 import type { UploadProps } from 'ant-design-vue';
 import StatusBadge from '#/components/meter/StatusBadge.vue';
 import BorrowDialog from '#/components/meter/BorrowDialog.vue';
@@ -41,14 +41,6 @@ const attachColumns = [
   { title: '上传人', dataIndex: 'uploaded_by', width: 80 },
   { title: '上传时间', dataIndex: 'uploaded_at', width: 120 },
   { title: '操作', key: 'action', width: 80 },
-];
-
-const borrowColumns = [
-  { title: '借用人', dataIndex: 'borrower_name', width: 100 },
-  { title: '原因', dataIndex: 'borrow_reason' },
-  { title: '预计归还', dataIndex: 'expected_return_date', width: 120 },
-  { title: '实际归还', dataIndex: 'actual_return_date', width: 120 },
-  { title: '状态', dataIndex: 'approval_status', key: 'approval_status', width: 100 },
 ];
 
 async function fetchDetail() {
@@ -307,7 +299,7 @@ fetchMetadata();
 
           <TabPane key="attachments" tab="附件管理">
             <Table :columns="attachColumns" :data-source="attachments" row-key="id" :pagination="false" size="small">
-              <template #bodyCell="{ column, record }">
+              <template #bodyCell="{ column, record: _record }">
                 <template v-if="column.key === 'action'">
                   <Button type="link" size="small">下载</Button>
                 </template>

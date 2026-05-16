@@ -8,6 +8,7 @@ from app.core.database import Base, TimestampMixin
 
 class Project(Base, TimestampMixin):
     __tablename__ = "dev_project"
+    __table_args__ = {"comment": "项目表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(200), unique=True)

@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
@@ -8,6 +8,10 @@ from app.core.database import Base, TimestampMixin
 
 class Task(Base, TimestampMixin):
     __tablename__ = "col_task"
+    __table_args__ = (
+        Index("ix_task_schedule", "is_enabled", "next_execute_time"),
+        {"comment": "采集任务表"},
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_name: Mapped[str] = mapped_column(String(100))
@@ -20,17 +24,18 @@ class Task(Base, TimestampMixin):
     timeout: Mapped[int] = mapped_column(Integer, default=300)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     last_execute_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    next_execute_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_user.id"), nullable=True)
+    next_execute_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    created_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_user.id", ondelete="SET NULL"), nullable=True)
 
     logs: Mapped[list["TaskLog"]] = relationship(back_populates="task", cascade="all, delete-orphan")
 
 
 class TaskLog(Base):
     __tablename__ = "col_task_log"
+    __table_args__ = {"comment": "任务执行日志表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    task_id: Mapped[int] = mapped_column(Integer, ForeignKey("col_task.id"), index=True)
+    task_id: Mapped[int] = mapped_column(Integer, ForeignKey("col_task.id", ondelete="CASCADE"), index=True)
     start_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
     end_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
@@ -38,7 +43,7 @@ class TaskLog(Base):
     total_devices: Mapped[int] = mapped_column(Integer, default=0)
     success_devices: Mapped[int] = mapped_column(Integer, default=0)
     failed_devices: Mapped[int] = mapped_column(Integer, default=0)
-    error_message: Mapped[str] = mapped_column(Text, default="")
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     task: Mapped["Task"] = relationship(back_populates="logs")
@@ -47,15 +52,16 @@ class TaskLog(Base):
 
 class TaskDevice(Base):
     __tablename__ = "col_task_device"
+    __table_args__ = {"comment": "任务设备执行明细表"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    log_id: Mapped[int] = mapped_column(Integer, ForeignKey("col_task_log.id"), index=True)
-    task_id: Mapped[int] = mapped_column(Integer, ForeignKey("col_task.id"), index=True)
-    meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id"), index=True)
+    log_id: Mapped[int] = mapped_column(Integer, ForeignKey("col_task_log.id", ondelete="CASCADE"), index=True)
+    task_id: Mapped[int] = mapped_column(Integer, ForeignKey("col_task.id", ondelete="CASCADE"), index=True)
+    meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id", ondelete="RESTRICT"), index=True)
     status: Mapped[str] = mapped_column(String(20))  # pending, success, failed, timeout
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
     error_code: Mapped[str] = mapped_column(String(50), default="")
-    error_message: Mapped[str] = mapped_column(Text, default="")
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     start_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     end_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
@@ -67,11 +73,15 @@ class TaskDevice(Base):
 
 class DataQuality(Base):
     __tablename__ = "col_data_quality"
+    __table_args__ = (
+        UniqueConstraint("meter_id", "stat_date", name="uq_data_quality"),
+        {"comment": "数据质量统计表"},
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id"), index=True)
-    task_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("col_task.id"), nullable=True)
-    stat_date: Mapped[datetime.date] = mapped_column(Date)
+    meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id", ondelete="RESTRICT"), index=True)
+    task_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("col_task.id", ondelete="SET NULL"), nullable=True)
+    stat_date: Mapped[datetime.date] = mapped_column(Date, index=True)
     total_points: Mapped[int] = mapped_column(Integer, default=0)
     success_points: Mapped[int] = mapped_column(Integer, default=0)
     failed_points: Mapped[int] = mapped_column(Integer, default=0)

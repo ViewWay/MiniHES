@@ -171,7 +171,7 @@ function renderCharts() {
             colorStops: [
               { offset: 0, color: 'rgba(24, 144, 255, 0.3)' },
               { offset: 1, color: 'rgba(24, 144, 255, 0.05)' },
-            ],
+            ] as any,
             x1: 0, x2: 0, y1: 0, y2: 1, type: 'linear',
           },
         },
@@ -233,7 +233,7 @@ function renderCharts() {
             colorStops: [
               { offset: 0, color: 'rgba(82, 196, 26, 0.3)' },
               { offset: 1, color: 'rgba(82, 196, 26, 0.05)' },
-            ],
+            ] as any,
             x1: 0, x2: 0, y1: 0, y2: 1, type: 'linear',
           },
         },
@@ -272,7 +272,7 @@ function renderCharts() {
               [0.6, '#52c41a'],
               [0.8, '#faad14'],
               [1, '#ff4d4f'],
-            ],
+            ] as any,
           },
         },
         ...themedGauge({
@@ -317,7 +317,7 @@ function renderCharts() {
               [0.8, '#ff4d4f'],
               [0.95, '#faad14'],
               [1, '#52c41a'],
-            ],
+            ] as any,
           },
         },
         ...themedGauge({

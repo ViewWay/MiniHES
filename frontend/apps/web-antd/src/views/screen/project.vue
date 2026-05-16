@@ -321,32 +321,32 @@ onMounted(async () => {
         <Row :gutter="16" style="margin-bottom: 16px">
           <Col :span="4">
             <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="设备总数" :value="meterCount" value-style="color: #fff" />
+              <Statistic title="设备总数" :value="meterCount" :value-style="{ color: '#fff' }" />
             </Card>
           </Col>
           <Col :span="4">
             <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="在线设备" :value="onlineCount" value-style="color: #52c41a" />
+              <Statistic title="在线设备" :value="onlineCount" :value-style="{ color: '#52c41a' }" />
             </Card>
           </Col>
           <Col :span="4">
             <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="离线设备" :value="offlineCount" value-style="color: #ff4d4f" />
+              <Statistic title="离线设备" :value="offlineCount" :value-style="{ color: '#ff4d4f' }" />
             </Card>
           </Col>
           <Col :span="4">
             <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="在线率" :value="onlineRate" suffix="%" value-style="color: #69b1ff" />
+              <Statistic title="在线率" :value="onlineRate" suffix="%" :value-style="{ color: '#69b1ff' }" />
             </Card>
           </Col>
           <Col :span="4">
             <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="堆栈告警" :value="stackAlertCount" value-style="color: #faad14" />
+              <Statistic title="堆栈告警" :value="stackAlertCount" :value-style="{ color: '#faad14' }" />
             </Card>
           </Col>
           <Col :span="4">
             <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="活跃事件" :value="eventStats.reduce((s, e) => s + e.count, 0)" value-style="color: #ff7a45" />
+              <Statistic title="活跃事件" :value="eventStats.reduce((s, e) => s + e.count, 0)" :value-style="{ color: '#ff7a45' }" />
             </Card>
           </Col>
         </Row>

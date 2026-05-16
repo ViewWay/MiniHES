@@ -71,7 +71,7 @@ const severityColorMap: Record<string, string> = {
   info: 'blue',
 };
 
-const columns = [
+const columns: any[] = [
   { title: '规则名称', dataIndex: 'rule_name', width: 160 },
   { title: '规则类型', dataIndex: 'rule_type', key: 'rule_type', width: 120 },
   { title: '监测点(OBIS)', dataIndex: 'point_code', width: 180 },
