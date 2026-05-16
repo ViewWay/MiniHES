@@ -38,4 +38,6 @@ async def get_db():
             await session.commit()
         except Exception:
             await session.rollback()
+            import logging
+            logging.getLogger(__name__).exception("Database session error")
             raise

@@ -179,7 +179,8 @@ async def seed():
 
         await session.commit()
 
-    print("Seed data created successfully!")
+    import logging
+    logging.getLogger(__name__).info("Seed data created successfully!")
 
 
 if __name__ == "__main__":

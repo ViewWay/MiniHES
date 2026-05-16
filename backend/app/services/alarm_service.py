@@ -182,3 +182,16 @@ async def delete_alarm_rule(db: AsyncSession, rule_id: int) -> None:
     if not r:
         raise BusinessException(code=404, message="告警规则不存在")
     await db.delete(r)
+
+
+async def export_alarms_csv(
+    db: AsyncSession, *, severity: str | None = None, alarm_type: str | None = None,
+) -> list[dict]:
+    """Return alarms for CSV export."""
+    stmt = select(Alarm).order_by(Alarm.id.desc())
+    if severity:
+        stmt = stmt.where(Alarm.severity == severity)
+    if alarm_type:
+        stmt = stmt.where(Alarm.alarm_type == alarm_type)
+    result = await db.execute(stmt)
+    return [_alarm_to_dict(a) for a in result.scalars().all()]

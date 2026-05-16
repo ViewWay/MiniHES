@@ -4,11 +4,9 @@ from datetime import datetime
 
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
 
 from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
-from app.models.alarm import Alarm
 from app.services import alarm_service
 
 router = APIRouter(prefix="/alarms", tags=["alarms"])
@@ -45,22 +43,15 @@ async def export_alarms(
     severity: str = Query(default=None),
     alarm_type: str = Query(default=None),
 ):
-    stmt = select(Alarm).order_by(Alarm.id.desc())
-    if severity:
-        stmt = stmt.where(Alarm.severity == severity)
-    if alarm_type:
-        stmt = stmt.where(Alarm.alarm_type == alarm_type)
-    result = await db.execute(stmt)
-    alarms = result.scalars().all()
+    alarms = await alarm_service.export_alarms_csv(db, severity=severity, alarm_type=alarm_type)
 
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["ID", "设备ID", "告警类型", "严重程度", "告警信息", "是否已处理", "时间"])
     for a in alarms:
         writer.writerow([
-            a.id, a.meter_id, a.alarm_type, a.severity, a.alarm_message,
-            "是" if a.is_handled else "否",
-            a.created_at.strftime("%Y-%m-%d %H:%M:%S") if a.created_at else "",
+            a["id"], a["meter_id"], a["alarm_type"], a["severity"], a["alarm_message"],
+            "是" if a["is_handled"] else "否", a["created_at"],
         ])
 
     output.seek(0)

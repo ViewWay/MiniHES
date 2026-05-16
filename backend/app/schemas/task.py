@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ScheduleConfig(BaseModel):
@@ -16,9 +16,9 @@ class ExecutionContent(BaseModel):
 class TaskCreate(BaseModel):
     task_name: str
     task_type: str
-    schedule_config: ScheduleConfig = {}
-    execution_content: ExecutionContent = {}
-    filter_config: dict = {}
+    schedule_config: ScheduleConfig = Field(default_factory=ScheduleConfig)
+    execution_content: ExecutionContent = Field(default_factory=ExecutionContent)
+    filter_config: dict = Field(default_factory=dict)
     priority: int = 3
     retry_times: int = 3
     timeout: int = 60
