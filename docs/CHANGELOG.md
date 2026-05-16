@@ -6,6 +6,20 @@
 
 ---
 
+## [0.4.1] - 2026-05-16
+
+### 新增
+- 测试覆盖：新增 28 个测试（alarm 12 + task 9 + test/defect 7），总计 64 个测试全部通过
+- analysis 端点补全：`/daily/export`、`/data-quality/export`、`/reports/{id}/export`
+
+### 修复
+- Task schema 移除不存在的 `task_category` 字段
+- TaskUpdate 改为全 optional 字段（部分更新）
+- `get_task_logs` 返回格式统一为 `{items, total}`
+- `toggle_task` 返回实际 `is_enabled` 值而非硬编码 True
+- `create_task` 返回完整数据 dict（含 id + 全部字段）
+- defect 测试改为先创建再操作（避免 id 冲突）
+
 ## [0.4.0] - 2026-05-16
 
 ### 新增

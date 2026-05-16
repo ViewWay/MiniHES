@@ -102,12 +102,12 @@ async def get_task(db: AsyncSession, task_id: int) -> dict | None:
     return _task_to_dict(t)
 
 
-async def create_task(db: AsyncSession, data: dict) -> int:
-    """Create a task and return its id."""
+async def create_task(db: AsyncSession, data: dict) -> dict:
+    """Create a task and return its data dict."""
     task = Task(**data)
     db.add(task)
     await db.flush()
-    return task.id
+    return {"id": task.id, **_task_to_dict(task)}
 
 
 async def update_task(db: AsyncSession, task_id: int, data: dict) -> dict | None:
@@ -135,7 +135,7 @@ async def toggle_task(db: AsyncSession, task_id: int, is_enabled: bool) -> bool:
     if not t:
         raise BusinessException(code=404, message="任务不存在")
     t.is_enabled = is_enabled
-    return True
+    return is_enabled
 
 
 async def execute_task(db: AsyncSession, task_id: int) -> dict:
@@ -163,21 +163,20 @@ async def execute_task(db: AsyncSession, task_id: int) -> dict:
     await db.flush()
 
     return {
-        "log_id": task_log.id,
-        "task_id": task_id,
-        "status": "completed",
-        "start_time": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "success": True,
+        "execution_id": task_log.id,
     }
 
 
-async def get_task_logs(db: AsyncSession, task_id: int) -> list[dict]:
+async def get_task_logs(db: AsyncSession, task_id: int) -> dict:
     """Return all logs for a given task."""
     result = await db.execute(
         select(TaskLog)
         .where(TaskLog.task_id == task_id)
         .order_by(TaskLog.id.desc())
     )
-    return [_task_log_to_dict(log) for log in result.scalars().all()]
+    items = [_task_log_to_dict(log) for log in result.scalars().all()]
+    return {"items": items, "total": len(items)}
 
 
 async def get_task_device_log(
