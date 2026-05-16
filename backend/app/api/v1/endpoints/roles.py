@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Query
-from sqlalchemy import func, select
 
 from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
-from app.models.user import Role, RolePermission, UserRole
+from app.schemas.system import RoleCreate, RoleUpdate
+from app.services.role_service import list_roles as svc_list_roles, create_role, update_role, delete_role, get_permission_tree
 
 router = APIRouter(prefix="/system/role", tags=["role"])
 
 
 @router.get("/list")
-async def list_roles(
+async def list_roles_endpoint(
     db: DbSession = ...,
     _user: CurrentUser = ...,
     page: int = Query(default=1),
@@ -17,46 +17,30 @@ async def list_roles(
     name: str | None = Query(default=None),
     status: str | None = Query(default=None),
 ):
-    stmt = select(Role)
+    data = await svc_list_roles(db)
+    items = data.get("items", [])
     if name:
-        stmt = stmt.where(Role.name.ilike(f"%{name}%"))
+        items = [i for i in items if name.lower() in i.get("name", "").lower()]
     if status:
-        stmt = stmt.where(Role.status == status)
-
-    count_stmt = select(func.count()).select_from(stmt.subquery())
-    total = (await db.execute(count_stmt)).scalar() or 0
-
-    stmt = stmt.order_by(Role.sort_order).offset((page - 1) * page_size).limit(page_size)
-    result = await db.execute(stmt)
-    roles = result.scalars().all()
-
-    items = []
-    for r in roles:
-        user_count = (
-            await db.execute(
-                select(func.count()).select_from(UserRole).where(UserRole.role_id == r.id)
-            )
-        ).scalar() or 0
-
-        perm_ids = [
-            p[0]
-            for p in (
-                await db.execute(
-                    select(RolePermission.permission_id).where(RolePermission.role_id == r.id)
-                )
-            ).all()
-        ]
-
-        items.append({
-            "id": r.id,
-            "name": r.name,
-            "code": r.code,
-            "description": r.description,
-            "sortOrder": r.sort_order,
-            "status": r.status,
-            "permissions": perm_ids,
-            "userCount": user_count,
-            "remark": r.description,
-            "createTime": r.created_at.strftime("%Y-%m-%d %H:%M:%S") if r.created_at else "",
-        })
+        items = [i for i in items if i.get("status") == status]
+    total = len(items)
+    items = items[(page - 1) * page_size : page * page_size]
     return success({"items": items, "total": total})
+
+
+@router.post("")
+async def create_role_endpoint(body: RoleCreate, db: DbSession = ..., _user: CurrentUser = ...):
+    rid = await create_role(db, body.model_dump())
+    return success({"id": rid})
+
+
+@router.put("/{role_id}")
+async def update_role_endpoint(role_id: int, body: RoleUpdate, db: DbSession = ..., _user: CurrentUser = ...):
+    await update_role(db, role_id, body.model_dump(exclude_unset=True))
+    return success(None)
+
+
+@router.delete("/{role_id}")
+async def delete_role_endpoint(role_id: int, db: DbSession = ..., _user: CurrentUser = ...):
+    await delete_role(db, role_id)
+    return success(None)

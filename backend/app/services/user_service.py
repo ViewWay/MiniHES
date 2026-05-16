@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessException
 from app.core.security import get_password_hash
-from app.models.user import Role, User, UserRole
+from app.models.user import Role, RolePermission, User, UserRole
 
 
 async def list_users(
@@ -94,3 +94,37 @@ async def reset_password(db: AsyncSession, user_id: int) -> None:
     if not user:
         raise BusinessException(code=404, message="用户不存在")
     user.password_hash = get_password_hash("123456")
+
+
+async def get_user_info(db: AsyncSession, user_id: int) -> dict:
+    """Return user info with roles and permission ids."""
+    user = await db.get(User, user_id)
+    if not user:
+        raise BusinessException(code=404, message="用户不存在")
+
+    # Query roles via UserRole join
+    role_result = await db.execute(
+        select(Role).join(UserRole).where(UserRole.user_id == user_id)
+    )
+    roles = role_result.scalars().all()
+
+    role_ids = [r.id for r in roles]
+
+    # Query permission ids via RolePermission
+    perm_result = await db.execute(
+        select(RolePermission.permission_id).where(RolePermission.role_id.in_(role_ids))
+    )
+    permission_ids = [row[0] for row in perm_result.all()] if role_ids else []
+
+    return {
+        "id": user.id,
+        "username": user.username,
+        "realName": user.name,
+        "name": user.name,
+        "email": user.email,
+        "phone": user.phone,
+        "avatar": user.avatar,
+        "roles": [r.code for r in roles],
+        "roleIds": role_ids,
+        "permissions": permission_ids,
+    }

@@ -1,29 +1,17 @@
-from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
-class ProjectBase(BaseModel):
-    name: str
+class ProjectCreate(BaseModel):
+    name: str = Field(..., max_length=200)
     description: str = ""
-    test_leader: str = ""
-    dev_leader: str = ""
-    status: str = "testing"
-    device_count: int = 0
-    online_count: int = 0
-    progress: int = 0
+    test_lead_id: int | None = None
+    dev_lead_id: int | None = None
+    status: str = Field("active", max_length=20)
 
 
-class ProjectCreate(ProjectBase):
-    pass
-
-
-class ProjectUpdate(ProjectBase):
-    pass
-
-
-class ProjectOut(ProjectBase):
-    id: int
-    created_at: str = ""
-
-    class Config:
-        from_attributes = True
+class ProjectUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    test_lead_id: int | None = None
+    dev_lead_id: int | None = None
+    status: str | None = None

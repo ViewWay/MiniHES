@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query
 
 from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
+from app.schemas.project import ProjectCreate, ProjectUpdate
 from app.services.project_service import (
     list_projects, get_project, create_project, update_project, delete_project,
 )
@@ -10,18 +11,14 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 
 @router.get("")
-async def api_list_projects(
-    keyword: str = Query(default=None),
-    _user: CurrentUser = None,
-    db: DbSession = ...,
-):
+async def api_list_projects(keyword: str = Query(default=None), _user: CurrentUser = None, db: DbSession = ...):
     result = await list_projects(db, keyword=keyword)
     return success(result)
 
 
 @router.post("")
-async def api_create_project(body: dict, _user: CurrentUser = None, db: DbSession = ...):
-    result = await create_project(db, body)
+async def api_create_project(body: ProjectCreate, _user: CurrentUser = None, db: DbSession = ...):
+    result = await create_project(db, body.model_dump())
     return success(result)
 
 
@@ -32,8 +29,8 @@ async def api_get_project(project_id: int, db: DbSession = ...):
 
 
 @router.put("/{project_id}")
-async def api_update_project(project_id: int, body: dict, _user: CurrentUser = None, db: DbSession = ...):
-    result = await update_project(db, project_id, body)
+async def api_update_project(project_id: int, body: ProjectUpdate, _user: CurrentUser = None, db: DbSession = ...):
+    result = await update_project(db, project_id, body.model_dump(exclude_unset=True))
     return success(result)
 
 

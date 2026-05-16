@@ -6,6 +6,29 @@
 
 ---
 
+## [0.5.0] - 2026-05-16
+
+### 新增
+- Service 层：reference_service、menu_service（+ user_service 追加 get_user_info）
+- Schema：reference（MeterPointCreate/Update）、project（ProjectUpdate 改为全 optional）
+- 端点重构：user/roles/menus/menu/reference/projects/departments 全部调用 service + schema 验证
+- 测试：新增 19 个测试（reference 14 + roles 5），总计 83 个测试全部通过
+
+### 修复
+- user.py 下沉到 user_service.get_user_info
+- roles.py 下沉到 role_service（list/create/update/delete）
+- menus.py/menu.py 下沉到 menu_service（list/check/get_user_menus）
+- reference.py 下沉到 reference_service（meter-types/wire-types/meter-points CRUD）
+- projects.py 使用 ProjectCreate/ProjectUpdate schema 验证
+- departments.py 使用 DeptCreate/DeptUpdate schema 验证
+- system.py 角色接口使用 RoleCreate/RoleUpdate schema
+
+### 统计
+- Service 文件：15 → 17 个（+2）
+- 83 测试通过，0 warning
+- Endpoint 直接 SQL：0 处（全部通过 service）
+- body: dict：13 → 5 处（合理的保留：analysis/alarms handle/tests distribute/meters import/tasks execute）
+
 ## [0.4.1] - 2026-05-16
 
 ### 新增

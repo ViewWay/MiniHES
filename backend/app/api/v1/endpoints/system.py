@@ -8,6 +8,8 @@ from app.models.system import DataArchive
 from app.schemas.system import (
     AuditLogQuery,
     DataArchiveCreate,
+    RoleCreate,
+    RoleUpdate,
     UserCreate,
     UserUpdate,
 )
@@ -66,16 +68,14 @@ async def api_list_roles(_user: CurrentUser = None, db: DbSession = ...):
 
 
 @router.post("/roles")
-async def api_create_role(body: dict, _user: CurrentUser = None, db: DbSession = ...):
-    from app.schemas.system import RoleCreate
-    data = RoleCreate(**body).model_dump()
-    rid = await create_role(db, data)
+async def api_create_role(body: RoleCreate, _user: CurrentUser = None, db: DbSession = ...):
+    rid = await create_role(db, body.model_dump())
     return success({"id": rid})
 
 
 @router.put("/roles/{role_id}")
-async def api_update_role(role_id: int, body: dict, _user: CurrentUser = None, db: DbSession = ...):
-    await update_role(db, role_id, body)
+async def api_update_role(role_id: int, body: RoleUpdate, _user: CurrentUser = None, db: DbSession = ...):
+    await update_role(db, role_id, body.model_dump(exclude_unset=True))
     return success(None)
 
 
