@@ -30,8 +30,12 @@ async def list_alarms(
     end_date: str = Query(default=None),
 ):
     data = await alarm_service.list_alarms(
-        db, page=page, page_size=page_size,
-        severity=severity, alarm_type=alarm_type, is_handled=is_handled,
+        db,
+        page=page,
+        page_size=page_size,
+        severity=severity,
+        alarm_type=alarm_type,
+        is_handled=is_handled,
     )
     return success(data)
 
@@ -49,10 +53,17 @@ async def export_alarms(
     writer = csv.writer(output)
     writer.writerow(["ID", "设备ID", "告警类型", "严重程度", "告警信息", "是否已处理", "时间"])
     for a in alarms:
-        writer.writerow([
-            a["id"], a["meter_id"], a["alarm_type"], a["severity"], a["alarm_message"],
-            "是" if a["is_handled"] else "否", a["created_at"],
-        ])
+        writer.writerow(
+            [
+                a["id"],
+                a["meter_id"],
+                a["alarm_type"],
+                a["severity"],
+                a["alarm_message"],
+                "是" if a["is_handled"] else "否",
+                a["created_at"],
+            ]
+        )
 
     output.seek(0)
     return StreamingResponse(

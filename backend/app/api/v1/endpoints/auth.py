@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Cookie, Depends, Response
+from fastapi import APIRouter, Cookie, Response
 
 from app.core.dependencies import CurrentUser, DbSession
 from app.core.exceptions import BusinessException

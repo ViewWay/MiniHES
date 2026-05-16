@@ -1,4 +1,5 @@
 import uuid
+
 from starlette.testclient import TestClient
 
 
@@ -24,30 +25,46 @@ def test_list_meter_points(client: TestClient):
 
 
 def test_create_meter_point(client: TestClient, auth_headers):
-    r = client.post("/api/v1/meter-points", json={
-        "meter_id": 1,
-        "obis_code": "1.0.99.1.0.255",
-        "point_name": "测试采集点",
-        "point_type": "register",
-        "unit": "kWh",
-    }, headers=auth_headers)
+    r = client.post(
+        "/api/v1/meter-points",
+        json={
+            "meter_id": 1,
+            "obis_code": "1.0.99.1.0.255",
+            "point_name": "测试采集点",
+            "point_type": "register",
+            "unit": "kWh",
+        },
+        headers=auth_headers,
+    )
     assert r.status_code == 200
     assert r.json()["data"]["id"] is not None
 
 
 def test_update_meter_point(client: TestClient, auth_headers):
-    cr = client.post("/api/v1/meter-points", json={
-        "meter_id": 1, "obis_code": "UPD-001", "point_name": "更新前",
-    }, headers=auth_headers)
+    cr = client.post(
+        "/api/v1/meter-points",
+        json={
+            "meter_id": 1,
+            "obis_code": "UPD-001",
+            "point_name": "更新前",
+        },
+        headers=auth_headers,
+    )
     point_id = cr.json()["data"]["id"]
     r = client.put(f"/api/v1/meter-points/{point_id}", json={"point_name": "更新后"}, headers=auth_headers)
     assert r.status_code == 200
 
 
 def test_delete_meter_point(client: TestClient, auth_headers):
-    cr = client.post("/api/v1/meter-points", json={
-        "meter_id": 1, "obis_code": "DEL-001", "point_name": "待删除",
-    }, headers=auth_headers)
+    cr = client.post(
+        "/api/v1/meter-points",
+        json={
+            "meter_id": 1,
+            "obis_code": "DEL-001",
+            "point_name": "待删除",
+        },
+        headers=auth_headers,
+    )
     point_id = cr.json()["data"]["id"]
     r = client.delete(f"/api/v1/meter-points/{point_id}", headers=auth_headers)
     assert r.status_code == 200
@@ -74,10 +91,14 @@ def test_menu_name_exists(client: TestClient, auth_headers):
 
 
 def test_create_project_with_schema(client: TestClient, auth_headers):
-    r = client.post("/api/v1/projects", json={
-        "name": f"Schema测试项目-{uuid.uuid4().hex[:6]}",
-        "description": "验证schema",
-    }, headers=auth_headers)
+    r = client.post(
+        "/api/v1/projects",
+        json={
+            "name": f"Schema测试项目-{uuid.uuid4().hex[:6]}",
+            "description": "验证schema",
+        },
+        headers=auth_headers,
+    )
     assert r.status_code == 200
     assert r.json()["data"]["id"] is not None
 
@@ -93,11 +114,15 @@ def test_update_project(client: TestClient, auth_headers):
 
 
 def test_create_department_with_schema(client: TestClient, auth_headers):
-    r = client.post("/api/v1/system/dept", json={
-        "name": "测试部门",
-        "code": f"test-dept-{uuid.uuid4().hex[:6]}",
-        "sort_order": 10,
-    }, headers=auth_headers)
+    r = client.post(
+        "/api/v1/system/dept",
+        json={
+            "name": "测试部门",
+            "code": f"test-dept-{uuid.uuid4().hex[:6]}",
+            "sort_order": 10,
+        },
+        headers=auth_headers,
+    )
     assert r.status_code == 200
 
 

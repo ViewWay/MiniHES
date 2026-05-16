@@ -1,6 +1,5 @@
 import csv
 import io
-from datetime import datetime, date
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,9 +8,9 @@ from sqlalchemy.orm import selectinload
 from app.core.exceptions import BusinessException
 from app.models.meter import (
     Meter,
-    MeterStatusHistory,
     MeterComm,
     MeterSnapshot,
+    MeterStatusHistory,
 )
 
 # Legal status transitions: current_status -> set of allowed next statuses
@@ -133,11 +132,7 @@ async def list_meters(
 
 async def get_meter(db: AsyncSession, meter_id: int) -> dict | None:
     """Return detailed meter info including comm and snapshot."""
-    stmt = (
-        select(Meter)
-        .options(selectinload(Meter.comm), selectinload(Meter.snapshot))
-        .where(Meter.id == meter_id)
-    )
+    stmt = select(Meter).options(selectinload(Meter.comm), selectinload(Meter.snapshot)).where(Meter.id == meter_id)
     result = await db.execute(stmt)
     m = result.scalar_one_or_none()
     if not m:
@@ -151,9 +146,7 @@ async def get_meter(db: AsyncSession, meter_id: int) -> dict | None:
 async def create_meter(db: AsyncSession, data: dict, user_id: int | None = None) -> dict:
     """Create a new meter record."""
     # Check serial_number uniqueness
-    existing = await db.execute(
-        select(Meter).where(Meter.serial_number == data.get("serial_number", ""))
-    )
+    existing = await db.execute(select(Meter).where(Meter.serial_number == data.get("serial_number", "")))
     if existing.scalar_one_or_none():
         raise BusinessException(code=409, message="序列号已存在")
 
@@ -237,9 +230,7 @@ async def change_status(
 async def get_status_history(db: AsyncSession, meter_id: int) -> list[dict]:
     """Get status change history for a meter."""
     result = await db.execute(
-        select(MeterStatusHistory)
-        .where(MeterStatusHistory.meter_id == meter_id)
-        .order_by(MeterStatusHistory.id.desc())
+        select(MeterStatusHistory).where(MeterStatusHistory.meter_id == meter_id).order_by(MeterStatusHistory.id.desc())
     )
     return [
         {
@@ -253,17 +244,13 @@ async def get_status_history(db: AsyncSession, meter_id: int) -> list[dict]:
     ]
 
 
-async def update_communication(
-    db: AsyncSession, meter_id: int, data: dict
-) -> dict:
+async def update_communication(db: AsyncSession, meter_id: int, data: dict) -> dict:
     """Update or create the comm config for a meter."""
     m = await db.get(Meter, meter_id)
     if not m:
         raise BusinessException(code=404, message="样机不存在")
 
-    result = await db.execute(
-        select(MeterComm).where(MeterComm.meter_id == meter_id)
-    )
+    result = await db.execute(select(MeterComm).where(MeterComm.meter_id == meter_id))
     comm = result.scalar_one_or_none()
 
     if comm is None:
@@ -298,10 +285,19 @@ async def export_csv(
     writer = csv.writer(output)
     writer.writerow(["ID", "序列号", "名称", "类型ID", "项目ID", "制造商", "型号", "状态", "位置"])
     for m in meters:
-        writer.writerow([
-            m.id, m.serial_number, m.meter_name, m.meter_type_id,
-            m.project_id, m.manufacturer, m.model, m.current_status, m.location,
-        ])
+        writer.writerow(
+            [
+                m.id,
+                m.serial_number,
+                m.meter_name,
+                m.meter_type_id,
+                m.project_id,
+                m.manufacturer,
+                m.model,
+                m.current_status,
+                m.location,
+            ]
+        )
     return output.getvalue()
 
 

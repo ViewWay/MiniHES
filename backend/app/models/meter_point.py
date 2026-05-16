@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, func
@@ -29,18 +31,12 @@ class MeterReading(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id"), index=True)
     point_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter_point.id"), index=True)
-    task_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("col_task.id"), nullable=True
-    )
+    task_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("col_task.id"), nullable=True)
     reading_value: Mapped[float] = mapped_column(Numeric(18, 6))
-    reading_time: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), index=True
-    )
+    reading_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), index=True)
     quality: Mapped[str] = mapped_column(String(20), default="good")  # good, suspect, bad
     source: Mapped[str] = mapped_column(String(20), default="auto")  # auto, manual
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     meter: Mapped["Meter"] = relationship()
     point: Mapped["MeterPoint"] = relationship()

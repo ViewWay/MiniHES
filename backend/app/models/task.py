@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text, func
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
@@ -21,9 +21,7 @@ class Task(Base, TimestampMixin):
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     last_execute_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     next_execute_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_by: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("sys_user.id"), nullable=True
-    )
+    created_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_user.id"), nullable=True)
 
     logs: Mapped[list["TaskLog"]] = relationship(back_populates="task", cascade="all, delete-orphan")
 
@@ -41,9 +39,7 @@ class TaskLog(Base):
     success_devices: Mapped[int] = mapped_column(Integer, default=0)
     failed_devices: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     task: Mapped["Task"] = relationship(back_populates="logs")
     devices: Mapped[list["TaskDevice"]] = relationship(back_populates="log", cascade="all, delete-orphan")
@@ -64,9 +60,7 @@ class TaskDevice(Base):
     end_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
     data_count: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     log: Mapped["TaskLog"] = relationship(back_populates="devices")
 
@@ -85,6 +79,4 @@ class DataQuality(Base):
     abnormal_count: Mapped[int] = mapped_column(Integer, default=0)
     first_collect_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_collect_time: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

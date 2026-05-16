@@ -2,8 +2,8 @@ from fastapi import APIRouter, Query
 
 from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
-from app.schemas.test import TestTaskCreate, TestReportCreate, TestReportUpdate, DefectCreate
-from app.services import test_service, defect_service
+from app.schemas.test import DefectCreate, TestReportCreate, TestReportUpdate, TestTaskCreate
+from app.services import defect_service, test_service
 
 router = APIRouter(prefix="/tests", tags=["tests"])
 
@@ -18,8 +18,12 @@ async def list_tests(
     status: str = Query(default=None),
 ):
     data = await test_service.list_tests(
-        db, page=page, page_size=page_size,
-        project_id=project_id, test_type=test_type, status=status,
+        db,
+        page=page,
+        page_size=page_size,
+        project_id=project_id,
+        test_type=test_type,
+        status=status,
     )
     return success(data)
 

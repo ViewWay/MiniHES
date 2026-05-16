@@ -6,21 +6,21 @@ from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
 from app.models.system import DataArchive
 from app.schemas.system import (
-    AuditLogQuery,
     DataArchiveCreate,
     RoleCreate,
     RoleUpdate,
     UserCreate,
     UserUpdate,
 )
-from app.services.audit_service import list_audit_logs, export_audit_logs_csv
-from app.services.user_service import list_users, create_user, update_user, delete_user, reset_password
-from app.services.role_service import list_roles, create_role, update_role, delete_role, get_permission_tree
+from app.services.audit_service import export_audit_logs_csv, list_audit_logs
+from app.services.role_service import create_role, delete_role, get_permission_tree, list_roles, update_role
+from app.services.user_service import create_user, delete_user, list_users, reset_password, update_user
 
 router = APIRouter(prefix="/system", tags=["system"])
 
 
 # ── Users ──
+
 
 @router.get("/users")
 async def api_list_users(
@@ -61,6 +61,7 @@ async def api_reset_password(user_id: int, _user: CurrentUser = None, db: DbSess
 
 # ── Roles ──
 
+
 @router.get("/roles")
 async def api_list_roles(_user: CurrentUser = None, db: DbSession = ...):
     result = await list_roles(db)
@@ -93,19 +94,24 @@ async def api_permission_tree(_user: CurrentUser = None, db: DbSession = ...):
 
 # ── Health ──
 
+
 @router.get("/health")
 async def system_health():
-    return success({
-        "status": "healthy", "version": "1.0.0",
-        "services": {
-            "api": {"status": "running"},
-            "dlms_engine": {"status": "running"},
-            "scheduler": {"status": "running"},
-        },
-    })
+    return success(
+        {
+            "status": "healthy",
+            "version": "1.0.0",
+            "services": {
+                "api": {"status": "running"},
+                "dlms_engine": {"status": "running"},
+                "scheduler": {"status": "running"},
+            },
+        }
+    )
 
 
 # ── Audit Logs ──
+
 
 @router.get("/audit-logs")
 async def api_list_audit_logs(
@@ -132,16 +138,20 @@ async def api_export_audit_logs(
 
 # ── DB Monitor ──
 
+
 @router.get("/db-monitor")
 async def db_monitor():
-    return success({
-        "postgresql": {"status": "running"},
-        "redis": {"status": "stopped"},
-        "influxdb": {"status": "stopped"},
-    })
+    return success(
+        {
+            "postgresql": {"status": "running"},
+            "redis": {"status": "stopped"},
+            "influxdb": {"status": "stopped"},
+        }
+    )
 
 
 # ── Data Archive ──
+
 
 @router.get("/data-archive")
 async def api_list_data_archives(
@@ -151,16 +161,20 @@ async def api_list_data_archives(
     db: DbSession = ...,
 ):
     from sqlalchemy import func, select
+
     total = (await db.execute(select(func.count()).select_from(DataArchive))).scalar() or 0
     result = await db.execute(
         select(DataArchive).order_by(DataArchive.id.desc()).offset((page - 1) * page_size).limit(page_size)
     )
     items = [
         {
-            "id": a.id, "archive_type": a.archive_type, "table_name": a.table_name,
+            "id": a.id,
+            "archive_type": a.archive_type,
+            "table_name": a.table_name,
             "start_time": a.start_time.strftime("%Y-%m-%d %H:%M:%S") if a.start_time else "",
             "end_time": a.end_time.strftime("%Y-%m-%d %H:%M:%S") if a.end_time else "",
-            "record_count": a.record_count, "status": a.archive_status,
+            "record_count": a.record_count,
+            "status": a.archive_status,
             "created_at": a.created_at.strftime("%Y-%m-%d %H:%M:%S") if a.created_at else "",
         }
         for a in result.scalars().all()
@@ -171,9 +185,12 @@ async def api_list_data_archives(
 @router.post("/data-archive")
 async def api_create_data_archive(body: DataArchiveCreate, _user: CurrentUser = None, db: DbSession = ...):
     archive = DataArchive(
-        archive_type=body.archive_type, table_name=body.table_name,
-        start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc),
-        record_count=0, archive_status="pending",
+        archive_type=body.archive_type,
+        table_name=body.table_name,
+        start_time=datetime.now(timezone.utc),
+        end_time=datetime.now(timezone.utc),
+        record_count=0,
+        archive_status="pending",
     )
     db.add(archive)
     return success({"id": archive.id})

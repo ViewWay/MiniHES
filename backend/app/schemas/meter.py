@@ -1,10 +1,9 @@
-import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
-
 # ---------- Meter ----------
+
 
 class MeterCreate(BaseModel):
     serial_number: str = Field(..., min_length=1, max_length=50, description="序列号")
@@ -79,6 +78,7 @@ class MeterDetail(BaseModel):
 
 # ---------- Status ----------
 
+
 class MeterStatusChange(BaseModel):
     status: str = Field(..., min_length=1, max_length=20, description="目标状态")
     reason: str = Field(default="", max_length=200, description="变更原因")
@@ -93,6 +93,7 @@ class MeterStatusHistoryOut(BaseModel):
 
 
 # ---------- Communication ----------
+
 
 class MeterCommUpdate(BaseModel):
     protocol: Optional[str] = Field(default=None, max_length=20)
@@ -111,6 +112,7 @@ class MeterCommUpdate(BaseModel):
 
 # ---------- Borrow ----------
 
+
 class BorrowCreate(BaseModel):
     meter_id: int = Field(..., description="样机ID")
     borrow_reason: str = Field(..., min_length=1, max_length=200, description="借用原因")
@@ -124,6 +126,7 @@ class BorrowApproval(BaseModel):
 
 
 # ---------- Repair ----------
+
 
 class RepairCreate(BaseModel):
     meter_id: int = Field(..., description="样机ID")
@@ -139,6 +142,7 @@ class RepairUpdate(BaseModel):
 
 # ---------- Attachment ----------
 
+
 class AttachmentUpload(BaseModel):
     filename: str = Field(..., min_length=1, max_length=200, description="文件名")
     file_path: str = Field(..., min_length=1, max_length=500, description="文件路径")
@@ -146,6 +150,7 @@ class AttachmentUpload(BaseModel):
 
 
 # ---------- Output schemas ----------
+
 
 class MeterCommOut(BaseModel):
     id: int

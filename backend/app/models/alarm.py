@@ -25,21 +25,15 @@ class Alarm(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     meter_id: Mapped[int] = mapped_column(Integer, ForeignKey("dev_meter.id"), index=True)
-    rule_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("sys_alarm_rule.id"), nullable=True
-    )
+    rule_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_alarm_rule.id"), nullable=True)
     alarm_type: Mapped[str] = mapped_column(String(50))
     severity: Mapped[str] = mapped_column(String(20))
     alarm_message: Mapped[str] = mapped_column(Text)
     alarm_value: Mapped[float | None] = mapped_column(Numeric(20, 6), nullable=True)
     threshold_value: Mapped[float | None] = mapped_column(Numeric(20, 6), nullable=True)
     is_handled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    handled_by: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("sys_user.id"), nullable=True
-    )
+    handled_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_user.id"), nullable=True)
     handled_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     rule: Mapped["AlarmRule | None"] = relationship(back_populates="alarms")

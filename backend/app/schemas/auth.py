@@ -11,13 +11,13 @@ class LoginResponse(BaseModel):
     username: str
     name: str
     roles: list[str]
-    accessToken: str
+    accessToken: str  # noqa: N815
 
     model_config = {"from_attributes": True}
 
 
 class RefreshResponse(BaseModel):
-    accessToken: str
+    accessToken: str  # noqa: N815
 
 
 class TokenPayload(BaseModel):

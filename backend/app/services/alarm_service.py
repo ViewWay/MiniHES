@@ -1,4 +1,4 @@
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessException
@@ -62,9 +62,7 @@ async def list_alarms(
         count_stmt = count_stmt.where(Alarm.is_handled == is_handled)
 
     total = (await db.execute(count_stmt)).scalar() or 0
-    result = await db.execute(
-        stmt.order_by(Alarm.id.desc()).offset((page - 1) * page_size).limit(page_size)
-    )
+    result = await db.execute(stmt.order_by(Alarm.id.desc()).offset((page - 1) * page_size).limit(page_size))
     items = [_alarm_to_dict(a) for a in result.scalars().all()]
     return {"items": items, "total": total}
 
@@ -79,23 +77,19 @@ async def get_alarm_stats(db: AsyncSession) -> dict:
     )
     unhandled_count = unhandled_result.scalar() or 0
 
-    critical_result = await db.execute(
-        select(func.count()).select_from(Alarm).where(Alarm.severity == "critical")
-    )
+    critical_result = await db.execute(select(func.count()).select_from(Alarm).where(Alarm.severity == "critical"))
     critical_count = critical_result.scalar() or 0
 
-    warning_result = await db.execute(
-        select(func.count()).select_from(Alarm).where(Alarm.severity == "warning")
-    )
+    warning_result = await db.execute(select(func.count()).select_from(Alarm).where(Alarm.severity == "warning"))
     warning_count = warning_result.scalar() or 0
 
-    info_result = await db.execute(
-        select(func.count()).select_from(Alarm).where(Alarm.severity == "info")
-    )
+    info_result = await db.execute(select(func.count()).select_from(Alarm).where(Alarm.severity == "info"))
     info_count = info_result.scalar() or 0
 
     active_result = await db.execute(
-        select(func.count()).select_from(Alarm).where(
+        select(func.count())
+        .select_from(Alarm)
+        .where(
             Alarm.is_handled == False,  # noqa: E712
             Alarm.severity.in_(["critical", "warning"]),
         )
@@ -151,9 +145,7 @@ async def list_alarm_rules(
         count_stmt = count_stmt.where(AlarmRule.rule_type == rule_type)
 
     total = (await db.execute(count_stmt)).scalar() or 0
-    result = await db.execute(
-        stmt.order_by(AlarmRule.id).offset((page - 1) * page_size).limit(page_size)
-    )
+    result = await db.execute(stmt.order_by(AlarmRule.id).offset((page - 1) * page_size).limit(page_size))
     items = [_alarm_rule_to_dict(r) for r in result.scalars().all()]
     return {"items": items, "total": total}
 
@@ -185,7 +177,10 @@ async def delete_alarm_rule(db: AsyncSession, rule_id: int) -> None:
 
 
 async def export_alarms_csv(
-    db: AsyncSession, *, severity: str | None = None, alarm_type: str | None = None,
+    db: AsyncSession,
+    *,
+    severity: str | None = None,
+    alarm_type: str | None = None,
 ) -> list[dict]:
     """Return alarms for CSV export."""
     stmt = select(Alarm).order_by(Alarm.id.desc())

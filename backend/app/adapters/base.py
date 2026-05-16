@@ -12,6 +12,7 @@ from typing import Optional
 
 class ConnectionType(IntEnum):
     """通信类型"""
+
     INFRARED = 1
     CELLULAR_4G = 2
     CELLULAR_5G = 3
@@ -26,6 +27,7 @@ class ConnectionType(IntEnum):
 @dataclass
 class ConnectionConfig:
     """连接配置"""
+
     connection_type: ConnectionType
     address: str  # IP地址、串口等
     port: Optional[int] = None  # 端口、波特率等
@@ -41,8 +43,9 @@ class ConnectionConfig:
             self.extra_params = {}
 
 
-class AdapterException(Exception):
+class AdapterException(Exception):  # noqa: N818
     """适配器异常"""
+
     pass
 
 
@@ -115,12 +118,7 @@ class CommunicationAdapter(ABC):
         """
         pass
 
-    async def send_and_receive(
-        self,
-        data: bytes,
-        response_length: int = None,
-        timeout: int = None
-    ) -> bytes:
+    async def send_and_receive(self, data: bytes, response_length: int = None, timeout: int = None) -> bytes:
         """
         发送并接收数据的便捷方法
 

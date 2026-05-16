@@ -87,9 +87,7 @@ async def list_tasks(
     )
     running_count = running_count_result.scalar() or 0
 
-    result = await db.execute(
-        stmt.order_by(Task.id).offset((page - 1) * page_size).limit(page_size)
-    )
+    result = await db.execute(stmt.order_by(Task.id).offset((page - 1) * page_size).limit(page_size))
     items = [_task_to_dict(t) for t in result.scalars().all()]
     return {"items": items, "total": total, "running_count": running_count}
 
@@ -170,17 +168,16 @@ async def execute_task(db: AsyncSession, task_id: int) -> dict:
 
 async def get_task_logs(db: AsyncSession, task_id: int) -> dict:
     """Return all logs for a given task."""
-    result = await db.execute(
-        select(TaskLog)
-        .where(TaskLog.task_id == task_id)
-        .order_by(TaskLog.id.desc())
-    )
+    result = await db.execute(select(TaskLog).where(TaskLog.task_id == task_id).order_by(TaskLog.id.desc()))
     items = [_task_log_to_dict(log) for log in result.scalars().all()]
     return {"items": items, "total": len(items)}
 
 
 async def get_task_device_log(
-    db: AsyncSession, log_id: int, *, status: str | None = None,
+    db: AsyncSession,
+    log_id: int,
+    *,
+    status: str | None = None,
 ) -> dict:
     """Return task device list for a given log, optionally filtered by status."""
     stmt = select(TaskDevice).where(TaskDevice.log_id == log_id)

@@ -52,11 +52,15 @@ def test_list_alarm_rules(client: TestClient, auth_headers):
 
 
 def test_create_alarm_rule(client: TestClient, auth_headers):
-    r = client.post("/api/v1/alarm-rules", json={
-        "rule_name": "测试规则",
-        "rule_type": "threshold",
-        "severity": "warning",
-    }, headers=auth_headers)
+    r = client.post(
+        "/api/v1/alarm-rules",
+        json={
+            "rule_name": "测试规则",
+            "rule_type": "threshold",
+            "severity": "warning",
+        },
+        headers=auth_headers,
+    )
     assert r.status_code == 200
     assert r.json()["data"]["id"] is not None
 
@@ -67,11 +71,15 @@ def test_update_alarm_rule(client: TestClient, auth_headers):
 
 
 def test_delete_alarm_rule(client: TestClient, auth_headers):
-    cr = client.post("/api/v1/alarm-rules", json={
-        "rule_name": "待删除",
-        "rule_type": "communication",
-        "severity": "info",
-    }, headers=auth_headers)
+    cr = client.post(
+        "/api/v1/alarm-rules",
+        json={
+            "rule_name": "待删除",
+            "rule_type": "communication",
+            "severity": "info",
+        },
+        headers=auth_headers,
+    )
     rule_id = cr.json()["data"]["id"]
     r = client.delete(f"/api/v1/alarm-rules/{rule_id}", headers=auth_headers)
     assert r.status_code == 200

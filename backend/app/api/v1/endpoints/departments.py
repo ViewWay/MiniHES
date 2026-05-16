@@ -4,7 +4,10 @@ from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
 from app.schemas.system import DeptCreate, DeptUpdate
 from app.services.dept_service import (
-    list_departments, create_department, update_department, delete_department,
+    create_department,
+    delete_department,
+    list_departments,
+    update_department,
 )
 
 router = APIRouter(prefix="/system/dept", tags=["department"])

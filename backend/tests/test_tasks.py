@@ -11,12 +11,16 @@ def test_list_tasks(client: TestClient, auth_headers):
 
 
 def test_create_task(client: TestClient, auth_headers):
-    r = client.post("/api/v1/tasks", json={
-        "task_name": "测试采集任务",
-        "task_type": "cron",
-        "schedule_config": {"cron": "0 8 * * *"},
-        "execution_content": {"meter_ids": [1], "obis_codes": ["1.0.0.0.0.255"]},
-    }, headers=auth_headers)
+    r = client.post(
+        "/api/v1/tasks",
+        json={
+            "task_name": "测试采集任务",
+            "task_type": "cron",
+            "schedule_config": {"cron": "0 8 * * *"},
+            "execution_content": {"meter_ids": [1], "obis_codes": ["1.0.0.0.0.255"]},
+        },
+        headers=auth_headers,
+    )
     assert r.status_code == 200
     assert r.json()["data"]["id"] is not None
 
@@ -57,10 +61,14 @@ def test_task_validation(client: TestClient, auth_headers):
 
 
 def test_delete_task(client: TestClient, auth_headers):
-    cr = client.post("/api/v1/tasks", json={
-        "task_name": "待删除任务",
-        "task_type": "once",
-    }, headers=auth_headers)
+    cr = client.post(
+        "/api/v1/tasks",
+        json={
+            "task_name": "待删除任务",
+            "task_type": "once",
+        },
+        headers=auth_headers,
+    )
     task_id = cr.json()["data"]["id"]
     r = client.delete(f"/api/v1/tasks/{task_id}", headers=auth_headers)
     assert r.status_code == 200

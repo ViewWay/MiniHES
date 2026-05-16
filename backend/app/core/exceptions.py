@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
-class BusinessException(Exception):
+class BusinessException(Exception):  # noqa: N818
     def __init__(self, code: int = 400, message: str = "操作失败"):
         self.code = code
         self.message = message

@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessException
-from app.models.meter import MeterRepair, Meter
+from app.models.meter import Meter, MeterRepair
 
 VALID_REPAIR_STATUSES = {"in_progress", "completed", "cancelled"}
 
@@ -73,9 +73,7 @@ async def update_repair(
     status: str | None = None,
 ) -> dict:
     """Update a repair record."""
-    result = await db.execute(
-        select(MeterRepair).where(MeterRepair.id == repair_id)
-    )
+    result = await db.execute(select(MeterRepair).where(MeterRepair.id == repair_id))
     repair = result.scalar_one_or_none()
     if not repair:
         raise BusinessException(code=404, message="维修记录不存在")

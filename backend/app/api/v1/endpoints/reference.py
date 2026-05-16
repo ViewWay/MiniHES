@@ -3,8 +3,12 @@ from fastapi import APIRouter
 from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
 from app.services.reference_service import (
-    list_meter_types, list_wire_types, list_meter_points,
-    create_meter_point, update_meter_point, delete_meter_point,
+    create_meter_point,
+    delete_meter_point,
+    list_meter_points,
+    list_meter_types,
+    list_wire_types,
+    update_meter_point,
 )
 
 router = APIRouter()

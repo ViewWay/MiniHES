@@ -3,8 +3,8 @@
 """
 
 from .base import CommunicationAdapter, ConnectionConfig
-from .infrared import InfraredAdapter
 from .cellular import CellularAdapter
+from .infrared import InfraredAdapter
 
 __all__ = [
     "CommunicationAdapter",

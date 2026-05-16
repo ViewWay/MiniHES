@@ -7,8 +7,12 @@ from app.models.user import Role, RolePermission, User, UserRole
 
 
 async def list_users(
-    db: AsyncSession, *, page: int = 1, page_size: int = 20,
-    keyword: str | None = None, role: str | None = None,
+    db: AsyncSession,
+    *,
+    page: int = 1,
+    page_size: int = 20,
+    keyword: str | None = None,
+    role: str | None = None,
 ) -> dict:
     stmt = select(User)
     count_stmt = select(func.count()).select_from(User)
@@ -30,15 +34,21 @@ async def list_users(
     for u in users:
         r_result = await db.execute(select(Role).join(UserRole).where(UserRole.user_id == u.id))
         roles = r_result.scalars().all()
-        items.append({
-            "id": u.id, "username": u.username, "name": u.name,
-            "email": u.email, "phone": u.phone, "avatar": u.avatar,
-            "department_id": u.department_id,
-            "role_ids": [r.id for r in roles],
-            "roles": [r.code for r in roles],
-            "status": "active" if u.is_active else "inactive",
-            "created_at": u.created_at.strftime("%Y-%m-%d %H:%M:%S") if u.created_at else "",
-        })
+        items.append(
+            {
+                "id": u.id,
+                "username": u.username,
+                "name": u.name,
+                "email": u.email,
+                "phone": u.phone,
+                "avatar": u.avatar,
+                "department_id": u.department_id,
+                "role_ids": [r.id for r in roles],
+                "roles": [r.code for r in roles],
+                "status": "active" if u.is_active else "inactive",
+                "created_at": u.created_at.strftime("%Y-%m-%d %H:%M:%S") if u.created_at else "",
+            }
+        )
     return {"items": items, "total": total}
 
 
@@ -103,17 +113,13 @@ async def get_user_info(db: AsyncSession, user_id: int) -> dict:
         raise BusinessException(code=404, message="用户不存在")
 
     # Query roles via UserRole join
-    role_result = await db.execute(
-        select(Role).join(UserRole).where(UserRole.user_id == user_id)
-    )
+    role_result = await db.execute(select(Role).join(UserRole).where(UserRole.user_id == user_id))
     roles = role_result.scalars().all()
 
     role_ids = [r.id for r in roles]
 
     # Query permission ids via RolePermission
-    perm_result = await db.execute(
-        select(RolePermission.permission_id).where(RolePermission.role_id.in_(role_ids))
-    )
+    perm_result = await db.execute(select(RolePermission.permission_id).where(RolePermission.role_id.in_(role_ids)))
     permission_ids = [row[0] for row in perm_result.all()] if role_ids else []
 
     return {

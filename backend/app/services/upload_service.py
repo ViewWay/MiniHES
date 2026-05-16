@@ -2,16 +2,23 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessException
-from app.models.meter import MeterAttachment, Meter
+from app.models.meter import Meter, MeterAttachment
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 ALLOWED_EXTENSIONS = {
     # Images
-    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".webp",
     # Documents
     ".pdf",
     # Excel
-    ".xls", ".xlsx", ".csv",
+    ".xls",
+    ".xlsx",
+    ".csv",
 }
 
 
@@ -75,9 +82,7 @@ async def upload_file(
 async def list_attachments(db: AsyncSession, meter_id: int) -> list[dict]:
     """List all attachments for a meter."""
     result = await db.execute(
-        select(MeterAttachment)
-        .where(MeterAttachment.meter_id == meter_id)
-        .order_by(MeterAttachment.id.desc())
+        select(MeterAttachment).where(MeterAttachment.meter_id == meter_id).order_by(MeterAttachment.id.desc())
     )
     return [_attachment_to_dict(a) for a in result.scalars().all()]
 

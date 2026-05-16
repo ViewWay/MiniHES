@@ -10,9 +10,7 @@ class Department(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100))
     code: Mapped[str] = mapped_column(String(50), unique=True)
-    parent_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("sys_department.id"), nullable=True
-    )
+    parent_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_department.id"), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     leader: Mapped[str] = mapped_column(String(50), default="")
     status: Mapped[str] = mapped_column(String(20), default="active")
@@ -31,9 +29,7 @@ class User(Base, TimestampMixin):
     email: Mapped[str] = mapped_column(String(100), default="")
     phone: Mapped[str] = mapped_column(String(20), default="")
     avatar: Mapped[str] = mapped_column(String(500), default="")
-    department_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("sys_department.id"), nullable=True
-    )
+    department_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("sys_department.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     department: Mapped["Department | None"] = relationship(back_populates="users")
@@ -67,7 +63,9 @@ class Permission(Base, TimestampMixin):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(20), default="active")
 
-    role_permissions: Mapped[list["RolePermission"]] = relationship(back_populates="permission", cascade="all, delete-orphan")
+    role_permissions: Mapped[list["RolePermission"]] = relationship(
+        back_populates="permission", cascade="all, delete-orphan"
+    )
 
 
 class UserRole(Base):

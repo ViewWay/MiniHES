@@ -8,11 +8,15 @@ def test_list_tests(client: TestClient, auth_headers):
 
 
 def test_create_test(client: TestClient, auth_headers):
-    r = client.post("/api/v1/tests", json={
-        "test_name": "接口自动化测试",
-        "test_type": "function",
-        "project_id": 1,
-    }, headers=auth_headers)
+    r = client.post(
+        "/api/v1/tests",
+        json={
+            "test_name": "接口自动化测试",
+            "test_type": "function",
+            "project_id": 1,
+        },
+        headers=auth_headers,
+    )
     assert r.status_code == 200
     assert r.json()["data"]["id"] is not None
 
@@ -39,10 +43,14 @@ def test_list_defects(client: TestClient, auth_headers):
 
 
 def test_create_and_update_defect(client: TestClient, auth_headers):
-    cr = client.post("/api/v1/tests/1/defects", json={
-        "title": "接口测试缺陷",
-        "severity": "minor",
-    }, headers=auth_headers)
+    cr = client.post(
+        "/api/v1/tests/1/defects",
+        json={
+            "title": "接口测试缺陷",
+            "severity": "minor",
+        },
+        headers=auth_headers,
+    )
     assert cr.status_code == 200
     defect_id = cr.json()["data"]["id"]
 

@@ -16,11 +16,17 @@ async def list_roles(db: AsyncSession) -> dict:
         perm_r = await db.execute(select(RolePermission.permission_id).where(RolePermission.role_id == r.id))
         permission_ids = [p[0] for p in perm_r.all()]
 
-        items.append({
-            "id": r.id, "name": r.name, "code": r.code,
-            "description": r.description, "sort_order": r.sort_order,
-            "permission_ids": permission_ids, "user_count": user_count,
-        })
+        items.append(
+            {
+                "id": r.id,
+                "name": r.name,
+                "code": r.code,
+                "description": r.description,
+                "sort_order": r.sort_order,
+                "permission_ids": permission_ids,
+                "user_count": user_count,
+            }
+        )
     return {"items": items, "total": len(items)}
 
 
@@ -72,9 +78,15 @@ async def get_permission_tree(db: AsyncSession) -> list[dict]:
     result = await db.execute(select(Permission).order_by(Permission.sort_order))
     return [
         {
-            "id": p.id, "name": p.name, "code": p.code, "type": p.type,
-            "parent_id": p.parent_id, "path": p.path, "icon": p.icon,
-            "sort_order": p.sort_order, "status": p.status,
+            "id": p.id,
+            "name": p.name,
+            "code": p.code,
+            "type": p.type,
+            "parent_id": p.parent_id,
+            "path": p.path,
+            "icon": p.icon,
+            "sort_order": p.sort_order,
+            "status": p.status,
         }
         for p in result.scalars().all()
     ]

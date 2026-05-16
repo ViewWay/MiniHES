@@ -23,9 +23,7 @@ class Base(DeclarativeBase):
 
 
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -39,5 +37,6 @@ async def get_db():
         except Exception:
             await session.rollback()
             import logging
+
             logging.getLogger(__name__).exception("Database session error")
             raise

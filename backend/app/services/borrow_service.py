@@ -1,10 +1,11 @@
-from datetime import date, datetime as dt
+from datetime import date
+from datetime import datetime as dt
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessException
-from app.models.meter import MeterBorrow, Meter
+from app.models.meter import Meter, MeterBorrow
 
 # Approval flow: current_status -> next status on approve
 APPROVAL_FLOW: dict[str, str] = {
@@ -102,9 +103,7 @@ async def approve_borrow(
     approver_id: int | None = None,
 ) -> dict:
     """Approve or reject a borrow request, advancing through approval flow."""
-    result = await db.execute(
-        select(MeterBorrow).where(MeterBorrow.id == borrow_id)
-    )
+    result = await db.execute(select(MeterBorrow).where(MeterBorrow.id == borrow_id))
     borrow = result.scalar_one_or_none()
     if not borrow:
         raise BusinessException(code=404, message="借用记录不存在")
@@ -135,9 +134,7 @@ async def return_borrow(
     borrow_id: int,
 ) -> dict:
     """Mark a borrow as returned."""
-    result = await db.execute(
-        select(MeterBorrow).where(MeterBorrow.id == borrow_id)
-    )
+    result = await db.execute(select(MeterBorrow).where(MeterBorrow.id == borrow_id))
     borrow = result.scalar_one_or_none()
     if not borrow:
         raise BusinessException(code=404, message="借用记录不存在")

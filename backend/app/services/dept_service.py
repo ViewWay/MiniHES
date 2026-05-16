@@ -12,9 +12,13 @@ async def list_departments(db: AsyncSession) -> list[dict]:
     dept_map = {}
     for d in depts:
         dept_map[d.id] = {
-            "id": d.id, "pid": d.parent_id or 0, "name": d.name,
-            "code": d.code, "status": 1 if d.status == "active" else 0,
-            "sortOrder": d.sort_order, "leader": d.leader,
+            "id": d.id,
+            "pid": d.parent_id or 0,
+            "name": d.name,
+            "code": d.code,
+            "status": 1 if d.status == "active" else 0,
+            "sortOrder": d.sort_order,
+            "leader": d.leader,
             "createTime": d.created_at.strftime("%Y-%m-%d %H:%M:%S") if d.created_at else "",
         }
 
@@ -39,9 +43,13 @@ async def create_department(db: AsyncSession, data: dict) -> dict:
     db.add(dept)
     await db.flush()
     return {
-        "id": dept.id, "pid": dept.parent_id or 0, "name": dept.name,
-        "code": dept.code, "status": 1 if dept.status == "active" else 0,
-        "sortOrder": dept.sort_order, "leader": dept.leader,
+        "id": dept.id,
+        "pid": dept.parent_id or 0,
+        "name": dept.name,
+        "code": dept.code,
+        "status": 1 if dept.status == "active" else 0,
+        "sortOrder": dept.sort_order,
+        "leader": dept.leader,
     }
 
 

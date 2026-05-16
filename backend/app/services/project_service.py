@@ -7,8 +7,11 @@ from app.models.project import Project
 
 def _project_to_dict(p: Project) -> dict:
     return {
-        "id": p.id, "name": p.name, "description": p.description,
-        "test_lead_id": p.test_lead_id, "dev_lead_id": p.dev_lead_id,
+        "id": p.id,
+        "name": p.name,
+        "description": p.description,
+        "test_lead_id": p.test_lead_id,
+        "dev_lead_id": p.dev_lead_id,
         "start_date": str(p.start_date) if p.start_date else None,
         "end_date": str(p.end_date) if p.end_date else None,
         "status": p.status,

@@ -5,11 +5,12 @@
 支持光学探头的串口连接
 """
 
-import serial
-import serial.asyncio
 from typing import Optional
 
-from .base import CommunicationAdapter, ConnectionConfig, ConnectionType, AdapterException
+import serial
+import serial.asyncio
+
+from .base import AdapterException, CommunicationAdapter, ConnectionConfig
 
 
 class InfraredAdapter(CommunicationAdapter):
@@ -37,7 +38,7 @@ class InfraredAdapter(CommunicationAdapter):
                 parity=self._parity,
                 stopbits=self._stop_bits,
                 bytesize=self._data_bits,
-                timeout=self.config.timeout
+                timeout=self.config.timeout,
             )
             # 打开串口
             if not self._serial.is_open:
@@ -91,5 +92,5 @@ class InfraredAdapter(CommunicationAdapter):
             "type": "infrared",
             "port": self.config.address,
             "baud_rate": self._baud_rate,
-            "connected": self._connected
+            "connected": self._connected,
         }

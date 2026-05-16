@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query
 
 from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
-from app.schemas.task import TaskCreate, TaskUpdate, TaskToggle
+from app.schemas.task import TaskCreate, TaskToggle, TaskUpdate
 from app.services import task_service
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -19,7 +19,11 @@ async def list_tasks(
     is_enabled: bool = Query(default=None),
 ):
     data = await task_service.list_tasks(
-        db, page=page, page_size=page_size, task_type=task_type, is_enabled=is_enabled,
+        db,
+        page=page,
+        page_size=page_size,
+        task_type=task_type,
+        is_enabled=is_enabled,
     )
     return success(data)
 

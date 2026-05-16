@@ -47,18 +47,14 @@ async def check_path_exists(db: AsyncSession, path: str, id: int | None = None) 
 async def get_user_menus(db: AsyncSession, user_id: int) -> list[dict]:
     """Return menu items for a user based on their role-permission assignments."""
     # Get role ids for the user
-    role_result = await db.execute(
-        select(UserRole.role_id).where(UserRole.user_id == user_id)
-    )
+    role_result = await db.execute(select(UserRole.role_id).where(UserRole.user_id == user_id))
     role_ids = [row[0] for row in role_result.all()]
 
     if not role_ids:
         return []
 
     # Get permission ids for those roles
-    perm_result = await db.execute(
-        select(RolePermission.permission_id).where(RolePermission.role_id.in_(role_ids))
-    )
+    perm_result = await db.execute(select(RolePermission.permission_id).where(RolePermission.role_id.in_(role_ids)))
     perm_ids = [row[0] for row in perm_result.all()]
 
     if not perm_ids:

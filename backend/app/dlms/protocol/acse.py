@@ -6,18 +6,20 @@ ACSE (Application Connection Establishment Element) 连接管理
 - IEC 62056-53: DLMS/COSEM Application Layer
 """
 
-from enum import IntEnum
 from dataclasses import dataclass
-from typing import Optional, List
+from enum import IntEnum
+from typing import Optional
 
 
-class ACSEException(Exception):
+class ACSEException(Exception):  # noqa: N818
     """ACSE 异常"""
+
     pass
 
 
 class AuthenticationMechanism(IntEnum):
     """认证机制"""
+
     NONE = 0
     LOW_LEVEL = 1
     HIGH_LEVEL = 2
@@ -31,6 +33,7 @@ class AuthenticationMechanism(IntEnum):
 @dataclass
 class DLMSConnectionParam:
     """DLMS 连接参数"""
+
     client_id: int = 16
     server_id: int = 1
     authentication: AuthenticationMechanism = AuthenticationMechanism.NONE
@@ -60,40 +63,111 @@ class ACSEManager:
     def _build_aarq_no_auth(self) -> bytes:
         """构建无认证 AARQ"""
         # AARQ application-context-name + user-information
-        return bytes([
-            0x60,  # AARQ tag
-            0x1E,  # Length
-            0x80, 0x02, 0x07, 0x80,  # application-context-name (DLMS UA)
-            0x80, 0x02, 0x07, 0x80,  # authentication-mechanism-name
-            0xBE, 0x10, 0x04, 0x0E,  # user-information (calling-AP-title + called-AP-title)
-            0x08, self.params.client_id, 0x08, self.params.server_id,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        ])
+        return bytes(
+            [
+                0x60,  # AARQ tag
+                0x1E,  # Length
+                0x80,
+                0x02,
+                0x07,
+                0x80,  # application-context-name (DLMS UA)
+                0x80,
+                0x02,
+                0x07,
+                0x80,  # authentication-mechanism-name
+                0xBE,
+                0x10,
+                0x04,
+                0x0E,  # user-information (calling-AP-title + called-AP-title)
+                0x08,
+                self.params.client_id,
+                0x08,
+                self.params.server_id,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+            ]
+        )
 
     def _build_aarq_low_level(self) -> bytes:
         """构建低等级认证 AARQ"""
         password = self.params.password or b""
-        return bytes([
-            0x60, len(password) + 30,
-            0x80, 0x02, 0x07, 0x80,
-            0x80, 0x02, 0x07, 0x81,  # Low-level authentication
-            0xBE, 0x10, 0x04, 0x0E,
-            0x08, self.params.client_id, 0x08, self.params.server_id,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        ]) + password
+        return (
+            bytes(
+                [
+                    0x60,
+                    len(password) + 30,
+                    0x80,
+                    0x02,
+                    0x07,
+                    0x80,
+                    0x80,
+                    0x02,
+                    0x07,
+                    0x81,  # Low-level authentication
+                    0xBE,
+                    0x10,
+                    0x04,
+                    0x0E,
+                    0x08,
+                    self.params.client_id,
+                    0x08,
+                    self.params.server_id,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                ]
+            )
+            + password
+        )
 
     def _build_aarq_high_level(self) -> bytes:
         """构建高等级认证 AARQ (LS=0)"""
         # 高等级认证使用 HLS 机制，需要密码和随机数
         password = self.params.password or b""
-        return bytes([
-            0x60, len(password) + 30,
-            0x80, 0x02, 0x07, 0x80,
-            0x80, 0x02, 0x07, 0x82,  # High-level authentication
-            0xBE, 0x10, 0x04, 0x0E,
-            0x08, self.params.client_id, 0x08, self.params.server_id,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        ]) + password
+        return (
+            bytes(
+                [
+                    0x60,
+                    len(password) + 30,
+                    0x80,
+                    0x02,
+                    0x07,
+                    0x80,
+                    0x80,
+                    0x02,
+                    0x07,
+                    0x82,  # High-level authentication
+                    0xBE,
+                    0x10,
+                    0x04,
+                    0x0E,
+                    0x08,
+                    self.params.client_id,
+                    0x08,
+                    self.params.server_id,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                ]
+            )
+            + password
+        )
 
     async def release(self) -> bytes:
         """释放连接 (RLREQ)"""

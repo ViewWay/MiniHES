@@ -1,9 +1,7 @@
-from datetime import datetime
-
 from pydantic import BaseModel, Field
 
-
 # ── Users ──
+
 
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=1, max_length=50)
@@ -53,6 +51,7 @@ class UserListParams(BaseModel):
 
 # ── Roles ──
 
+
 class RoleCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=50)
     code: str = Field(..., min_length=1, max_length=50)
@@ -81,6 +80,7 @@ class RoleItem(BaseModel):
 
 
 # ── Departments ──
+
 
 class DeptCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
@@ -112,6 +112,7 @@ class DeptItem(BaseModel):
 
 # ── Permissions ──
 
+
 class PermissionItem(BaseModel):
     id: int
     name: str
@@ -127,6 +128,7 @@ class PermissionItem(BaseModel):
 
 
 # ── Audit Logs ──
+
 
 class AuditLogQuery(BaseModel):
     page: int = Field(default=1, ge=1)
@@ -151,6 +153,7 @@ class AuditLogItem(BaseModel):
 
 
 # ── Data Archive ──
+
 
 class DataArchiveCreate(BaseModel):
     archive_type: str = Field(default="postgresql")

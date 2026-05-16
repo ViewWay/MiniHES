@@ -2,7 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessException
-from app.models.test import Defect, TestReport, TestTask
+from app.models.test import TestReport, TestTask
 
 
 def _test_to_dict(t: TestTask) -> dict:
@@ -65,9 +65,7 @@ async def list_tests(
         count_stmt = count_stmt.where(TestTask.status == status)
 
     total = (await db.execute(count_stmt)).scalar() or 0
-    result = await db.execute(
-        stmt.order_by(TestTask.id.desc()).offset((page - 1) * page_size).limit(page_size)
-    )
+    result = await db.execute(stmt.order_by(TestTask.id.desc()).offset((page - 1) * page_size).limit(page_size))
     items = [_test_to_dict(t) for t in result.scalars().all()]
     return {"items": items, "total": total}
 
@@ -90,9 +88,7 @@ async def create_test(db: AsyncSession, data: dict) -> dict:
 
 async def get_test_report(db: AsyncSession, test_id: int) -> dict | None:
     """Return the report for a given test, or None if not found."""
-    result = await db.execute(
-        select(TestReport).where(TestReport.test_id == test_id)
-    )
+    result = await db.execute(select(TestReport).where(TestReport.test_id == test_id))
     r = result.scalar_one_or_none()
     if not r:
         return None
@@ -107,9 +103,7 @@ async def create_test_report(db: AsyncSession, test_id: int, data: dict) -> int:
         raise BusinessException(code=404, message="测试任务不存在")
 
     # Check if a report already exists for this test
-    existing = await db.execute(
-        select(TestReport).where(TestReport.test_id == test_id)
-    )
+    existing = await db.execute(select(TestReport).where(TestReport.test_id == test_id))
     if existing.scalar_one_or_none():
         raise BusinessException(code=409, message="该测试任务已存在报告")
 
@@ -122,9 +116,7 @@ async def create_test_report(db: AsyncSession, test_id: int, data: dict) -> int:
 
 async def update_test_report(db: AsyncSession, test_id: int, data: dict) -> int | None:
     """Update the report for a given test. Returns the report id or None if not found."""
-    result = await db.execute(
-        select(TestReport).where(TestReport.test_id == test_id)
-    )
+    result = await db.execute(select(TestReport).where(TestReport.test_id == test_id))
     report = result.scalar_one_or_none()
     if not report:
         return None

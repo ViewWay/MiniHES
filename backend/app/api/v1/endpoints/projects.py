@@ -4,7 +4,11 @@ from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
 from app.schemas.project import ProjectCreate, ProjectUpdate
 from app.services.project_service import (
-    list_projects, get_project, create_project, update_project, delete_project,
+    create_project,
+    delete_project,
+    get_project,
+    list_projects,
+    update_project,
 )
 
 router = APIRouter(prefix="/projects", tags=["projects"])

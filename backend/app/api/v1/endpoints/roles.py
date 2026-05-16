@@ -3,7 +3,8 @@ from fastapi import APIRouter, Query
 from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
 from app.schemas.system import RoleCreate, RoleUpdate
-from app.services.role_service import list_roles as svc_list_roles, create_role, update_role, delete_role, get_permission_tree
+from app.services.role_service import create_role, delete_role, update_role
+from app.services.role_service import list_roles as svc_list_roles
 
 router = APIRouter(prefix="/system/role", tags=["role"])
 

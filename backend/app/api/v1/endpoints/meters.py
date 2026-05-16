@@ -7,22 +7,22 @@ from fastapi.responses import StreamingResponse
 from app.core.dependencies import CurrentUser, DbSession
 from app.core.response import success
 from app.schemas.meter import (
-    MeterCreate,
-    MeterUpdate,
-    MeterStatusChange,
-    MeterCommUpdate,
+    AttachmentUpload,
     BorrowCreate,
-    BorrowApproval,
+    MeterCommUpdate,
+    MeterCreate,
+    MeterStatusChange,
+    MeterUpdate,
     RepairCreate,
     RepairUpdate,
-    AttachmentUpload,
 )
-from app.services import meter_service, borrow_service, repair_service, upload_service
+from app.services import borrow_service, meter_service, repair_service, upload_service
 
 router = APIRouter(prefix="/meters", tags=["meters"])
 
 
 # ---------- Meter CRUD ----------
+
 
 @router.get("")
 async def list_meters(
@@ -46,9 +46,7 @@ async def list_meters(
 
 @router.post("")
 async def create_meter(db: DbSession, body: MeterCreate, user: CurrentUser):
-    data = await meter_service.create_meter(
-        db, body.model_dump(exclude_unset=True), user_id=user.id
-    )
+    data = await meter_service.create_meter(db, body.model_dump(exclude_unset=True), user_id=user.id)
     return success(data)
 
 
@@ -63,9 +61,7 @@ async def export_meters(
     return StreamingResponse(
         io.BytesIO(csv_text.encode("utf-8-sig")),
         media_type="text/csv",
-        headers={
-            "Content-Disposition": f"attachment; filename=meters_{datetime.now().strftime('%Y%m%d')}.csv"
-        },
+        headers={"Content-Disposition": f"attachment; filename=meters_{datetime.now().strftime('%Y%m%d')}.csv"},
     )
 
 
@@ -74,6 +70,7 @@ async def import_meters(db: DbSession, body: dict, _user: CurrentUser):
     csv_text = body.get("csv_text", "")
     if not csv_text:
         from app.core.exceptions import BusinessException
+
         raise BusinessException(code=400, message="csv_text 不能为空")
     data = await meter_service.import_csv(db, csv_text=csv_text, user_id=_user.id)
     return success(data)
@@ -146,9 +143,7 @@ async def get_meter(db: DbSession, meter_id: int):
 
 @router.put("/{meter_id}")
 async def update_meter(db: DbSession, meter_id: int, body: MeterUpdate, _user: CurrentUser):
-    data = await meter_service.update_meter(
-        db, meter_id, body.model_dump(exclude_none=True)
-    )
+    data = await meter_service.update_meter(db, meter_id, body.model_dump(exclude_none=True))
     return success(data)
 
 
@@ -159,12 +154,8 @@ async def delete_meter(db: DbSession, meter_id: int, _user: CurrentUser):
 
 
 @router.post("/{meter_id}/status")
-async def change_meter_status(
-    db: DbSession, meter_id: int, body: MeterStatusChange, user: CurrentUser
-):
-    data = await meter_service.change_status(
-        db, meter_id, body.status, body.reason, user_id=user.id
-    )
+async def change_meter_status(db: DbSession, meter_id: int, body: MeterStatusChange, user: CurrentUser):
+    data = await meter_service.change_status(db, meter_id, body.status, body.reason, user_id=user.id)
     return success(data)
 
 
@@ -188,12 +179,8 @@ async def get_status_history(db: DbSession, meter_id: int):
 
 
 @router.put("/{meter_id}/communication")
-async def update_communication(
-    db: DbSession, meter_id: int, body: MeterCommUpdate, _user: CurrentUser
-):
-    data = await meter_service.update_communication(
-        db, meter_id, body.model_dump(exclude_none=True)
-    )
+async def update_communication(db: DbSession, meter_id: int, body: MeterCommUpdate, _user: CurrentUser):
+    data = await meter_service.update_communication(db, meter_id, body.model_dump(exclude_none=True))
     return success(data)
 
 
@@ -204,9 +191,7 @@ async def get_attachments(db: DbSession, meter_id: int):
 
 
 @router.post("/{meter_id}/attachments")
-async def upload_meter_attachment(
-    db: DbSession, meter_id: int, body: AttachmentUpload, user: CurrentUser
-):
+async def upload_meter_attachment(db: DbSession, meter_id: int, body: AttachmentUpload, user: CurrentUser):
     data = await upload_service.upload_file(
         db,
         meter_id=meter_id,
@@ -219,8 +204,6 @@ async def upload_meter_attachment(
 
 
 @router.delete("/{meter_id}/attachments/{attachment_id}")
-async def delete_attachment(
-    db: DbSession, meter_id: int, attachment_id: int, _user: CurrentUser
-):
+async def delete_attachment(db: DbSession, meter_id: int, attachment_id: int, _user: CurrentUser):
     await upload_service.delete_attachment(db, attachment_id)
     return success({"deleted": True})

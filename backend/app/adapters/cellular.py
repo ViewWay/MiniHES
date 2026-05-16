@@ -5,11 +5,11 @@
 通过 TCP/IP 连接到远程电表
 """
 
-import socket
 import asyncio
+import socket
 from typing import Optional
 
-from .base import CommunicationAdapter, ConnectionConfig, ConnectionType, AdapterException
+from .base import AdapterException, CommunicationAdapter, ConnectionConfig, ConnectionType
 
 
 class CellularAdapter(CommunicationAdapter):
@@ -33,13 +33,13 @@ class CellularAdapter(CommunicationAdapter):
             self._reader, self._writer = await asyncio.wait_for(
                 asyncio.open_connection(
                     self.config.address,
-                    self.config.port or 4059  # DLMS 默认端口
+                    self.config.port or 4059,  # DLMS 默认端口
                 ),
-                timeout=self.config.timeout
+                timeout=self.config.timeout,
             )
 
             # 设置 TCP 选项
-            sock = self._writer.get_extra_info('socket')
+            sock = self._writer.get_extra_info("socket")
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
             # 启用 Keep-Alive
@@ -86,15 +86,9 @@ class CellularAdapter(CommunicationAdapter):
         try:
             if length is None:
                 # 读取直到 EOF 或超时
-                data = await asyncio.wait_for(
-                    self._reader.read(1024),
-                    timeout=self.config.timeout
-                )
+                data = await asyncio.wait_for(self._reader.read(1024), timeout=self.config.timeout)
             else:
-                data = await asyncio.wait_for(
-                    self._reader.readexactly(length),
-                    timeout=self.config.timeout
-                )
+                data = await asyncio.wait_for(self._reader.readexactly(length), timeout=self.config.timeout)
             return data
         except asyncio.IncompleteReadError as e:
             # 返回已读取的数据
@@ -117,9 +111,4 @@ class CellularAdapter(CommunicationAdapter):
         elif self.config.connection_type == ConnectionType.CELLULAR_5G:
             conn_type = "5g"
 
-        return {
-            "type": conn_type,
-            "host": self.config.address,
-            "port": self.config.port,
-            "connected": self._connected
-        }
+        return {"type": conn_type, "host": self.config.address, "port": self.config.port, "connected": self._connected}

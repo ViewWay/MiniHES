@@ -5,8 +5,8 @@ OBIS 码定义和常量
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any
 from enum import IntEnum
+from typing import Dict
 
 
 class InterfaceClass(IntEnum):
@@ -49,6 +49,7 @@ class InterfaceClass(IntEnum):
 @dataclass
 class OBISDefinition:
     """OBIS 码定义"""
+
     code: str
     name: str
     description: str
@@ -65,99 +66,91 @@ COMMON_OBIS_CODES: Dict[str, OBISDefinition] = {
         name="total_active_energy",
         description="总正向有功电能 (Total)",
         unit="kWh",
-        interface_class=InterfaceClass.REGISTER
+        interface_class=InterfaceClass.REGISTER,
     ),
     "1.0.1.8.0.255": OBISDefinition(
         code="1.0.1.8.0.255",
         name="current_demand",
         description="当前需量",
         unit="W",
-        interface_class=InterfaceClass.DEMAND_REGISTER
+        interface_class=InterfaceClass.DEMAND_REGISTER,
     ),
     "1.0.2.8.0.255": OBISDefinition(
         code="1.0.2.8.0.255",
         name="max_demand",
         description="最大需量",
         unit="W",
-        interface_class=InterfaceClass.DEMAND_REGISTER
+        interface_class=InterfaceClass.DEMAND_REGISTER,
     ),
-
     # 电压数据
     "1.0.12.7.0.255": OBISDefinition(
         code="1.0.12.7.0.255",
         name="voltage_l1",
         description="A相电压",
         unit="V",
-        interface_class=InterfaceClass.EXTENDED_REGISTER
+        interface_class=InterfaceClass.EXTENDED_REGISTER,
     ),
     "1.0.32.7.0.255": OBISDefinition(
         code="1.0.32.7.0.255",
         name="voltage_l2",
         description="B相电压",
         unit="V",
-        interface_class=InterfaceClass.EXTENDED_REGISTER
+        interface_class=InterfaceClass.EXTENDED_REGISTER,
     ),
     "1.0.52.7.0.255": OBISDefinition(
         code="1.0.52.7.0.255",
         name="voltage_l3",
         description="C相电压",
         unit="V",
-        interface_class=InterfaceClass.EXTENDED_REGISTER
+        interface_class=InterfaceClass.EXTENDED_REGISTER,
     ),
-
     # 电流数据
     "1.0.21.7.0.255": OBISDefinition(
         code="1.0.21.7.0.255",
         name="current_l1",
         description="A相电流",
         unit="A",
-        interface_class=InterfaceClass.EXTENDED_REGISTER
+        interface_class=InterfaceClass.EXTENDED_REGISTER,
     ),
     "1.0.41.7.0.255": OBISDefinition(
         code="1.0.41.7.0.255",
         name="current_l2",
         description="B相电流",
         unit="A",
-        interface_class=InterfaceClass.EXTENDED_REGISTER
+        interface_class=InterfaceClass.EXTENDED_REGISTER,
     ),
     "1.0.61.7.0.255": OBISDefinition(
         code="1.0.61.7.0.255",
         name="current_l3",
         description="C相电流",
         unit="A",
-        interface_class=InterfaceClass.EXTENDED_REGISTER
+        interface_class=InterfaceClass.EXTENDED_REGISTER,
     ),
-
     # 功率因数
     "1.0.14.7.0.255": OBISDefinition(
         code="1.0.14.7.0.255",
         name="power_factor_l1",
         description="A相功率因数",
         unit="",
-        interface_class=InterfaceClass.EXTENDED_REGISTER
+        interface_class=InterfaceClass.EXTENDED_REGISTER,
     ),
-
     # 状态和配置
     "0.0.1.0.0.255": OBISDefinition(
-        code="0.0.1.0.0.255",
-        name="meter_status",
-        description="电表状态",
-        unit="",
-        interface_class=InterfaceClass.DATA
+        code="0.0.1.0.0.255", name="meter_status", description="电表状态", unit="", interface_class=InterfaceClass.DATA
     ),
     "0.0.96.1.0.255": OBISDefinition(
         code="0.0.96.1.0.255",
         name="meter_serial",
         description="电表序列号",
         unit="",
-        interface_class=InterfaceClass.DATA
+        interface_class=InterfaceClass.DATA,
     ),
     "0.0.96.1.1.255": OBISDefinition(
         code="0.0.96.1.1.255",
         name="meter_firmware",
         description="固件版本",
         unit="",
-        interface_class=InterfaceClass.DATA
+        interface_class=InterfaceClass.DATA,
     ),
 }
 
@@ -169,7 +162,4 @@ def get_obis_definition(code: str) -> OBISDefinition:
 
 def list_obis_codes_by_name(name_pattern: str) -> list[OBISDefinition]:
     """按名称模糊搜索 OBIS 码"""
-    return [
-        defn for defn in COMMON_OBIS_CODES.values()
-        if name_pattern.lower() in defn.name.lower()
-    ]
+    return [defn for defn in COMMON_OBIS_CODES.values() if name_pattern.lower() in defn.name.lower()]

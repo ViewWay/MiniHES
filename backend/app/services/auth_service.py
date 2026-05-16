@@ -59,18 +59,14 @@ def revoke_refresh_token(username: str) -> None:
 
 
 async def get_user_permission_codes(db: AsyncSession, user_id: int) -> list[str]:
-    result = await db.execute(
-        select(Role).join(UserRole).where(UserRole.user_id == user_id)
-    )
+    result = await db.execute(select(Role).join(UserRole).where(UserRole.user_id == user_id))
     roles = result.scalars().all()
     if not roles:
         return []
 
     perm_codes: set[str] = set()
     for role in roles:
-        rp_result = await db.execute(
-            select(RolePermission.permission_id).where(RolePermission.role_id == role.id)
-        )
+        rp_result = await db.execute(select(RolePermission.permission_id).where(RolePermission.role_id == role.id))
         for (perm_id,) in rp_result.all():
             p_result = await db.execute(select(Permission).where(Permission.id == perm_id))
             perm = p_result.scalar_one_or_none()
@@ -81,7 +77,5 @@ async def get_user_permission_codes(db: AsyncSession, user_id: int) -> list[str]
 
 
 async def _get_user_roles(db: AsyncSession, user_id: int) -> list[str]:
-    result = await db.execute(
-        select(Role).join(UserRole).where(UserRole.user_id == user_id)
-    )
+    result = await db.execute(select(Role).join(UserRole).where(UserRole.user_id == user_id))
     return [r.code for r in result.scalars().all()]
