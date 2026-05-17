@@ -374,113 +374,65 @@ async def seed():
         session.add_all(meters_data)
         await session.flush()
 
-        # --- Meter Points (SM meters, simplified) ---
-        session.add_all(
-            [
-                MeterPoint(
-                    meter_id=1,
-                    obis_code="1.0.1.8.0.255",
-                    class_id=3,
-                    attribute_id=2,
-                    point_name="正向有功总电能",
-                    module="Energy",
-                    point_type="register",
-                    unit="kWh",
-                ),
-                MeterPoint(
-                    meter_id=1,
-                    obis_code="1.0.1.7.0.255",
-                    class_id=3,
-                    attribute_id=2,
-                    point_name="当前需量",
-                    module="Instantaneous",
-                    point_type="register",
-                    unit="W",
-                ),
-                MeterPoint(
-                    meter_id=1,
-                    obis_code="1.0.32.7.0.255",
-                    class_id=3,
-                    attribute_id=2,
-                    point_name="A相电压",
-                    module="Instantaneous",
-                    point_type="register",
-                    unit="V",
-                ),
-                MeterPoint(
-                    meter_id=1,
-                    obis_code="1.0.31.7.0.255",
-                    class_id=3,
-                    attribute_id=2,
-                    point_name="A相电流",
-                    module="Instantaneous",
-                    point_type="register",
-                    unit="A",
-                ),
-                MeterPoint(
-                    meter_id=1,
-                    obis_code="1.0.52.7.0.255",
-                    class_id=3,
-                    attribute_id=2,
-                    point_name="B相电压",
-                    module="Instantaneous",
-                    point_type="register",
-                    unit="V",
-                ),
-                MeterPoint(
-                    meter_id=1,
-                    obis_code="1.0.51.7.0.255",
-                    class_id=3,
-                    attribute_id=2,
-                    point_name="B相电流",
-                    module="Instantaneous",
-                    point_type="register",
-                    unit="A",
-                ),
-                MeterPoint(
-                    meter_id=1,
-                    obis_code="0.0.1.0.0.255",
-                    class_id=8,
-                    attribute_id=2,
-                    point_name="电表时钟",
-                    module="Clock",
-                    point_type="register",
-                    data_type="string",
-                    unit="",
-                ),
-                MeterPoint(
-                    meter_id=1,
-                    obis_code="1.0.14.7.0.255",
-                    class_id=3,
-                    attribute_id=2,
-                    point_name="频率",
-                    module="Instantaneous",
-                    point_type="register",
-                    unit="Hz",
-                ),
-                MeterPoint(
-                    meter_id=1,
-                    obis_code="1.0.13.7.0.255",
-                    class_id=3,
-                    attribute_id=2,
-                    point_name="功率因数",
-                    module="Instantaneous",
-                    point_type="register",
-                    unit="",
-                ),
-                MeterPoint(
-                    meter_id=1,
-                    obis_code="1.0.1.8.1.255",
-                    class_id=3,
-                    attribute_id=2,
-                    point_name="正向有功电能(费率1)",
-                    module="Energy",
-                    point_type="register",
-                    unit="kWh",
-                ),
-            ]
-        )
+        # --- Meter Points (SM meters, per type) ---
+        THREE_PHASE_OBIS = [
+            ("Energy", "正向有功总电能", "1.0.1.8.0.255", 3, 2, "numeric", "kWh"),
+            ("Energy", "正向有功电能(费率1)", "1.0.1.8.1.255", 3, 2, "numeric", "kWh"),
+            ("Energy", "正向有功电能(费率2)", "1.0.1.8.2.255", 3, 2, "numeric", "kWh"),
+            ("Energy", "正向有功电能(费率3)", "1.0.1.8.3.255", 3, 2, "numeric", "kWh"),
+            ("Energy", "反向有功总电能", "1.0.2.8.0.255", 3, 2, "numeric", "kWh"),
+            ("Energy", "正向无功总电能", "1.0.3.8.0.255", 3, 2, "numeric", "kvarh"),
+            ("Energy", "反向无功总电能", "1.0.4.8.0.255", 3, 2, "numeric", "kvarh"),
+            ("Instantaneous", "A相电压", "1.0.32.7.0.255", 3, 2, "numeric", "V"),
+            ("Instantaneous", "B相电压", "1.0.52.7.0.255", 3, 2, "numeric", "V"),
+            ("Instantaneous", "C相电压", "1.0.72.7.0.255", 3, 2, "numeric", "V"),
+            ("Instantaneous", "A相电流", "1.0.31.7.0.255", 3, 2, "numeric", "A"),
+            ("Instantaneous", "B相电流", "1.0.51.7.0.255", 3, 2, "numeric", "A"),
+            ("Instantaneous", "C相电流", "1.0.71.7.0.255", 3, 2, "numeric", "A"),
+            ("Instantaneous", "正向有功总功率", "1.0.1.7.0.255", 3, 2, "numeric", "W"),
+            ("Instantaneous", "A相有功功率", "1.0.21.7.0.255", 3, 2, "numeric", "W"),
+            ("Instantaneous", "B相有功功率", "1.0.41.7.0.255", 3, 2, "numeric", "W"),
+            ("Instantaneous", "C相有功功率", "1.0.61.7.0.255", 3, 2, "numeric", "W"),
+            ("Instantaneous", "功率因数", "1.0.13.7.0.255", 3, 2, "numeric", ""),
+            ("Instantaneous", "频率", "1.0.14.7.0.255", 3, 2, "numeric", "Hz"),
+            ("Instantaneous", "视在功率", "1.0.9.7.0.255", 3, 2, "numeric", "VA"),
+            ("Clock", "电表时钟", "0.0.1.0.0.255", 8, 2, "string", ""),
+            ("Status", "错误寄存器", "0.0.97.97.0.255", 1, 2, "string", ""),
+            ("Status", "告警寄存器", "0.0.97.98.0.255", 1, 2, "string", ""),
+        ]
+        SINGLE_PHASE_OBIS = [
+            ("Energy", "正向有功总电能", "1.0.1.8.0.255", 3, 2, "numeric", "kWh"),
+            ("Energy", "正向有功电能(费率1)", "1.0.1.8.1.255", 3, 2, "numeric", "kWh"),
+            ("Energy", "正向有功电能(费率2)", "1.0.1.8.2.255", 3, 2, "numeric", "kWh"),
+            ("Energy", "反向有功总电能", "1.0.2.8.0.255", 3, 2, "numeric", "kWh"),
+            ("Instantaneous", "电压", "1.0.32.7.0.255", 3, 2, "numeric", "V"),
+            ("Instantaneous", "电流", "1.0.31.7.0.255", 3, 2, "numeric", "A"),
+            ("Instantaneous", "有功功率", "1.0.1.7.0.255", 3, 2, "numeric", "W"),
+            ("Instantaneous", "功率因数", "1.0.13.7.0.255", 3, 2, "numeric", ""),
+            ("Instantaneous", "频率", "1.0.14.7.0.255", 3, 2, "numeric", "Hz"),
+            ("Clock", "电表时钟", "0.0.1.0.0.255", 8, 2, "string", ""),
+            ("Status", "错误寄存器", "0.0.97.97.0.255", 1, 2, "string", ""),
+        ]
+
+        sm_points = []
+        sm_points_map = {}  # meter_id -> list of point objects (filled after flush)
+        for m in meters_data:
+            if m.meter_type_id == 1:  # single_phase
+                template = SINGLE_PHASE_OBIS
+            else:  # three_phase_4w or three_phase_3w
+                template = THREE_PHASE_OBIS
+            for module, name, obis, cls_id, attr_id, dtype, unit in template:
+                sm_points.append(MeterPoint(
+                    meter_id=m.id, obis_code=obis, class_id=cls_id, attribute_id=attr_id,
+                    point_name=name, module=module, point_type="register", data_type=dtype, unit=unit,
+                ))
+        session.add_all(sm_points)
         await session.flush()
+
+        # Build lookup: meter_id -> first energy point_id (for readings)
+        sm_points_map = {}
+        for p in sm_points:
+            sm_points_map.setdefault(p.meter_id, []).append(p)
 
         # --- Tasks ---
         session.add_all(
@@ -842,98 +794,49 @@ async def seed():
         await session.flush()
 
         # ========== MeterComm / MeterSnapshot / MeterStatusHistory ==========
-        session.add_all(
-            [
-                MeterComm(
-                    meter_id=kfm_meters[0].id,
-                    protocol="DLMS",
-                    connection_type="tcp",
-                    host="192.168.234.101",
-                    port=4059,
-                    is_enabled=True,
-                ),
-                MeterComm(
-                    meter_id=kfm_meters[1].id,
-                    protocol="DLMS",
-                    connection_type="tcp",
-                    host="192.168.234.105",
-                    port=4059,
-                    is_enabled=True,
-                ),
-                MeterComm(
-                    meter_id=1, protocol="DLMS", connection_type="tcp", host="192.168.234.1", port=4059, is_enabled=True
-                ),
-                MeterComm(
-                    meter_id=4, protocol="DLMS", connection_type="tcp", host="192.168.234.4", port=4059, is_enabled=True
-                ),
-            ]
-        )
-        await session.flush()
-
-        session.add_all(
-            [
-                MeterSnapshot(
-                    meter_id=kfm_meters[0].id,
-                    online_status=True,
-                    signal_strength=-65,
-                    firmware_version="v2.1.0",
-                    error_code="",
-                    stack_usage=2048,
-                    eeprom_write_count=1523,
-                    last_comm_time=datetime.now(timezone.utc) - timedelta(minutes=5),
-                    last_data_time=datetime.now(timezone.utc) - timedelta(minutes=5),
-                ),
-                MeterSnapshot(meter_id=kfm_meters[1].id, online_status=False, firmware_version="v2.1.0", error_code=""),
-                MeterSnapshot(
-                    meter_id=1,
-                    online_status=True,
-                    signal_strength=-72,
-                    firmware_version="v2.1.0",
-                    error_code="",
-                    last_comm_time=datetime.now(timezone.utc) - timedelta(minutes=2),
-                    last_data_time=datetime.now(timezone.utc) - timedelta(minutes=2),
-                ),
-                MeterSnapshot(
-                    meter_id=4,
-                    online_status=True,
-                    signal_strength=-85,
-                    firmware_version="v3.0.1",
-                    error_code="",
-                    last_comm_time=datetime.now(timezone.utc) - timedelta(minutes=1),
-                ),
-            ]
-        )
-        await session.flush()
-
         now = datetime.now(timezone.utc)
-        session.add_all(
-            [
-                MeterStatusHistory(
-                    meter_id=kfm_meters[0].id,
-                    old_status="in_stock",
-                    new_status="online",
-                    reason="设备上线",
-                    changed_by=1,
-                    created_at=now - timedelta(days=10),
-                ),
-                MeterStatusHistory(
-                    meter_id=kfm_meters[2].id,
-                    old_status="online",
-                    new_status="offline",
-                    reason="通信超时",
-                    changed_by=2,
-                    created_at=now - timedelta(days=2),
-                ),
-                MeterStatusHistory(
-                    meter_id=12,
-                    old_status="in_use",
-                    new_status="repairing",
-                    reason="显示模块故障",
-                    changed_by=2,
-                    created_at=now - timedelta(days=5),
-                ),
-            ]
-        )
+
+        # KFM comm
+        session.add_all([
+            MeterComm(meter_id=kfm_meters[0].id, protocol="DLMS", connection_type="tcp", host="192.168.234.101", port=4059, is_enabled=True),
+            MeterComm(meter_id=kfm_meters[1].id, protocol="DLMS", connection_type="tcp", host="192.168.234.105", port=4059, is_enabled=True),
+            MeterComm(meter_id=kfm_meters[2].id, protocol="DLMS", connection_type="tcp", host="192.168.234.108", port=4059, is_enabled=False),
+        ])
+        # SM comm — all meters
+        comm_hosts = {1: "192.168.234.1", 2: "192.168.234.2", 3: "192.168.234.3", 4: "192.168.234.4",
+                      5: "192.168.234.5", 6: "192.168.234.6", 7: "192.168.234.7", 8: "192.168.234.8",
+                      9: "192.168.234.9", 10: "192.168.234.10", 11: "192.168.234.11", 12: "192.168.234.12"}
+        for mid, host in comm_hosts.items():
+            session.add(MeterComm(
+                meter_id=mid, protocol="DLMS", connection_type="tcp",
+                host=host, port=4059, is_enabled=(mid not in (7, 12)),
+            ))
+        await session.flush()
+
+        # Snapshots for ALL meters
+        for m in meters_data + kfm_meters:
+            is_online = m.current_status in ("online", "in_use")
+            session.add(MeterSnapshot(
+                meter_id=m.id, online_status=is_online,
+                signal_strength=random.randint(-95, -55) if is_online else None,
+                firmware_version=m.firmware_version, error_code="",
+                stack_usage=random.randint(1024, 4096) if is_online else None,
+                eeprom_write_count=random.randint(500, 5000) if is_online else None,
+                last_comm_time=now - timedelta(minutes=random.randint(1, 30)) if is_online else None,
+                last_data_time=now - timedelta(minutes=random.randint(1, 30)) if is_online else None,
+            ))
+        await session.flush()
+
+        # Status histories
+        session.add_all([
+            MeterStatusHistory(meter_id=kfm_meters[0].id, old_status="in_stock", new_status="online", reason="设备上线", changed_by=1, created_at=now - timedelta(days=10)),
+            MeterStatusHistory(meter_id=kfm_meters[1].id, old_status="in_stock", new_status="in_stock", reason="入库登记", changed_by=1, created_at=now - timedelta(days=15)),
+            MeterStatusHistory(meter_id=kfm_meters[2].id, old_status="online", new_status="offline", reason="通信超时", changed_by=2, created_at=now - timedelta(days=2)),
+            MeterStatusHistory(meter_id=1, old_status="in_stock", new_status="in_use", reason="分配到测试项目", changed_by=1, created_at=now - timedelta(days=30)),
+            MeterStatusHistory(meter_id=5, old_status="in_use", new_status="returned", reason="测试完成归还", changed_by=3, created_at=now - timedelta(days=3)),
+            MeterStatusHistory(meter_id=7, old_status="in_use", new_status="offline", reason="通信中断", changed_by=2, created_at=now - timedelta(days=1)),
+            MeterStatusHistory(meter_id=12, old_status="in_use", new_status="repairing", reason="显示模块故障", changed_by=2, created_at=now - timedelta(days=5)),
+        ])
         await session.flush()
 
         # ========== CollectionSession（PG-MongoDB 桥梁）==========
@@ -1006,31 +909,70 @@ async def seed():
                 error_summary="Connection refused: unable to connect to meter",
             ),
         ]
-        # 最近 7 天每天一条 session
+        # 最近 7 天每天一条 session for KFM #001
         for day_offset in range(7):
             t = now - timedelta(days=day_offset, hours=random.randint(7, 10))
             sessions.append(
                 CollectionSession(
-                    meter_id=kfm_meters[0].id,
-                    project_id=1,
-                    mongo_db="Puma-01_DCPP_DailyCheck",
-                    mongo_collection="KFM1020110000001",
+                    meter_id=kfm_meters[0].id, project_id=1,
+                    mongo_db="Puma-01_DCPP_DailyCheck", mongo_collection="KFM1020110000001",
                     mongo_doc_id=f"session_day{day_offset}",
-                    source="auto",
-                    started_at=t,
-                    finished_at=t + timedelta(minutes=random.randint(2, 4)),
-                    duration_ms=random.randint(120000, 240000),
-                    status="completed",
-                    total_read=796,
-                    total_success=random.randint(790, 796),
-                    total_failed=random.randint(0, 6),
-                    sheet_count=24,
-                    connection_type="TCP",
-                    communication="4G",
-                    meter_ip="192.168.234.101",
-                    ping_status=True,
+                    source="auto", started_at=t, finished_at=t + timedelta(minutes=random.randint(2, 4)),
+                    duration_ms=random.randint(120000, 240000), status="completed",
+                    total_read=796, total_success=random.randint(790, 796), total_failed=random.randint(0, 6),
+                    sheet_count=24, connection_type="TCP", communication="4G",
+                    meter_ip="192.168.234.101", ping_status=True,
                 )
             )
+        # KFM #005 sessions (recently back online)
+        for day_offset in range(3):
+            t = now - timedelta(days=day_offset, hours=random.randint(8, 10))
+            sessions.append(
+                CollectionSession(
+                    meter_id=kfm_meters[1].id, project_id=1,
+                    mongo_db="Puma-01_DCPP_DailyCheck", mongo_collection="KFM1020110000005",
+                    mongo_doc_id=f"kfm005_day{day_offset}", source="auto",
+                    started_at=t, finished_at=t + timedelta(minutes=random.randint(2, 3)),
+                    duration_ms=random.randint(120000, 180000), status="completed",
+                    total_read=random.randint(780, 796), total_success=random.randint(775, 790), total_failed=random.randint(0, 10),
+                    sheet_count=24, connection_type="TCP", communication="4G",
+                    meter_ip="192.168.234.105", ping_status=True,
+                )
+            )
+        # SM meter sessions
+        for mid in range(1, 12):
+            for day_offset in range(random.randint(2, 5)):
+                t = now - timedelta(days=day_offset, hours=random.randint(7, 11))
+                m = meters_data[mid - 1]
+                sessions.append(
+                    CollectionSession(
+                        meter_id=mid, project_id=m.project_id,
+                        mongo_db="", mongo_collection=m.serial_number,
+                        mongo_doc_id=f"sm{mid}_day{day_offset}", source="auto",
+                        started_at=t, finished_at=t + timedelta(seconds=random.randint(10, 45)),
+                        duration_ms=random.randint(10000, 45000), status="completed" if mid != 7 else "failed",
+                        total_read=random.randint(10, 25), total_success=random.randint(8, 25), total_failed=random.randint(0, 3),
+                        sheet_count=1, connection_type="TCP",
+                        meter_ip=f"192.168.234.{mid}", ping_status=(mid != 7),
+                    )
+                )
+        # Historical sessions for offline/repairing meters
+        sessions.append(CollectionSession(
+            meter_id=12, project_id=1, mongo_db="", mongo_collection="SM-2024-0012",
+            mongo_doc_id="sm12_old1", source="auto",
+            started_at=now - timedelta(days=10, hours=8), finished_at=now - timedelta(days=10, hours=8, minutes=1),
+            duration_ms=60000, status="completed", total_read=11, total_success=11, total_failed=0,
+            sheet_count=1, connection_type="TCP", meter_ip="192.168.234.12", ping_status=True,
+        ))
+        sessions.append(CollectionSession(
+            meter_id=kfm_meters[2].id, project_id=1,
+            mongo_db="Puma-01_DCPP_DailyCheck", mongo_collection="KFM1020110000008",
+            mongo_doc_id="kfm008_old", source="auto",
+            started_at=now - timedelta(days=5, hours=9), finished_at=now - timedelta(days=5, hours=9, minutes=3),
+            duration_ms=180000, status="completed", total_read=790, total_success=788, total_failed=2,
+            sheet_count=24, connection_type="TCP", communication="4G",
+            meter_ip="192.168.234.108", ping_status=True,
+        ))
         session.add_all(sessions)
         await session.flush()
 
@@ -1098,88 +1040,102 @@ async def seed():
             )
         await session.flush()
 
-        # SM 表读数
-        for mid in [1, 2, 3, 4, 6]:
-            pid = 1 if mid <= 10 else 10  # meter_point id
+        # SM 表读数 — all meters with points
+        for mid, pts in sm_points_map.items():
+            energy_pt = next((p for p in pts if p.module == "Energy" and p.attribute_id == 2), None)
+            voltage_pt = next((p for p in pts if "电压" in p.point_name and p.module == "Instantaneous"), None)
+            base_kwh_sm = random.randint(10000, 80000)
             for day_offset in range(7):
                 t = now - timedelta(days=day_offset, hours=random.randint(7, 10))
-                session.add(
-                    MeterReading(
-                        meter_id=mid,
-                        point_id=pid,
-                        task_id=1,
-                        reading_value=round(random.uniform(1000, 50000), 2),
-                        reading_time=t,
-                        quality="good" if random.random() > 0.1 else "suspect",
-                        source="auto",
-                    )
-                )
+                base_kwh_sm += random.randint(3, 15)
+                if energy_pt:
+                    session.add(MeterReading(
+                        meter_id=mid, point_id=energy_pt.id, task_id=1,
+                        reading_value=float(base_kwh_sm), reading_time=t,
+                        quality="good" if random.random() > 0.1 else "suspect", source="auto",
+                    ))
+                if voltage_pt:
+                    base_v = 220 if meters_data[mid - 1].meter_type_id == 1 else 230
+                    session.add(MeterReading(
+                        meter_id=mid, point_id=voltage_pt.id, task_id=1,
+                        reading_value=round(random.uniform(base_v - 12, base_v + 12), 2), reading_time=t,
+                        quality="good", source="auto",
+                    ))
+        # KFM #005 readings
+        kfm005_energy = next(p for p in kfm_points if p.meter_id == kfm_meters[1].id and p.module == "Energy" and p.point_name == "Active energy import")
+        kfm005_base = 30000
+        for day_offset in range(7):
+            t = now - timedelta(days=day_offset, hours=random.randint(7, 10))
+            kfm005_base += random.randint(3, 12)
+            session.add(MeterReading(
+                meter_id=kfm_meters[1].id, point_id=kfm005_energy.id, task_id=1,
+                reading_value=float(kfm005_base), reading_time=t, quality="good", source="auto",
+            ))
+        # KFM #008 readings (before going offline 2 days ago)
+        kfm008_energy = next(p for p in kfm_points if p.meter_id == kfm_meters[2].id and p.module == "Energy" and p.point_name == "Active energy import")
+        kfm008_base = 25000
+        for day_offset in range(3, 8):  # readings from 3-7 days ago
+            t = now - timedelta(days=day_offset, hours=random.randint(7, 10))
+            kfm008_base += random.randint(4, 10)
+            session.add(MeterReading(
+                meter_id=kfm_meters[2].id, point_id=kfm008_energy.id, task_id=1,
+                reading_value=float(kfm008_base), reading_time=t, quality="good", source="auto",
+            ))
         await session.flush()
 
         # ========== ReadingDailySummary ==========
         for day_offset in range(7):
             d = (now - timedelta(days=day_offset)).date()
-            for mid in [kfm_meters[0].id, 1, 2, 3, 4]:
-                pid = kfm_points[1].id if mid == kfm_meters[0].id else 1
+            all_meters = [kfm_meters[0].id, kfm_meters[1].id] + list(range(1, 12))
+            for mid in all_meters:
+                if mid in sm_points_map:
+                    pid = next((p.id for p in sm_points_map[mid] if p.module == "Energy"), None)
+                elif mid == kfm_meters[0].id:
+                    pid = kfm_points[1].id
+                elif mid == kfm_meters[1].id:
+                    pid = next(p.id for p in kfm_points if p.meter_id == mid and "Active energy import" in p.point_name)
+                else:
+                    continue
+                if pid is None:
+                    continue
                 v = round(random.uniform(100, 500), 2)
-                session.add(
-                    ReadingDailySummary(
-                        meter_id=mid,
-                        point_id=pid,
-                        stat_date=d,
-                        min_value=v - random.uniform(10, 30),
-                        max_value=v + random.uniform(10, 30),
-                        avg_value=v,
-                        first_value=v - 5,
-                        last_value=v + 5,
-                        reading_count=random.randint(20, 48),
-                        delta=round(random.uniform(5, 20), 2),
-                    )
-                )
+                session.add(ReadingDailySummary(
+                    meter_id=mid, point_id=pid, stat_date=d,
+                    min_value=v - random.uniform(10, 30), max_value=v + random.uniform(10, 30),
+                    avg_value=v, first_value=v - 5, last_value=v + 5,
+                    reading_count=random.randint(20, 48), delta=round(random.uniform(5, 20), 2),
+                ))
         await session.flush()
 
         # ========== DataQuality ==========
         for day_offset in range(7):
             d = (now - timedelta(days=day_offset)).date()
-            for mid in [kfm_meters[0].id, 1, 2, 3, 4]:
+            all_meters = [kfm_meters[0].id, kfm_meters[1].id] + list(range(1, 12))
+            for mid in all_meters:
                 total = random.randint(50, 100)
                 success = total - random.randint(0, 5)
-                session.add(
-                    DataQuality(
-                        meter_id=mid,
-                        task_id=1,
-                        stat_date=d,
-                        total_points=total,
-                        success_points=success,
-                        failed_points=total - success,
-                        quality_score=round(random.uniform(90, 100), 2),
-                        abnormal_count=random.randint(0, 3),
-                        first_collect_time=datetime.now(timezone.utc) - timedelta(days=day_offset, hours=8),
-                        last_collect_time=datetime.now(timezone.utc) - timedelta(days=day_offset, hours=7),
-                    )
-                )
+                session.add(DataQuality(
+                    meter_id=mid, task_id=1, stat_date=d,
+                    total_points=total, success_points=success, failed_points=total - success,
+                    quality_score=round(random.uniform(90, 100), 2), abnormal_count=random.randint(0, 3),
+                    first_collect_time=datetime.now(timezone.utc) - timedelta(days=day_offset, hours=8),
+                    last_collect_time=datetime.now(timezone.utc) - timedelta(days=day_offset, hours=7),
+                ))
         await session.flush()
 
         # ========== MeterBorrow + MeterRepair ==========
         session.add_all(
             [
                 MeterBorrow(
-                    meter_id=kfm_meters[1].id,
-                    borrower_id=2,
-                    borrow_reason="协议一致性测试",
-                    approval_status="approved_lab",
-                    dept_approver_id=1,
-                    lab_approver_id=1,
+                    meter_id=kfm_meters[1].id, borrower_id=2, borrow_reason="协议一致性测试",
+                    approval_status="approved_lab", dept_approver_id=1, lab_approver_id=1,
                 ),
-                MeterBorrow(
-                    meter_id=12, borrower_id=3, borrow_reason="模块更换后验证", approval_status="pending_department"
-                ),
-                MeterRepair(
-                    meter_id=12, description="显示模块故障，更换LCD", cost=150.00, status="in_progress", repaired_by=2
-                ),
-                MeterRepair(
-                    meter_id=5, description="红外通信口氧化清理", cost=30.00, status="completed", repaired_by=2
-                ),
+                MeterBorrow(meter_id=12, borrower_id=3, borrow_reason="模块更换后验证", approval_status="pending_department"),
+                MeterBorrow(meter_id=3, borrower_id=2, borrow_reason="单相表精度验证", approval_status="approved_department", dept_approver_id=1),
+                MeterBorrow(meter_id=8, borrower_id=3, borrow_reason="三相三线表型式评价", approval_status="returned", dept_approver_id=1, lab_approver_id=1),
+                MeterRepair(meter_id=12, description="显示模块故障，更换LCD", cost=150.00, status="in_progress", repaired_by=2),
+                MeterRepair(meter_id=5, description="红外通信口氧化清理", cost=30.00, status="completed", repaired_by=2),
+                MeterRepair(meter_id=7, description="通信模块固件升级", cost=0, status="completed", repaired_by=2),
             ]
         )
         await session.flush()

@@ -21,7 +21,9 @@ import {
 } from 'ant-design-vue';
 
 import { getMeterDetail } from '#/api/modules/meter';
+import { useChartTheme } from '#/composables/useChartTheme';
 
+const { isDark } = useChartTheme();
 const route = useRoute();
 const router = useRouter();
 const meterId = ref(Number(route.params.id) || 0);
@@ -429,7 +431,7 @@ onUnmounted(() => {
 
 <template>
   <Page auto-content-height>
-    <div style="background: #001529; min-height: 100vh; padding: 24px">
+    <div :style="{ background: isDark ? '#0f172a' : '#f5f7fa', minHeight: '100vh', padding: '24px' }">
       <!-- Header -->
       <div style="margin-bottom: 16px">
         <Button type="text" style="color: #ccc" @click="router.back()">← 返回</Button>
