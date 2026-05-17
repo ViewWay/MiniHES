@@ -26,18 +26,6 @@ import { THEME_COLORS } from '#/constants';
 const router = useRouter();
 const { isDark, chartColors, themedAxis, themedTooltip, themedLegend } = useChartTheme();
 
-const pageVars = computed(() => {
-  const dark = isDark.value;
-  return {
-    '--bg': dark ? '#0f172a' : '#f5f7fa',
-    '--bg-card': dark ? '#1e293b' : '#ffffff',
-    '--border': dark ? '#334155' : '#e2e8f0',
-    '--text': dark ? '#f1f5f9' : '#1e293b',
-    '--text-sec': dark ? '#94a3b8' : '#64748b',
-    '--text-muted': dark ? '#cccccc' : '#6b7280',
-  };
-});
-
 const loading = ref(false);
 const projects = ref<any[]>([]);
 const totalMeters = ref(0);
@@ -192,43 +180,38 @@ function buildAlarmTrendOptions(): any {
 </script>
 
 <template>
-  <div class="screen-page" :style="pageVars">
+  <div style="padding: 16px">
     <Spin :spinning="loading">
       <Row :gutter="16" style="margin-bottom: 16px">
         <Col :span="4">
-          <Card class="screen-card screen-card-sm" :bordered="false">
-            <template #title><span class="screen-title">项目总数</span></template>
-            <Statistic :value="projects.length" :value-style="{ color: THEME_COLORS.PROCESSING }" />
+          <Card :bordered="false" size="small">
+            <Statistic title="项目总数" :value="projects.length" :value-style="{ color: THEME_COLORS.PROCESSING }" />
           </Card>
         </Col>
         <Col :span="4">
-          <Card class="screen-card screen-card-sm" :bordered="false">
-            <template #title><span class="screen-title">设备总数</span></template>
-            <Statistic :value="totalMeters" :value-style="{ color: THEME_COLORS.PROCESSING }" />
+          <Card :bordered="false" size="small">
+            <Statistic title="设备总数" :value="totalMeters" :value-style="{ color: THEME_COLORS.PROCESSING }" />
           </Card>
         </Col>
         <Col :span="4">
-          <Card class="screen-card screen-card-sm" :bordered="false">
-            <template #title><span class="screen-title">在线设备</span></template>
-            <Statistic :value="onlineMeters" :value-style="{ color: THEME_COLORS.SUCCESS }" />
+          <Card :bordered="false" size="small">
+            <Statistic title="在线设备" :value="onlineMeters" :value-style="{ color: THEME_COLORS.SUCCESS }" />
           </Card>
         </Col>
         <Col :span="4">
-          <Card class="screen-card screen-card-sm" :bordered="false">
-            <template #title><span class="screen-title">离线设备</span></template>
-            <Statistic :value="offlineMeters" :value-style="{ color: THEME_COLORS.ERROR }" />
+          <Card :bordered="false" size="small">
+            <Statistic title="离线设备" :value="offlineMeters" :value-style="{ color: THEME_COLORS.ERROR }" />
           </Card>
         </Col>
         <Col :span="4">
-          <Card class="screen-card screen-card-sm" :bordered="false">
-            <template #title><span class="screen-title">活跃告警</span></template>
-            <Statistic :value="alertCount" :value-style="{ color: THEME_COLORS.WARNING }" />
+          <Card :bordered="false" size="small">
+            <Statistic title="活跃告警" :value="alertCount" :value-style="{ color: THEME_COLORS.WARNING }" />
           </Card>
         </Col>
         <Col :span="4">
-          <Card class="screen-card screen-card-sm" :bordered="false">
-            <template #title><span class="screen-title">在线率</span></template>
+          <Card :bordered="false" size="small">
             <Statistic
+              title="在线率"
               :value="onlineRate"
               suffix="%"
               :value-style="{ color: onlineRate >= 95 ? THEME_COLORS.SUCCESS : THEME_COLORS.WARNING }"
@@ -239,19 +222,17 @@ function buildAlarmTrendOptions(): any {
 
       <Row :gutter="16" style="margin-bottom: 16px">
         <Col :span="16">
-          <Card class="screen-card" :bordered="false">
-            <template #title><span style="color: var(--text)">项目状态概览</span></template>
+          <Card title="项目状态概览" :bordered="false">
             <Table :columns="columns" :data-source="projects" row-key="id" :pagination="false" size="middle">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'status'">
                   <Badge
                     :status="record.status === 'testing' ? 'processing' : record.status === 'completed' ? 'success' : 'default'"
                     :text="record.status === 'testing' ? '测试中' : record.status === 'completed' ? '已完成' : record.status"
-                    style="color: var(--text-sec)"
                   />
                 </template>
                 <template v-if="column.key === 'online'">
-                  <span class="screen-text">{{ record.online_count ?? '-' }} / {{ record.meter_count ?? '-' }}</span>
+                  <span>{{ record.online_count ?? '-' }} / {{ record.meter_count ?? '-' }}</span>
                 </template>
                 <template v-if="column.key === 'alert_count'">
                   <Tag v-if="record.alert_count > 0" color="red">{{ record.alert_count }}</Tag>
@@ -265,7 +246,7 @@ function buildAlarmTrendOptions(): any {
                   />
                 </template>
                 <template v-if="column.key === 'action'">
-                  <a class="screen-link" @click="goToProject(record.id)">详情大屏 →</a>
+                  <a @click="goToProject(record.id)">详情大屏 →</a>
                 </template>
               </template>
             </Table>
@@ -273,16 +254,13 @@ function buildAlarmTrendOptions(): any {
         </Col>
 
         <Col :span="8">
-          <Card class="screen-card" :bordered="false" style="margin-bottom: 16px">
-            <template #title><span style="color: var(--text)">设备在线率</span></template>
+          <Card title="设备在线率" :bordered="false" style="margin-bottom: 16px">
             <EchartsUI ref="onlineRateChartRef" height="200px" />
           </Card>
-          <Card class="screen-card" :bordered="false" style="margin-bottom: 16px">
-            <template #title><span style="color: var(--text)">堆栈监控</span></template>
+          <Card title="堆栈监控" :bordered="false" style="margin-bottom: 16px">
             <EchartsUI ref="stackChartRef" height="220px" />
           </Card>
-          <Card class="screen-card" :bordered="false" style="margin-bottom: 16px">
-            <template #title><span style="color: var(--text)">告警趋势</span></template>
+          <Card title="告警趋势" :bordered="false" style="margin-bottom: 16px">
             <EchartsUI ref="alarmTrendChartRef" height="200px" />
           </Card>
         </Col>
@@ -290,15 +268,11 @@ function buildAlarmTrendOptions(): any {
 
       <Row :gutter="16">
         <Col :span="24">
-          <Card class="screen-card" :bordered="false">
-            <template #title><span style="color: var(--text)">事件统计</span></template>
+          <Card title="事件统计" :bordered="false">
             <Row :gutter="[16, 16]">
               <Col :span="6" v-for="e in eventStats" :key="e.type">
-                <Card size="small" style="background: var(--bg)" :body-style="{ padding: '16px' }">
-                  <template #title>
-                    <span style="color: var(--text-muted); font-size: 12px">{{ e.type }}</span>
-                  </template>
-                  <Statistic :value="e.count" :value-style="{ color: e.color }" />
+                <Card size="small" :bordered="false">
+                  <Statistic :title="e.type" :value="e.count" :value-style="{ color: e.color }" />
                 </Card>
               </Col>
             </Row>
@@ -308,46 +282,3 @@ function buildAlarmTrendOptions(): any {
     </Spin>
   </div>
 </template>
-
-<style scoped>
-.screen-page {
-  background: var(--bg);
-  min-height: 100vh;
-  padding: 24px;
-}
-
-.screen-card {
-  background: var(--bg-card) !important;
-  border: none !important;
-}
-
-.screen-card :deep(.ant-card-head) {
-  color: var(--text);
-  border-bottom-color: var(--border);
-}
-
-.screen-card :deep(.ant-card-body) {
-  padding: 16px;
-}
-
-.screen-card-sm :deep(.ant-card-body) {
-  padding: 20px;
-}
-
-.screen-title {
-  color: var(--text-sec);
-}
-
-.screen-text {
-  color: var(--text-sec);
-}
-
-.screen-link {
-  color: #40a9ff;
-  cursor: pointer;
-}
-
-.screen-link:hover {
-  color: #69b1ff;
-}
-</style>
