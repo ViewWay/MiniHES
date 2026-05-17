@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { EchartsUIType } from '@vben/plugins/echarts';
 
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -23,15 +23,25 @@ import {
 import { getMeterDetail } from '#/api/modules/meter';
 import { useChartTheme } from '#/composables/useChartTheme';
 
-const { isDark } = useChartTheme();
+const { isDark, chartColors, themedAxis, themedTooltip, themedLegend, themedGauge } = useChartTheme();
 const route = useRoute();
 const router = useRouter();
 const meterId = ref(Number(route.params.id) || 0);
 
+const pageVars = computed(() => {
+  const dark = isDark.value;
+  return {
+    '--bg': dark ? '#0f172a' : '#f5f7fa',
+    '--bg-card': dark ? '#1e293b' : '#ffffff',
+    '--border': dark ? '#334155' : '#e2e8f0',
+    '--text': dark ? '#f1f5f9' : '#1e293b',
+    '--text-sec': dark ? '#94a3b8' : '#64748b',
+  };
+});
+
 const loading = ref(true);
 const meterInfo = ref<Record<string, any>>({});
 
-// Real-time data with defaults
 const meterData = ref({
   voltage_a: 220.5,
   voltage_b: 219.8,
@@ -53,10 +63,8 @@ const meterData = ref({
   phase_angle_c: 240,
 });
 
-// Stability score (computed from data quality)
 const stabilityScore = ref(92);
 
-// Time-series data for real-time charts
 const timeLabels = ref<string[]>([]);
 const voltageHistoryA = ref<number[]>([]);
 const voltageHistoryB = ref<number[]>([]);
@@ -67,7 +75,6 @@ const currentHistoryC = ref<number[]>([]);
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-// Computed
 const stackColor = computed(() => {
   const v = meterData.value.stack_usage;
   if (v >= 80) return '#ff4d4f';
@@ -89,7 +96,6 @@ const eepromStatus = computed(() => {
   return { text: '正常', color: '#52c41a' };
 });
 
-// Chart refs
 const rtChartRef = ref<EchartsUIType>();
 const gaugeChartRef = ref<EchartsUIType>();
 const eventChartRef = ref<EchartsUIType>();
@@ -114,7 +120,6 @@ async function fetchMeterData() {
     const resp = await getMeterDetail(meterId.value);
     meterInfo.value = resp;
 
-    // If the API returns real-time data, use it
     if (resp?.realtime) {
       const rt = resp.realtime;
       meterData.value = {
@@ -139,7 +144,6 @@ async function fetchMeterData() {
       };
     }
 
-    // Use stack_usage from meter record if available
     if (resp?.stack_usage !== undefined) {
       meterData.value.stack_usage = resp.stack_usage;
     }
@@ -154,7 +158,6 @@ async function fetchMeterData() {
 }
 
 function initHistoryData() {
-  // Pre-fill 30 data points
   for (let i = 0; i < 30; i++) {
     timeLabels.value.push('--:--:--');
     voltageHistoryA.value.push(jitter(meterData.value.voltage_a, 2));
@@ -167,199 +170,137 @@ function initHistoryData() {
 }
 
 function renderAllCharts() {
+  const c = chartColors.value;
+  const gauge = themedGauge();
+
   // --- Real-time voltage / current chart ---
   renderRtChart({
-    tooltip: { trigger: 'axis' },
-    legend: {
+    tooltip: themedTooltip(),
+    legend: themedLegend({
       data: ['电压A', '电压B', '电压C', '电流A', '电流B', '电流C'],
       top: 0,
-      textStyle: { color: '#ccc' },
-    },
+    }),
     grid: { top: 50, bottom: 30, left: 60, right: 60 },
-    xAxis: {
+    xAxis: themedAxis('x', {
       type: 'category',
       data: timeLabels.value,
-      axisLabel: { color: '#aaa', interval: 4 },
-      splitLine: { show: false },
-    },
+      axisLabel: { color: c.text, interval: 4 },
+    }),
     yAxis: [
-      {
+      themedAxis('y', {
         type: 'value',
         name: 'V',
         min: 200,
         max: 240,
-        nameTextStyle: { color: '#aaa' },
-        axisLabel: { color: '#aaa' },
-        splitLine: { lineStyle: { color: '#333' } },
-      },
-      {
+      }),
+      themedAxis('y', {
         type: 'value',
         name: 'A',
         min: 0,
         max: 15,
-        nameTextStyle: { color: '#aaa' },
-        axisLabel: { color: '#aaa' },
         splitLine: { show: false },
-      },
+      }),
     ],
     series: [
       {
-        name: '电压A',
-        type: 'line',
-        smooth: true,
+        name: '电压A', type: 'line', smooth: true,
         data: voltageHistoryA.value,
-        itemStyle: { color: '#5470c6' },
-        yAxisIndex: 0,
+        itemStyle: { color: '#5470c6' }, yAxisIndex: 0,
       },
       {
-        name: '电压B',
-        type: 'line',
-        smooth: true,
+        name: '电压B', type: 'line', smooth: true,
         data: voltageHistoryB.value,
-        itemStyle: { color: '#91cc75' },
-        yAxisIndex: 0,
+        itemStyle: { color: '#91cc75' }, yAxisIndex: 0,
       },
       {
-        name: '电压C',
-        type: 'line',
-        smooth: true,
+        name: '电压C', type: 'line', smooth: true,
         data: voltageHistoryC.value,
-        itemStyle: { color: '#fac858' },
-        yAxisIndex: 0,
+        itemStyle: { color: '#fac858' }, yAxisIndex: 0,
       },
       {
-        name: '电流A',
-        type: 'line',
-        smooth: true,
+        name: '电流A', type: 'line', smooth: true,
         data: currentHistoryA.value,
-        itemStyle: { color: '#ee6666' },
-        lineStyle: { type: 'dashed' },
-        yAxisIndex: 1,
+        itemStyle: { color: '#ee6666' }, lineStyle: { type: 'dashed' }, yAxisIndex: 1,
       },
       {
-        name: '电流B',
-        type: 'line',
-        smooth: true,
+        name: '电流B', type: 'line', smooth: true,
         data: currentHistoryB.value,
-        itemStyle: { color: '#73c0de' },
-        lineStyle: { type: 'dashed' },
-        yAxisIndex: 1,
+        itemStyle: { color: '#73c0de' }, lineStyle: { type: 'dashed' }, yAxisIndex: 1,
       },
       {
-        name: '电流C',
-        type: 'line',
-        smooth: true,
+        name: '电流C', type: 'line', smooth: true,
         data: currentHistoryC.value,
-        itemStyle: { color: '#3ba272' },
-        lineStyle: { type: 'dashed' },
-        yAxisIndex: 1,
+        itemStyle: { color: '#3ba272' }, lineStyle: { type: 'dashed' }, yAxisIndex: 1,
       },
     ],
   });
 
   // --- Stability gauge chart ---
   renderGaugeChart({
-    series: [
-      {
-        type: 'gauge',
-        startAngle: 200,
-        endAngle: -20,
-        min: 0,
-        max: 100,
-        splitNumber: 10,
-        center: ['50%', '60%'],
-        radius: '90%',
-        itemStyle: { color: '#69b1ff' },
-        progress: {
-          show: true,
+    series: [{
+      type: 'gauge',
+      startAngle: 200,
+      endAngle: -20,
+      min: 0,
+      max: 100,
+      splitNumber: 10,
+      center: ['50%', '60%'],
+      radius: '90%',
+      itemStyle: { color: '#69b1ff' },
+      progress: { show: true, width: 18 },
+      pointer: { show: true, length: '60%', width: 4 },
+      axisLine: {
+        lineStyle: {
           width: 18,
+          color: [
+            [0.6, '#52c41a'],
+            [0.8, '#faad14'],
+            [1, '#ff4d4f'],
+          ],
         },
-        pointer: { show: true, length: '60%', width: 4 },
-        axisLine: {
-          lineStyle: {
-            width: 18,
-            color: [
-              [0.6, '#52c41a'],
-              [0.8, '#faad14'],
-              [1, '#ff4d4f'],
-            ],
-          },
-        },
-        axisTick: {
-          distance: -18,
-          lineStyle: { color: '#aaa', width: 1 },
-        },
-        splitLine: {
-          distance: -18,
-          lineStyle: { color: '#aaa', width: 2 },
-        },
-        axisLabel: {
-          distance: 25,
-          color: '#aaa',
-          fontSize: 11,
-        },
-        detail: {
-          valueAnimation: true,
-          formatter: '{value}%',
-          color: '#fff',
-          fontSize: 20,
-          offsetCenter: [0, '70%'],
-        },
-        title: {
-          offsetCenter: [0, '90%'],
-          color: '#ccc',
-          fontSize: 13,
-        },
-        data: [{ value: stabilityScore.value, name: '稳定性评分' }],
       },
-    ],
+      axisTick: gauge.axisTick,
+      splitLine: gauge.splitLine,
+      axisLabel: gauge.axisLabel,
+      detail: {
+        valueAnimation: true,
+        formatter: '{value}%',
+        color: gauge.detail.color,
+        fontSize: 20,
+        offsetCenter: [0, '70%'],
+      },
+      title: {
+        offsetCenter: [0, '90%'],
+        color: gauge.title.color,
+        fontSize: 13,
+      },
+      data: [{ value: stabilityScore.value, name: '稳定性评分' }],
+    }],
   });
 
-  // --- Event curve chart (reading events over last 24h) ---
+  // --- Event curve chart ---
   const eventHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
   const readEvents = Array.from({ length: 24 }, () => Math.floor(Math.random() * 20 + 5));
   const errorEvents = Array.from({ length: 24 }, () => Math.floor(Math.random() * 3));
 
   renderEventChart({
-    tooltip: { trigger: 'axis' },
-    legend: {
-      data: ['读数事件', '异常事件'],
-      top: 0,
-      textStyle: { color: '#ccc' },
-    },
+    tooltip: themedTooltip(),
+    legend: themedLegend({ data: ['读数事件', '异常事件'], top: 0 }),
     grid: { top: 40, bottom: 30, left: 50, right: 20 },
-    xAxis: {
+    xAxis: themedAxis('x', {
       type: 'category',
       data: eventHours,
-      axisLabel: { color: '#aaa', interval: 3 },
-      splitLine: { show: false },
-    },
-    yAxis: {
-      type: 'value',
-      name: '次数',
-      nameTextStyle: { color: '#aaa' },
-      axisLabel: { color: '#aaa' },
-      splitLine: { lineStyle: { color: '#333' } },
-    },
+      axisLabel: { color: c.text, interval: 3 },
+    }),
+    yAxis: themedAxis('y', { type: 'value', name: '次数' }),
     series: [
-      {
-        name: '读数事件',
-        type: 'bar',
-        data: readEvents,
-        itemStyle: { color: '#1890ff' },
-      },
-      {
-        name: '异常事件',
-        type: 'bar',
-        data: errorEvents,
-        itemStyle: { color: '#ff4d4f' },
-      },
+      { name: '读数事件', type: 'bar', data: readEvents, itemStyle: { color: '#1890ff' } },
+      { name: '异常事件', type: 'bar', data: errorEvents, itemStyle: { color: '#ff4d4f' } },
     ],
   });
 }
 
 function pollData() {
-  // Simulate real-time updates with jitter
   meterData.value.voltage_a = jitter(meterData.value.voltage_a, 1);
   meterData.value.voltage_b = jitter(meterData.value.voltage_b, 1);
   meterData.value.voltage_c = jitter(meterData.value.voltage_c, 1);
@@ -377,7 +318,6 @@ function pollData() {
   );
   meterData.value.frequency = jitter(meterData.value.frequency, 0.02);
 
-  // Push to time series
   const now = timeNow();
   timeLabels.value.push(now);
   voltageHistoryA.value.push(meterData.value.voltage_a);
@@ -387,7 +327,6 @@ function pollData() {
   currentHistoryB.value.push(meterData.value.current_b);
   currentHistoryC.value.push(meterData.value.current_c);
 
-  // Keep max 60 points
   if (timeLabels.value.length > 60) {
     timeLabels.value.shift();
     voltageHistoryA.value.shift();
@@ -398,7 +337,6 @@ function pollData() {
     currentHistoryC.value.shift();
   }
 
-  // Update real-time chart with new data
   updateRtChart({
     xAxis: { data: timeLabels.value },
     series: [
@@ -416,10 +354,10 @@ onMounted(async () => {
   await fetchMeterData();
   initHistoryData();
   renderAllCharts();
-
-  // Start polling every 3 seconds
   pollTimer = setInterval(pollData, 3000);
 });
+
+watch(isDark, () => renderAllCharts());
 
 onUnmounted(() => {
   if (pollTimer) {
@@ -431,11 +369,10 @@ onUnmounted(() => {
 
 <template>
   <Page auto-content-height>
-    <div :style="{ background: isDark ? '#0f172a' : '#f5f7fa', minHeight: '100vh', padding: '24px' }">
-      <!-- Header -->
+    <div class="screen-page" :style="pageVars">
       <div style="margin-bottom: 16px">
-        <Button type="text" style="color: #ccc" @click="router.back()">← 返回</Button>
-        <span style="color: #fff; font-size: 18px; font-weight: 600; margin-left: 16px">
+        <Button type="text" class="screen-back-btn" @click="router.back()">← 返回</Button>
+        <span class="screen-header-title">
           {{ meterInfo.meter_name || meterInfo.serial_number || `电表 #${meterId}` }} - 单表监控
         </span>
         <Tag v-if="meterInfo.status" color="blue" style="margin-left: 12px">
@@ -444,66 +381,53 @@ onUnmounted(() => {
       </div>
 
       <Spin :spinning="loading">
-        <!-- Stats Row: Instantaneous Values -->
         <Row :gutter="16" style="margin-bottom: 16px">
           <Col :span="4">
-            <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
+            <Card size="small" class="screen-card" :bordered="false">
               <Statistic title="电压A (V)" :value="meterData.voltage_a" :precision="1" :value-style="{ color: '#5470c6' }" />
             </Card>
           </Col>
           <Col :span="4">
-            <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
+            <Card size="small" class="screen-card" :bordered="false">
               <Statistic title="电压B (V)" :value="meterData.voltage_b" :precision="1" :value-style="{ color: '#91cc75' }" />
             </Card>
           </Col>
           <Col :span="4">
-            <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
+            <Card size="small" class="screen-card" :bordered="false">
               <Statistic title="电压C (V)" :value="meterData.voltage_c" :precision="1" :value-style="{ color: '#fac858' }" />
             </Card>
           </Col>
           <Col :span="4">
-            <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="频率 (Hz)" :value="meterData.frequency" :precision="2" :value-style="{ color: '#fff' }" />
+            <Card size="small" class="screen-card" :bordered="false">
+              <Statistic title="频率 (Hz)" :value="meterData.frequency" :precision="2" :value-style="{ color: 'var(--text)' }" />
             </Card>
           </Col>
           <Col :span="4">
-            <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
+            <Card size="small" class="screen-card" :bordered="false">
               <Statistic title="堆栈使用" :value="meterData.stack_usage" suffix="%" :value-style="{ color: '#69b1ff' }" />
             </Card>
           </Col>
           <Col :span="4">
-            <Card size="small" style="background: #0c2340; border-color: #1a3a5c">
-              <Statistic title="EEPROM写入" :value="meterData.eeprom_writes" :value-style="{ color: '#fff' }" />
+            <Card size="small" class="screen-card" :bordered="false">
+              <Statistic title="EEPROM写入" :value="meterData.eeprom_writes" :value-style="{ color: 'var(--text)' }" />
             </Card>
           </Col>
         </Row>
 
-        <!-- Real-time Chart (full width) -->
         <Row :gutter="16" style="margin-bottom: 16px">
           <Col :span="24">
-            <Card
-              title="实时电压/电流曲线"
-              :bordered="false"
-              style="background: #0c2340; border-color: #1a3a5c"
-              :head-style="{ color: '#fff', borderBottomColor: '#1a3a5c' }"
-              :body-style="{ padding: '12px' }"
-            >
+            <Card class="screen-card" :bordered="false">
+              <template #title><span style="color: var(--text)">实时电压/电流曲线</span></template>
               <EchartsUI ref="rtChartRef" height="360px" />
             </Card>
           </Col>
         </Row>
 
-        <!-- Phase Details + Stability Gauge -->
         <Row :gutter="16" style="margin-bottom: 16px">
-          <!-- Phase A -->
           <Col :span="6">
-            <Card
-              title="A相详情"
-              :bordered="false"
-              style="background: #0c2340; border-color: #1a3a5c"
-              :head-style="{ color: '#5470c6', borderBottomColor: '#1a3a5c' }"
-            >
-              <Descriptions :column="1" size="small" :label-style="{ color: '#aaa' }" :content-style="{ color: '#fff' }">
+            <Card class="screen-card" :bordered="false">
+              <template #title><span style="color: #5470c6">A相详情</span></template>
+              <Descriptions :column="1" size="small" :label-style="{ color: 'var(--text-sec)' }" :content-style="{ color: 'var(--text)' }">
                 <DescriptionsItem label="电压">{{ meterData.voltage_a }} V</DescriptionsItem>
                 <DescriptionsItem label="电流">{{ meterData.current_a }} A</DescriptionsItem>
                 <DescriptionsItem label="功率">{{ meterData.power_a }} W</DescriptionsItem>
@@ -512,15 +436,10 @@ onUnmounted(() => {
               </Descriptions>
             </Card>
           </Col>
-          <!-- Phase B -->
           <Col :span="6">
-            <Card
-              title="B相详情"
-              :bordered="false"
-              style="background: #0c2340; border-color: #1a3a5c"
-              :head-style="{ color: '#91cc75', borderBottomColor: '#1a3a5c' }"
-            >
-              <Descriptions :column="1" size="small" :label-style="{ color: '#aaa' }" :content-style="{ color: '#fff' }">
+            <Card class="screen-card" :bordered="false">
+              <template #title><span style="color: #91cc75">B相详情</span></template>
+              <Descriptions :column="1" size="small" :label-style="{ color: 'var(--text-sec)' }" :content-style="{ color: 'var(--text)' }">
                 <DescriptionsItem label="电压">{{ meterData.voltage_b }} V</DescriptionsItem>
                 <DescriptionsItem label="电流">{{ meterData.current_b }} A</DescriptionsItem>
                 <DescriptionsItem label="功率">{{ meterData.power_b }} W</DescriptionsItem>
@@ -529,15 +448,10 @@ onUnmounted(() => {
               </Descriptions>
             </Card>
           </Col>
-          <!-- Phase C -->
           <Col :span="6">
-            <Card
-              title="C相详情"
-              :bordered="false"
-              style="background: #0c2340; border-color: #1a3a5c"
-              :head-style="{ color: '#fac858', borderBottomColor: '#1a3a5c' }"
-            >
-              <Descriptions :column="1" size="small" :label-style="{ color: '#aaa' }" :content-style="{ color: '#fff' }">
+            <Card class="screen-card" :bordered="false">
+              <template #title><span style="color: #fac858">C相详情</span></template>
+              <Descriptions :column="1" size="small" :label-style="{ color: 'var(--text-sec)' }" :content-style="{ color: 'var(--text)' }">
                 <DescriptionsItem label="电压">{{ meterData.voltage_c }} V</DescriptionsItem>
                 <DescriptionsItem label="电流">{{ meterData.current_c }} A</DescriptionsItem>
                 <DescriptionsItem label="功率">{{ meterData.power_c }} W</DescriptionsItem>
@@ -546,35 +460,21 @@ onUnmounted(() => {
               </Descriptions>
             </Card>
           </Col>
-          <!-- Stability Gauge -->
           <Col :span="6">
-            <Card
-              title="稳定性分析"
-              :bordered="false"
-              style="background: #0c2340; border-color: #1a3a5c"
-              :head-style="{ color: '#fff', borderBottomColor: '#1a3a5c' }"
-              :body-style="{ padding: '8px' }"
-            >
+            <Card class="screen-card" :bordered="false">
+              <template #title><span style="color: var(--text)">稳定性分析</span></template>
               <EchartsUI ref="gaugeChartRef" height="260px" />
             </Card>
           </Col>
         </Row>
 
-        <!-- Bottom Row: Stack + EEPROM + Event Curve -->
         <Row :gutter="16" style="margin-bottom: 16px">
-          <!-- Stack Monitoring -->
           <Col :span="6">
-            <Card
-              title="堆栈监控"
-              :bordered="false"
-              style="background: #0c2340; border-color: #1a3a5c"
-              :head-style="{ color: '#fff', borderBottomColor: '#1a3a5c' }"
-            >
+            <Card class="screen-card" :bordered="false">
+              <template #title><span style="color: var(--text)">堆栈监控</span></template>
               <div style="text-align: center; margin-bottom: 12px">
-                <span style="color: #aaa; font-size: 13px">堆栈使用率</span>
-                <div style="color: #fff; font-size: 28px; font-weight: 600">
-                  {{ meterData.stack_usage }}%
-                </div>
+                <span class="screen-sub-label">堆栈使用率</span>
+                <div class="screen-big-value">{{ meterData.stack_usage }}%</div>
               </div>
               <Progress
                 :percent="meterData.stack_usage"
@@ -590,24 +490,17 @@ onUnmounted(() => {
               </div>
             </Card>
           </Col>
-          <!-- EEPROM Monitoring -->
           <Col :span="6">
-            <Card
-              title="EEPROM监控"
-              :bordered="false"
-              style="background: #0c2340; border-color: #1a3a5c"
-              :head-style="{ color: '#fff', borderBottomColor: '#1a3a5c' }"
-            >
+            <Card class="screen-card" :bordered="false">
+              <template #title><span style="color: var(--text)">EEPROM监控</span></template>
               <div style="text-align: center; margin-bottom: 16px">
-                <span style="color: #aaa; font-size: 13px">写入次数</span>
-                <div style="color: #fff; font-size: 28px; font-weight: 600">
-                  {{ meterData.eeprom_writes?.toLocaleString() }}
-                </div>
+                <span class="screen-sub-label">写入次数</span>
+                <div class="screen-big-value">{{ meterData.eeprom_writes?.toLocaleString() }}</div>
               </div>
               <div style="text-align: center; margin-bottom: 12px">
                 <Tag :color="eepromStatus.color">{{ eepromStatus.text }}</Tag>
               </div>
-              <Descriptions :column="1" size="small" :label-style="{ color: '#aaa' }" :content-style="{ color: '#fff' }">
+              <Descriptions :column="1" size="small" :label-style="{ color: 'var(--text-sec)' }" :content-style="{ color: 'var(--text)' }">
                 <DescriptionsItem label="状态">{{ eepromStatus.text }}</DescriptionsItem>
                 <DescriptionsItem label="写入次数">{{ meterData.eeprom_writes?.toLocaleString() }}</DescriptionsItem>
                 <DescriptionsItem label="寿命评估">
@@ -616,15 +509,9 @@ onUnmounted(() => {
               </Descriptions>
             </Card>
           </Col>
-          <!-- Event Curve -->
           <Col :span="12">
-            <Card
-              title="读数事件曲线 (24h)"
-              :bordered="false"
-              style="background: #0c2340; border-color: #1a3a5c"
-              :head-style="{ color: '#fff', borderBottomColor: '#1a3a5c' }"
-              :body-style="{ padding: '12px' }"
-            >
+            <Card class="screen-card" :bordered="false">
+              <template #title><span style="color: var(--text)">读数事件曲线 (24h)</span></template>
               <EchartsUI ref="eventChartRef" height="240px" />
             </Card>
           </Col>
@@ -633,3 +520,47 @@ onUnmounted(() => {
     </div>
   </Page>
 </template>
+
+<style scoped>
+.screen-page {
+  background: var(--bg);
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.screen-card {
+  background: var(--bg-card) !important;
+  border: none !important;
+}
+
+.screen-card :deep(.ant-card-head) {
+  color: var(--text);
+  border-bottom-color: var(--border);
+}
+
+.screen-card :deep(.ant-card-body) {
+  padding: 16px;
+}
+
+.screen-back-btn {
+  color: var(--text-sec) !important;
+}
+
+.screen-header-title {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 600;
+  margin-left: 16px;
+}
+
+.screen-sub-label {
+  color: var(--text-sec);
+  font-size: 13px;
+}
+
+.screen-big-value {
+  color: var(--text);
+  font-size: 28px;
+  font-weight: 600;
+}
+</style>
