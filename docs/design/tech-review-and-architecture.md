@@ -1,6 +1,6 @@
 # MiniHES 技术审查与架构设计
 
-**审查日期**: 2026-05-16
+**审查日期**: 2026-05-16（最后更新: 2026-05-17）
 **审查范围**: 全栈技术选型、项目结构、后端架构、开发流程
 
 ---
@@ -11,30 +11,31 @@
 
 | 层 | 状态 | 评价 |
 |----|------|------|
-| 前端 | ✅ 基本完成 | 99个源文件，页面完整覆盖PRD |
+| 前端 | ✅ 基本完成 | 99个源文件，页面完整覆盖PRD，主题统一 |
 | Mock API | ✅ 完成 | 72个API文件，前后端已联调 |
-| 后端 | ⚠️ 骨架阶段 | 仅health端点，缺models/services/schemas |
-| 数据库 | ❌ 未搭建 | 无migration、无表结构 |
+| 后端 | ✅ 服务层完成 | 全端点 Service 化 + Schema 验证，83测试通过 |
+| 数据库 | ✅ 完成 | PostgreSQL + Alembic migration + seed 数据 |
 | DLMS协议 | ⚠️ 原型阶段 | APDU/ACSE/OBIS有雏形，但编解码是简化实现 |
+| CI/CD | ✅ 完成 | GitHub Actions: lint + test + typecheck |
 
 ### 1.2 发现的问题
 
 **P0 - 架构层面：**
-1. 后端缺少分层架构设计（无 models / schemas / services 层）
-2. 无数据库连接管理（无 SQLAlchemy Session、无 Alembic migration）
+1. ~~后端缺少分层架构设计（无 models / schemas / services 层）~~ ✅ 已完成
+2. ~~无数据库连接管理（无 SQLAlchemy Session、无 Alembic migration）~~ ✅ 已完成
 3. 无统一响应格式（前端 mock 返回 `{code: 0}`，后端未定义）
-4. 无统一异常处理（无全局 exception handler）
+4. ~~无统一异常处理（无全局 exception handler）~~ ✅ 已完成
 
 **P1 - 设计层面：**
-5. `Settings` 配置过于简陋，缺 JWT/Redis/InfluxDB/数据库等配置
-6. 无依赖注入体系（无 FastAPI Depends 组织）
+5. ~~`Settings` 配置过于简陋，缺 JWT/Redis/InfluxDB/数据库等配置~~ ✅ 已完成
+6. ~~无依赖注入体系（无 FastAPI Depends 组织）~~ ✅ 已完成（CurrentUser/DbSession DI）
 7. DLMS 协议栈的 AARQ 编码是硬编码字节，不可维护
 8. 通信适配器缺连接池管理，每次采集都新建连接开销大
 
 **P2 - 工程规范：**
-9. 后端缺 `.env.example` 文件
-10. 无 pre-commit / lint 配置
-11. `requirements.txt` 和 `pyproject.toml` 并存（应只保留 pyproject.toml）
+9. ~~后端缺 `.env.example` 文件~~ ✅ 已完成
+10. ~~无 pre-commit / lint 配置~~ ✅ 已完成（ruff + GitHub Actions CI）
+11. ~~`requirements.txt` 和 `pyproject.toml` 并存（应只保留 pyproject.toml）~~ ✅ 已完成
 
 ---
 
