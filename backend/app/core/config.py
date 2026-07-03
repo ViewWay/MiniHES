@@ -19,6 +19,9 @@ class Settings(BaseSettings):
 
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # DEPRECATED: InfluxDB 已弃用，时序数据改用 PostgreSQL 时序表
+    # (col_meter_reading + col_reading_daily_summary)。
+    # 配置项保留备未来高并发场景复用，当前无任何代码读写 InfluxDB。
     INFLUXDB_URL: str = "http://localhost:8086"
     INFLUXDB_TOKEN: str = ""
     INFLUXDB_ORG: str = "metering"

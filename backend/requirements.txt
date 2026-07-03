@@ -1,3 +1,5 @@
+# DEPRECATED: 依赖已迁移到 pyproject.toml（uv 管理），本文件不再维护，仅保留历史参考。
+# 正确安装方式：cd backend && uv sync
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
 sqlalchemy==2.0.36

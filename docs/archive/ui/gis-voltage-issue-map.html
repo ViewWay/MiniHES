@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GIS Integration - Voltage Issue Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;color:#333}
+.layout{display:flex;height:100vh}
+.sidebar{width:160px;background:#fff;border-right:1px solid #e8e8e8;padding-top:16px;flex-shrink:0}
+.nav-item{padding:12px 20px;font-size:14px;color:#666;cursor:pointer;border-left:3px solid transparent}
+.nav-item:hover{color:#26b5a0;background:#f9fffe}
+.nav-item.active{color:#26b5a0;border-left-color:#26b5a0;font-weight:600}
+.nav-group-title{padding:10px 20px 4px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px}
+.nav-item.sub{padding-left:32px;font-size:13px}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.top-bar{background:#fff;padding:14px 24px;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.top-bar h2{font-size:16px;font-weight:600}
+.breadcrumb{font-size:12px;color:#999} .breadcrumb span{color:#26b5a0}
+.btn{padding:6px 16px;border:none;border-radius:4px;font-size:13px;cursor:pointer;transition:opacity .2s}
+.btn:hover{opacity:.85} .btn-primary{background:#26b5a0;color:#fff} .btn-outline{background:#fff;color:#26b5a0;border:1px solid #26b5a0}
+.content-area{flex:1;display:flex;overflow:hidden;position:relative}
+.area-panel{width:240px;background:#fff;border-right:1px solid #e8e8e8;display:flex;flex-direction:column;flex-shrink:0;z-index:5}
+.area-search{padding:10px 12px;border-bottom:1px solid #e8e8e8}
+.area-search input{width:100%;padding:6px 10px 6px 30px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;outline:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 8px center no-repeat}
+.area-search input:focus{border-color:#26b5a0}
+.area-tree{flex:1;overflow-y:auto;padding:8px 0;font-size:13px}
+.map-wrap{flex:1;position:relative}
+#map{width:100%;height:100%}
+.stats-overlay{position:absolute;top:12px;left:12px;right:12px;z-index:1000;display:flex;gap:8px;pointer-events:none}
+.stat-card{flex:1;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border-radius:6px;padding:8px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12);pointer-events:auto;min-width:0}
+.stat-card .stat-label{font-size:10px;color:#888;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-card .stat-value{font-size:16px;font-weight:700}
+.vr{color:#f56c6c} .vo{color:#e6a23c} .vy{color:#c9b200} .vt{color:#26b5a0} .vb{color:#409eff} .vp{color:#7b68ee}
+.map-legend{position:absolute;bottom:24px;right:12px;z-index:1000;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);border-radius:6px;padding:12px 16px;box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:12px}
+.legend-title{font-weight:600;color:#555;margin-bottom:6px}
+.legend-item{display:flex;align-items:center;gap:8px;margin-bottom:5px;color:#555}
+.legend-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.legend-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.detail-panel{width:340px;background:#fff;border-left:1px solid #e8e8e8;display:none;flex-direction:column;flex-shrink:0;z-index:5}
+.detail-panel.open{display:flex}
+.panel-header{padding:14px 18px;border-bottom:1px solid #e8e8e8;display:flex;justify-content:space-between;align-items:center}
+.panel-title{font-size:14px;font-weight:600}
+.panel-close{cursor:pointer;color:#999;font-size:16px} .panel-close:hover{color:#f56c6c}
+.panel-body{flex:1;overflow-y:auto;padding:16px 18px}
+.tree-node{display:flex;align-items:center;padding:4px 8px;cursor:pointer;white-space:nowrap}
+.tree-node:hover{background:#f0faf8} .tree-node.selected{background:#e6f7f4} .tree-node.hidden{display:none}
+.tree-toggle{width:16px;text-align:center;color:#999;font-size:10px;flex-shrink:0;margin-right:2px;user-select:none}
+.tree-icon{width:18px;height:18px;margin-right:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px}
+.tree-label{font-size:13px;color:#333}
+.icon-dept{color:#26b5a0} .icon-city{color:#5b9bd5} .icon-sub{color:#e6a23c} .icon-feeder{color:#7b68ee} .icon-tr{color:#26b5a0;font-weight:700}
+.tree-children{padding-left:18px} .tree-children.collapsed{display:none}
+.info-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
+.info-label{color:#999} .info-value{color:#333;font-weight:500}
+.section-title{font-size:13px;font-weight:600;color:#555;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid #e8e8e8}
+.severity-badge{display:inline-block;padding:2px 10px;border-radius:3px;font-size:12px;font-weight:600}
+.severity-badge.critical{background:#fde2e2;color:#f56c6c}
+.severity-badge.persistent{background:#f3e8fd;color:#7b68ee}
+.severity-badge.recurring{background:#fdf0d5;color:#e6a23c}
+.severity-badge.transient{background:#e6f7f4;color:#26b5a0}
+.stat-mini{display:flex;gap:8px;margin:8px 0}
+.stat-mini-item{flex:1;background:#fafafa;border-radius:4px;padding:8px 6px;text-align:center}
+.stat-mini-item .sm-val{font-size:15px;font-weight:700}
+.stat-mini-item .sm-lbl{font-size:10px;color:#999;margin-top:2px}
+/* Voltage waveform chart */
+.volt-chart{display:flex;align-items:center;height:70px;margin:8px 0 4px;position:relative;background:#fafafa;border-radius:4px;overflow:hidden}
+.volt-bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative}
+.volt-fill{width:80%;border-radius:2px 2px 0 0;position:absolute;bottom:50%}
+.volt-fill.over{background:#f56c6c} .volt-fill.under{background:#409eff} .volt-fill.ok{background:#26b5a0}
+.volt-fill.below{bottom:auto;top:50%;border-radius:0 0 2px 2px}
+.volt-mid{position:absolute;left:0;right:0;top:50%;border-top:1px solid #ddd;z-index:1}
+.volt-hi{position:absolute;left:0;right:0;top:15%;border-top:1px dashed #f56c6c;z-index:1}
+.volt-lo{position:absolute;left:0;right:0;top:85%;border-top:1px dashed #409eff;z-index:1}
+.chart-labels{display:flex;justify-content:space-between;font-size:10px;color:#bbb}
+.mini-chart{display:flex;align-items:flex-end;gap:2px;height:50px;margin:8px 0 4px}
+.mini-bar{flex:1;border-radius:2px 2px 0 0;min-width:4px}
+.mini-bar.hb{background:#f56c6c} .mini-bar.mb{background:#e6a23c} .mini-bar.lb{background:#c9b200} .mini-bar.zb{background:#f0f0f0}
+.event-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
+.event-table th{background:#f7f7f7;padding:6px 8px;text-align:left;font-weight:600;color:#555;border-bottom:1px solid #e8e8e8}
+.event-table td{padding:6px 8px;border-bottom:1px solid #f0f0f0}
+.event-table tr:hover td{background:#f9fffe}
+.pct-bar-bg{width:100%;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden}
+.pct-bar{height:100%;border-radius:3px}
+.pct-bar.good{background:#26b5a0} .pct-bar.warn{background:#e6a23c} .pct-bar.bad{background:#f56c6c} .pct-bar.purple{background:#7b68ee}
+.root-card{background:#fff8f0;border:1px solid #ffe0b2;border-radius:6px;padding:10px 14px;margin:8px 0}
+.root-row{display:flex;justify-content:space-between;padding:3px 0;font-size:13px}
+.root-label{color:#999} .root-val{font-weight:600;color:#e6a23c}
+.wo-card{background:#fafafa;border:1px solid #e8e8e8;border-radius:6px;padding:12px 14px;margin:8px 0}
+.wo-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+.wo-label{color:#999} .wo-val{font-weight:600}
+.wo-val.dispatched{color:#409eff} .wo-val.unhandled{color:#e6a23c} .wo-val.processing{color:#7b68ee} .wo-val.completed{color:#26b5a0} .wo-val.undispatched{color:#999}
+.btn-service{display:block;width:100%;padding:10px;margin-top:12px;background:#26b5a0;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;text-align:center}
+.btn-service:hover{background:#1fa08c}
+.type-tag{display:inline-block;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:600}
+.type-tag.ov{background:#fde2e2;color:#f56c6c}
+.type-tag.uv{background:#e0f0ff;color:#409eff}
+.type-tag.fl{background:#f3e8fd;color:#7b68ee}
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <div class="nav-item">Dashboard</div>
+    <div class="nav-item">Collection Statistics</div>
+    <div class="nav-item">On Demand</div>
+    <div class="nav-item">Firmware Mgmt</div>
+    <div class="nav-group-title">GIS Integration</div>
+    <div class="nav-item sub">Missing Read Cluster</div>
+    <div class="nav-item sub">Reverse Power Flow</div>
+    <div class="nav-item sub">PQ Hotspot Map</div>
+    <div class="nav-item sub">Tamper Pattern Map</div>
+    <div class="nav-item sub">Overload Pattern Map</div>
+    <div class="nav-item sub">Phase Imbalance Map</div>
+    <div class="nav-item sub">Consumption Outlier</div>
+    <div class="nav-item sub active">Voltage Issue Map</div>
+    <div class="nav-item sub">Meter Location</div>
+    <div class="nav-item sub">Coverage Map</div>
+    <div class="nav-item">Reports</div>
+    <div class="nav-item">Config</div>
+    <div class="nav-item">Logs</div>
+  </div>
+  <div class="main">
+    <div class="top-bar">
+      <div>
+        <div class="breadcrumb">GIS Integration → <span>Voltage Issue Map</span></div>
+        <h2>Voltage Issue Map</h2>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <select id="typeFilter" style="padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;">
+          <option value="">All Voltage Issues</option>
+          <option value="over-voltage">Over-Voltage</option>
+          <option value="under-voltage">Under-Voltage</option>
+          <option value="fluctuation">Sustained Fluctuation</option>
+        </select>
+        <select id="persFilter" style="padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;">
+          <option value="">All Persistence</option>
+          <option value="critical">Critical (continuous)</option>
+          <option value="persistent">Persistent (daily)</option>
+          <option value="recurring">Recurring (weekly)</option>
+          <option value="transient">Transient</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px;color:#666;">
+          <input type="text" id="dateFrom" placeholder="From: MM/DD/YYYY" style="padding:4px 8px;border:1px solid #d9d9d9;border-radius:4px;font-size:12px;width:130px;">
+          <span>—</span>
+          <input type="text" id="dateTo" placeholder="To: MM/DD/YYYY" style="padding:4px 8px;border:1px solid #d9d9d9;border-radius:4px;font-size:12px;width:130px;">
+        </label>
+        <button class="btn btn-primary" onclick="applyFilter()">Apply</button>
+        <button class="btn btn-outline" onclick="location.reload()">↻ Refresh</button>
+      </div>
+    </div>
+    <div class="content-area">
+      <div class="area-panel">
+        <div class="area-search"><input type="text" id="treeSearch" placeholder="Department" oninput="filterTree(this.value)"></div>
+        <div class="area-tree" id="areaTree"></div>
+      </div>
+      <div class="map-wrap">
+        <div class="stats-overlay">
+          <div class="stat-card"><div class="stat-label">Voltage Events (30d)</div><div class="stat-value vr">2,156</div></div>
+          <div class="stat-card"><div class="stat-label">Over-Voltage</div><div class="stat-value vr">842</div></div>
+          <div class="stat-card"><div class="stat-label">Under-Voltage</div><div class="stat-value vb">756</div></div>
+          <div class="stat-card"><div class="stat-label">Fluctuation</div><div class="stat-value vp">558</div></div>
+          <div class="stat-card"><div class="stat-label">Problem Zones</div><div class="stat-value vr">16</div></div>
+          <div class="stat-card"><div class="stat-label">Persistent Issues</div><div class="stat-value vp">9</div></div>
+          <div class="stat-card"><div class="stat-label">Affected Meters</div><div class="stat-value vo">284</div></div>
+          <div class="stat-card"><div class="stat-label">Dispatched</div><div class="stat-value vt">6</div></div>
+        </div>
+        <div class="map-legend">
+          <div class="legend-title">Voltage Issue Type</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f56c6c;"></div> Over-Voltage (&gt;+10%)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#409eff;"></div> Under-Voltage (&lt;-10%)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#7b68ee;"></div> Sustained Fluctuation</div>
+          <div class="legend-title" style="margin-top:8px;">Persistence</div>
+          <div class="legend-item"><svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="none" stroke="#f56c6c" stroke-width="2.5"/></svg> Critical (continuous)</div>
+          <div class="legend-item"><svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="none" stroke="#7b68ee" stroke-width="2" stroke-dasharray="4,2"/></svg> Persistent (daily)</div>
+          <div class="legend-item"><svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="none" stroke="#e6a23c" stroke-width="1.5" stroke-dasharray="2,3"/></svg> Recurring</div>
+          <div class="legend-title" style="margin-top:8px;">Root Cause</div>
+          <div class="legend-item"><div class="legend-icon">⏚</div> Overloaded DT</div>
+          <div class="legend-item"><div class="legend-icon">⌁</div> Undersized cable</div>
+          <div class="legend-item"><div class="legend-icon">⊿</div> Phase imbalance</div>
+        </div>
+        <div id="map"></div>
+      </div>
+      <div id="detailPanel" class="detail-panel">
+        <div class="panel-header">
+          <span class="panel-title">Meter Details</span>
+          <span class="panel-close" onclick="closePanel()">✕</span>
+        </div>
+        <div id="panelContent" class="panel-body"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
+<script>
+const treeData=[{id:'kaifa',label:'KAIFA',icon:'🏢',iconClass:'icon-dept',children:[{id:'chengdu',label:'ChengDu',icon:'🌆',iconClass:'icon-city',children:[{id:'cd-sub',label:'CD-Substation',icon:'🏭',iconClass:'icon-sub',children:[{id:'cd-feeder',label:'CD-Feeder',icon:'⚡',iconClass:'icon-feeder',children:[{id:'cd-tr-1',label:'CD-TR-1',icon:'🔌',iconClass:'icon-tr'},{id:'cd-tr-2',label:'CD-TR-2',icon:'🔌',iconClass:'icon-tr'},{id:'cd-tr-3',label:'CD-TR-3',icon:'🔌',iconClass:'icon-tr'}]}]},{id:'exhibition',label:'Exhibition',icon:'🌆',iconClass:'icon-city'}]},{id:'m-dept',label:'M_Department',icon:'🏢',iconClass:'icon-dept',children:[{id:'m-sub1',label:'M-Substation',icon:'🏭',iconClass:'icon-sub'}]},{id:'showregion',label:'ShowRegion',icon:'🌆',iconClass:'icon-city'},{id:'testo',label:'TestO',icon:'🏢',iconClass:'icon-dept',children:[{id:'test-sub',label:'Test-Sub',icon:'🏭',iconClass:'icon-sub'}]},{id:'w-dept',label:'W_Department',icon:'🏢',iconClass:'icon-dept',children:[{id:'w-sub1',label:'W-Substation',icon:'🏭',iconClass:'icon-sub'}]}]}];
+function buildTree(n,c,d){n.forEach(x=>{const h=x.children&&x.children.length>0;const e=document.createElement('div');e.className='tree-node';e.setAttribute('data-id',x.id);e.setAttribute('data-label',x.label.toLowerCase());e.style.paddingLeft=(8+d*18)+'px';e.innerHTML=`<span class="tree-toggle">${h?'▶':''}</span><span class="tree-icon ${x.iconClass}">${x.icon}</span><span class="tree-label">${x.label}</span>`;c.appendChild(e);let b=null;if(h){b=document.createElement('div');b.className='tree-children collapsed';c.appendChild(b);buildTree(x.children,b,d+1)}e.addEventListener('click',()=>{document.querySelectorAll('.tree-node.selected').forEach(s=>s.classList.remove('selected'));e.classList.add('selected');if(b){const cl=b.classList.toggle('collapsed');e.querySelector('.tree-toggle').textContent=cl?'▶':'▼'}const co={'chengdu':[30.572,104.066,12],'cd-sub':[30.58,104.07,14],'cd-feeder':[30.575,104.065,15],'cd-tr-1':[30.578,104.062,16],'cd-tr-2':[30.573,104.068,16],'cd-tr-3':[30.569,104.058,16],'exhibition':[30.585,104.055,14]};if(co[x.id])map.setView([co[x.id][0],co[x.id][1]],co[x.id][2])})})}
+function filterTree(q){q=q.toLowerCase();document.querySelectorAll('.tree-node').forEach(e=>e.classList.toggle('hidden',q&&!e.getAttribute('data-label').includes(q)));if(q)document.querySelectorAll('.tree-children').forEach(e=>e.classList.remove('collapsed'))}
+
+const meters=[
+  {id:'MTR-CD-601',lat:30.5790,lng:104.0618,issueType:'over-voltage',persistence:'critical',area:'CD-TR-1',dt:'Jinjiang DT-01',addr:'Block A, Jinjiang',type:'Three Phase',comm:'RF Mesh',
+   nominalV:230,currentV:258,maxV:265,minV:248,avgV:255,events:68,duration:'Continuous (72h+)',lastEvent:'Apr 21, 2026 14:30',
+   voltProfile:[252,250,248,246,245,248,255,260,262,265,264,262,260,258,256,258,262,264,260,255,252,250,248,252],
+   trend:[8,12,10,14,12,8,4],rootCause:'Overloaded DT',rootIcon:'⏚',affectedNeighbors:12,
+   wo:{status:'processing',dispatch:'Dispatched',orderNo:'WO-2026-00430',updated:'Apr 21, 2026 09:00',assignee:'Zhang Wei'}},
+  {id:'MTR-CD-602',lat:30.5775,lng:104.0640,issueType:'under-voltage',persistence:'critical',area:'CD-TR-1',dt:'Jinjiang DT-02',addr:'Tower 3, Jinjiang',type:'Three Phase',comm:'RF Mesh',
+   nominalV:230,currentV:198,maxV:215,minV:192,avgV:200,events:55,duration:'Continuous (48h+)',lastEvent:'Apr 21, 2026 13:45',
+   voltProfile:[205,202,200,198,196,198,202,208,210,212,215,212,210,208,205,202,200,198,196,195,194,192,195,198],
+   trend:[6,10,8,12,10,6,3],rootCause:'Undersized cable',rootIcon:'⌁',affectedNeighbors:18,
+   wo:{status:'unhandled',dispatch:'Dispatched',orderNo:'WO-2026-00435',updated:'Apr 21, 2026 07:30',assignee:'Li Ming'}},
+  {id:'MTR-CD-603',lat:30.5762,lng:104.0608,issueType:'fluctuation',persistence:'persistent',area:'CD-TR-1',dt:'Jinjiang DT-03',addr:'Villa 12, Jinjiang',type:'Single Phase',comm:'GPRS',
+   nominalV:230,currentV:228,maxV:252,minV:205,avgV:225,events:42,duration:'Daily peaks',lastEvent:'Apr 21, 2026 12:00',
+   voltProfile:[225,222,218,215,212,215,228,238,245,252,248,242,238,235,232,235,242,248,245,238,232,225,218,215],
+   trend:[4,6,5,8,8,6,5],rootCause:'Phase imbalance',rootIcon:'⊿',affectedNeighbors:8,
+   wo:{status:'undispatched',dispatch:'Undispatched',orderNo:'—',updated:'—',assignee:'—'}},
+  {id:'MTR-CD-604',lat:30.5742,lng:104.0682,issueType:'over-voltage',persistence:'persistent',area:'CD-TR-2',dt:'Wuhou DT-01',addr:'Bldg 8, Wuhou',type:'Three Phase',comm:'RF Mesh',
+   nominalV:230,currentV:252,maxV:260,minV:242,avgV:250,events:48,duration:'Daily (10h/day)',lastEvent:'Apr 21, 2026 14:00',
+   voltProfile:[242,240,238,236,235,238,245,250,255,258,260,258,256,254,252,254,258,260,256,250,245,242,240,242],
+   trend:[5,8,7,10,8,6,4],rootCause:'Overloaded DT',rootIcon:'⏚',affectedNeighbors:15,
+   wo:{status:'processing',dispatch:'Dispatched',orderNo:'WO-2026-00425',updated:'Apr 21, 2026 10:00',assignee:'Wang Fang'}},
+  {id:'MTR-CD-605',lat:30.5725,lng:104.0698,issueType:'under-voltage',persistence:'recurring',area:'CD-TR-2',dt:'Wuhou DT-02',addr:'Block C, Wuhou',type:'Single Phase',comm:'GPRS',
+   nominalV:230,currentV:212,maxV:225,minV:205,avgV:215,events:22,duration:'Peak hours',lastEvent:'Apr 20, 2026 18:30',
+   voltProfile:[220,218,215,212,210,212,218,222,225,222,220,218,215,212,210,208,205,208,212,215,218,220,222,220],
+   trend:[2,4,3,5,4,3,1],rootCause:'Undersized cable',rootIcon:'⌁',affectedNeighbors:6,
+   wo:{status:'completed',dispatch:'Dispatched',orderNo:'WO-2026-00400',updated:'Apr 19, 2026 15:00',assignee:'Chen Jie'}},
+  {id:'MTR-CD-606',lat:30.5750,lng:104.0662,issueType:'fluctuation',persistence:'transient',area:'CD-TR-2',dt:'Wuhou DT-03',addr:'Tower 7, Wuhou',type:'Single Phase',comm:'RF Mesh',
+   nominalV:230,currentV:230,maxV:245,minV:218,avgV:228,events:8,duration:'Sporadic',lastEvent:'Apr 18, 2026 14:00',
+   voltProfile:[228,226,225,224,222,225,230,235,240,245,242,238,235,232,230,228,225,222,218,220,225,228,230,228],
+   trend:[0,1,1,2,2,1,1],rootCause:'Intermittent load',rootIcon:'—',affectedNeighbors:2,
+   wo:{status:'undispatched',dispatch:'Undispatched',orderNo:'—',updated:'—',assignee:'—'}},
+  {id:'MTR-CD-607',lat:30.5700,lng:104.0578,issueType:'under-voltage',persistence:'critical',area:'CD-TR-3',dt:'Qingyang DT-01',addr:'Unit 5, Qingyang',type:'Three Phase',comm:'PLC',
+   nominalV:230,currentV:195,maxV:210,minV:188,avgV:198,events:72,duration:'Continuous (96h+)',lastEvent:'Apr 21, 2026 12:00',
+   voltProfile:[200,198,196,194,192,195,200,205,208,210,208,205,202,200,198,196,195,192,190,188,190,192,195,198],
+   trend:[8,14,12,16,14,10,6],rootCause:'Undersized cable + overload',rootIcon:'⌁',affectedNeighbors:22,
+   wo:{status:'unhandled',dispatch:'Dispatched',orderNo:'WO-2026-00440',updated:'Apr 21, 2026 08:00',assignee:'Zhao Peng'}},
+  {id:'MTR-CD-608',lat:30.5685,lng:104.0592,issueType:'over-voltage',persistence:'recurring',area:'CD-TR-3',dt:'Qingyang DT-02',addr:'Block 2, Qingyang',type:'Single Phase',comm:'PLC',
+   nominalV:230,currentV:248,maxV:255,minV:238,avgV:245,events:18,duration:'Midday peaks',lastEvent:'Apr 20, 2026 13:00',
+   voltProfile:[238,236,235,234,232,235,240,245,250,252,255,252,250,248,245,242,240,238,236,235,234,235,236,238],
+   trend:[1,3,2,4,3,3,2],rootCause:'Solar PV injection',rootIcon:'☀',affectedNeighbors:5,
+   wo:{status:'undispatched',dispatch:'Undispatched',orderNo:'—',updated:'—',assignee:'—'}},
+  {id:'MTR-CD-609',lat:30.5715,lng:104.0558,issueType:'fluctuation',persistence:'recurring',area:'CD-TR-3',dt:'Qingyang DT-03',addr:'Villa 3, Qingyang',type:'Single Phase',comm:'GPRS',
+   nominalV:230,currentV:226,maxV:248,minV:208,avgV:224,events:15,duration:'Evening peaks',lastEvent:'Apr 20, 2026 20:00',
+   voltProfile:[225,222,220,218,215,218,225,232,238,242,245,248,245,240,235,232,228,225,220,215,210,208,212,218],
+   trend:[1,2,2,3,3,2,2],rootCause:'Phase imbalance',rootIcon:'⊿',affectedNeighbors:4,
+   wo:{status:'undispatched',dispatch:'Undispatched',orderNo:'—',updated:'—',assignee:'—'}},
+  {id:'MTR-CD-610',lat:30.5810,lng:104.0708,issueType:'under-voltage',persistence:'persistent',area:'CD-TR-1',dt:'Jinjiang DT-04',addr:'Bldg 15, Jinjiang',type:'Three Phase',comm:'RF Mesh',
+   nominalV:230,currentV:205,maxV:220,minV:198,avgV:208,events:35,duration:'Daily (8h/day)',lastEvent:'Apr 21, 2026 19:00',
+   voltProfile:[215,212,210,208,205,208,215,218,220,218,215,212,210,208,205,202,200,198,200,205,210,215,218,215],
+   trend:[3,6,5,8,6,4,3],rootCause:'Overloaded DT',rootIcon:'⏚',affectedNeighbors:10,
+   wo:{status:'undispatched',dispatch:'Undispatched',orderNo:'—',updated:'—',assignee:'—'}},
+  {id:'MTR-CD-611',lat:30.5828,lng:104.0575,issueType:'over-voltage',persistence:'transient',area:'Exhibition',dt:'Exhibition DT-01',addr:'Hall B, Exhibition',type:'Single Phase',comm:'GPRS',
+   nominalV:230,currentV:242,maxV:248,minV:232,avgV:238,events:6,duration:'Sporadic',lastEvent:'Apr 17, 2026 11:00',
+   voltProfile:[232,230,228,226,225,228,235,240,245,248,246,242,240,238,236,235,232,230,228,226,225,226,228,230],
+   trend:[0,1,0,1,2,1,1],rootCause:'Intermittent load',rootIcon:'—',affectedNeighbors:1,
+   wo:{status:'undispatched',dispatch:'Undispatched',orderNo:'—',updated:'—',assignee:'—'}},
+  {id:'MTR-CD-612',lat:30.5838,lng:104.0548,issueType:'fluctuation',persistence:'persistent',area:'Exhibition',dt:'Exhibition DT-02',addr:'Hall D, Exhibition',type:'Three Phase',comm:'RF Mesh',
+   nominalV:230,currentV:225,maxV:258,minV:202,avgV:222,events:38,duration:'Daily swings',lastEvent:'Apr 21, 2026 13:30',
+   voltProfile:[218,215,210,208,205,202,215,228,242,252,258,255,248,242,235,228,222,218,215,210,208,205,210,215],
+   trend:[4,6,5,8,7,5,3],rootCause:'Solar PV + load mix',rootIcon:'☀',affectedNeighbors:14,
+   wo:{status:'processing',dispatch:'Dispatched',orderNo:'WO-2026-00432',updated:'Apr 21, 2026 08:30',assignee:'Wang Fang'}},
+];
+
+function getMarkerSvg(d){
+  const typeColors={
+    'over-voltage':'#f56c6c','under-voltage':'#409eff','fluctuation':'#7b68ee'
+  };
+  const typeIcons={'over-voltage':'↑','under-voltage':'↓','fluctuation':'〜'};
+  const color=typeColors[d.issueType];
+  const icon=typeIcons[d.issueType];
+  let ring='';
+  if(d.persistence==='critical') ring=`<circle cx="14" cy="14" r="13" fill="none" stroke="${color}" stroke-width="2.5"/>`;
+  else if(d.persistence==='persistent') ring=`<circle cx="14" cy="14" r="13" fill="none" stroke="${color}" stroke-width="2" stroke-dasharray="4,2"/>`;
+  else if(d.persistence==='recurring') ring=`<circle cx="14" cy="14" r="13" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="2,3"/>`;
+  return `<svg width="28" height="28" viewBox="0 0 28 28">${ring}<circle cx="14" cy="14" r="10" fill="${color}" stroke="#fff" stroke-width="2"/><text x="14" y="18" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">${icon}</text></svg>`;
+}
+
+let map,heatLayer,markerLayer,markers=[];
+function initMap(){
+  map=L.map('map',{zoomControl:false}).setView([30.572,104.066],13);
+  L.control.zoom({position:'bottomleft'}).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap, &copy; CARTO',maxZoom:19,subdomains:'abcd'}).addTo(map);
+  const hp=meters.map(d=>[d.lat,d.lng,d.persistence==='critical'?1.0:d.persistence==='persistent'?0.7:d.persistence==='recurring'?0.4:0.2]);
+  heatLayer=L.heatLayer(hp,{radius:35,blur:25,maxZoom:15,max:1.0,gradient:{0.15:'#26b5a0',0.35:'#c9b200',0.55:'#e6a23c',0.75:'#7b68ee',0.9:'#f56c6c',1.0:'#d32f2f'}}).addTo(map);
+  markerLayer=L.layerGroup();
+  meters.forEach(d=>{
+    const icon=L.divIcon({className:'',html:getMarkerSvg(d),iconSize:[28,28],iconAnchor:[14,14]});
+    const m=L.marker([d.lat,d.lng],{icon}).on('click',()=>showMeter(d));
+    m.bindTooltip(`${d.id}<br><span style="font-size:11px;">${d.issueType} · ${d.persistence}</span>`,{direction:'top',offset:[0,-14]});
+    markers.push({marker:m,data:d});
+    markerLayer.addLayer(m);
+  });
+  map.on('zoomend',updateLayers);
+  updateLayers();
+}
+function updateLayers(){if(map.getZoom()>=15){map.removeLayer(heatLayer);map.addLayer(markerLayer)}else{map.removeLayer(markerLayer);map.addLayer(heatLayer)}}
+
+function showMeter(d){
+  document.getElementById('detailPanel').classList.add('open');
+  setTimeout(()=>map.invalidateSize(),50);
+
+  const persLabels={critical:'Critical (continuous)',persistent:'Persistent (daily)',recurring:'Recurring (weekly)',transient:'Transient'};
+  const typeLabels={'over-voltage':'Over-Voltage','under-voltage':'Under-Voltage','fluctuation':'Sustained Fluctuation'};
+  const typeCls={'over-voltage':'ov','under-voltage':'uv','fluctuation':'fl'};
+
+  // 24h voltage profile
+  const hiThresh=230*1.1, loThresh=230*0.9;
+  let voltBars='';
+  d.voltProfile.forEach((v,i)=>{
+    const dev=v-230;
+    const absDev=Math.abs(dev);
+    const maxDev=40;
+    const h=Math.max(absDev/maxDev*32,1);
+    if(dev>0){
+      const cls=v>hiThresh?'over':'ok';
+      voltBars+=`<div class="volt-bar"><div class="volt-fill ${cls}" style="height:${h}px;" title="${String(i).padStart(2,'0')}:00 — ${v}V"></div></div>`;
+    } else {
+      const cls=v<loThresh?'under':'ok';
+      voltBars+=`<div class="volt-bar"><div class="volt-fill below ${cls}" style="height:${h}px;" title="${String(i).padStart(2,'0')}:00 — ${v}V"></div></div>`;
+    }
+  });
+
+  // Weekly trend
+  const maxT=Math.max(...d.trend,1);
+  let trendBars='';
+  d.trend.forEach((v,i)=>{
+    const h=Math.max(v/maxT*48,2);
+    const cls=v>=10?'hb':v>=5?'mb':v>0?'lb':'zb';
+    trendBars+=`<div class="mini-bar ${cls}" style="height:${h}px;" title="Week ${i+1}: ${v} events"></div>`;
+  });
+
+  const wo=d.wo;
+  const woSL={undispatched:'Undispatched',unhandled:'Unhandled',processing:'Processing',completed:'Completed'};
+
+  document.getElementById('panelContent').innerHTML=`
+    <div style="margin-bottom:12px;">
+      <div class="info-row"><span class="info-label">Meter ID</span><span class="info-value" style="font-weight:700;">${d.id}</span></div>
+      <div class="info-row"><span class="info-label">Issue Type</span><span class="type-tag ${typeCls[d.issueType]}">${typeLabels[d.issueType]}</span></div>
+      <div class="info-row"><span class="info-label">Persistence</span><span class="severity-badge ${d.persistence}">${persLabels[d.persistence]}</span></div>
+      <div class="info-row"><span class="info-label">DT Area</span><span class="info-value">${d.dt}</span></div>
+      <div class="info-row"><span class="info-label">Area</span><span class="info-value">${d.area}</span></div>
+      <div class="info-row"><span class="info-label">Address</span><span class="info-value">${d.addr}</span></div>
+      <div class="info-row"><span class="info-label">Meter Type</span><span class="info-value">${d.type}</span></div>
+      <div class="info-row"><span class="info-label">Comm Module</span><span class="info-value">${d.comm}</span></div>
+      <div class="info-row"><span class="info-label">Duration</span><span class="info-value" style="color:#f56c6c;font-weight:600;">${d.duration}</span></div>
+      <div class="info-row"><span class="info-label">Last Event</span><span class="info-value">${d.lastEvent}</span></div>
+    </div>
+
+    <div class="section-title">Voltage Statistics</div>
+    <div class="stat-mini">
+      <div class="stat-mini-item"><div class="sm-val">${d.currentV}V</div><div class="sm-lbl">Current</div></div>
+      <div class="stat-mini-item"><div class="sm-val vr">${d.maxV}V</div><div class="sm-lbl">Max (30d)</div></div>
+      <div class="stat-mini-item"><div class="sm-val vb">${d.minV}V</div><div class="sm-lbl">Min (30d)</div></div>
+      <div class="stat-mini-item"><div class="sm-val">${d.avgV}V</div><div class="sm-lbl">Avg</div></div>
+    </div>
+    <div style="font-size:12px;color:#999;margin-bottom:4px;">Nominal: ${d.nominalV}V · Tolerance: ±10% (${Math.round(d.nominalV*0.9)}–${Math.round(d.nominalV*1.1)}V)</div>
+
+    <div class="section-title">24h Voltage Profile</div>
+    <div class="volt-chart">
+      <div class="volt-mid"></div>
+      <div class="volt-hi" title="${Math.round(d.nominalV*1.1)}V (+10%)"></div>
+      <div class="volt-lo" title="${Math.round(d.nominalV*0.9)}V (-10%)"></div>
+      ${voltBars}
+    </div>
+    <div class="chart-labels"><span>00</span><span>04</span><span>08</span><span>12</span><span>16</span><span>20</span><span>24</span></div>
+    <div style="font-size:11px;color:#999;margin-top:2px;">
+      <span style="display:inline-block;width:10px;height:10px;background:#f56c6c;border-radius:2px;margin-right:3px;vertical-align:middle;"></span>Over
+      <span style="display:inline-block;width:10px;height:10px;background:#409eff;border-radius:2px;margin:0 3px;vertical-align:middle;"></span>Under
+      <span style="display:inline-block;width:10px;height:10px;background:#26b5a0;border-radius:2px;margin:0 3px;vertical-align:middle;"></span>Normal
+      <span style="border-top:1px dashed #f56c6c;display:inline-block;width:15px;vertical-align:middle;margin:0 3px;"></span>±10% limit
+    </div>
+
+    <div class="section-title">Root Cause Analysis</div>
+    <div class="root-card">
+      <div class="root-row"><span class="root-label">Probable Cause</span><span class="root-val">${d.rootIcon} ${d.rootCause}</span></div>
+      <div class="root-row"><span class="root-label">Affected Neighbors</span><span class="root-val">${d.affectedNeighbors} meters</span></div>
+      <div class="root-row"><span class="root-label">Total Events (30d)</span><span class="root-val">${d.events}</span></div>
+    </div>
+
+    <div class="section-title">Event Trend (Last 4 Weeks)</div>
+    <div class="mini-chart">${trendBars}</div>
+    <div class="chart-labels"><span>W1</span><span>W2</span><span>W3</span><span>W4</span><span>W5</span><span>W6</span><span>W7</span></div>
+
+    <div class="section-title">Work Order Status</div>
+    <div class="wo-card">
+      <div class="wo-row"><span class="wo-label">Dispatch</span><span class="wo-val ${wo.status}">${wo.dispatch}</span></div>
+      <div class="wo-row"><span class="wo-label">Progress</span><span class="wo-val ${wo.status}">${woSL[wo.status]}</span></div>
+      <div class="wo-row"><span class="wo-label">Order No.</span><span class="wo-val" style="color:#409eff;">${wo.orderNo}</span></div>
+      <div class="wo-row"><span class="wo-label">Assignee</span><span class="wo-val">${wo.assignee}</span></div>
+      <div class="wo-row"><span class="wo-label">Updated</span><span class="wo-val">${wo.updated}</span></div>
+    </div>
+
+    <button class="btn-service" onclick="alert('Service order created for ${d.id}!')">+ Service Order</button>
+  `;
+  map.setView([d.lat,d.lng],Math.max(map.getZoom(),16));
+}
+
+function closePanel(){document.getElementById('detailPanel').classList.remove('open');setTimeout(()=>map.invalidateSize(),50)}
+
+function applyFilter(){
+  const tp=document.getElementById('typeFilter').value;
+  const ps=document.getElementById('persFilter').value;
+  markerLayer.clearLayers();
+  const f=[];
+  markers.forEach(m=>{const d=m.data;if(tp&&d.issueType!==tp)return;if(ps&&d.persistence!==ps)return;markerLayer.addLayer(m.marker);f.push(d)});
+  map.removeLayer(heatLayer);
+  const pts=f.map(d=>[d.lat,d.lng,d.persistence==='critical'?1.0:d.persistence==='persistent'?0.7:d.persistence==='recurring'?0.4:0.2]);
+  heatLayer=L.heatLayer(pts,{radius:35,blur:25,maxZoom:15,max:1.0,gradient:{0.15:'#26b5a0',0.35:'#c9b200',0.55:'#e6a23c',0.75:'#7b68ee',0.9:'#f56c6c',1.0:'#d32f2f'}});
+  updateLayers();
+}
+
+document.addEventListener('DOMContentLoaded',()=>{buildTree(treeData,document.getElementById('areaTree'),0);initMap()});
+</script>

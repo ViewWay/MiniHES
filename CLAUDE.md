@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **前端:** vue-vben-admin 5.7.0 (Vue 3 + TypeScript + Ant Design Vue + Vite)
 - **后端:** FastAPI + Python 3.12 (uv 管理)
-- **数据库:** PostgreSQL + Redis + InfluxDB
+- **数据库:** PostgreSQL + Redis（时序数据使用 PG 时序表 `col_meter_reading`/`col_reading_daily_summary`，InfluxDB 已弃用）
 - **包管理:** uv (后端), pnpm (前端)
 - **部署:** Docker Compose + systemd 双支持
 - **DLMS协议:** 使用私有库（替换当前简化实现）
@@ -83,8 +83,10 @@ MiniHES/
 │   └── .venv/                    # Python 3.12 虚拟环境
 │
 ├── tests/                        # 测试
-│   ├── e2e/                      # Playwright E2E 测试
-│   └── backend/                  # pytest 后端测试
+│   ├── e2e/                      # Playwright E2E 测试 (9 个)
+│   └── backend/                  # 早期占位测试（仅 5 个 stub，真实测试在 backend/tests/）
+│
+└── backend/tests/                # pytest 后端测试 (83 个，CI 实际运行)
 │
 └── docs/                         # 项目文档
 ```
@@ -179,8 +181,10 @@ class NewAdapter(CommunicationAdapter):
 # 后端
 DATABASE_URL=postgresql+asyncpg://...
 REDIS_URL=redis://localhost:6379
+SECRET_KEY=your-secret-key
 DLMS_DEFAULT_TIMEOUT=30
 COLLECTOR_MAX_WORKERS=10
+# 注：InfluxDB 已弃用，时序数据使用 PG 时序表，不再需要 INFLUXDB_* 变量
 ```
 
 ## 后端依赖

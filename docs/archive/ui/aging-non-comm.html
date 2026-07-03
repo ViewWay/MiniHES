@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aging Non-Communicating Meters — Reporting</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;color:#333}
+  .topbar{display:flex;align-items:center;height:40px;background:#fff;border-bottom:1px solid #e0e0e0;padding:0 20px;font-size:12px}
+  .topbar .logo{font-weight:700;font-size:16px;color:#26b5a0;margin-right:24px;letter-spacing:1px}
+  .topbar .nav-link{padding:0 14px;line-height:40px;color:#555;cursor:pointer;position:relative}
+  .topbar .nav-link:hover{color:#26b5a0}
+  .topbar .nav-link.active{color:#26b5a0;font-weight:600}
+  .topbar .nav-link.active::after{content:'';position:absolute;bottom:0;left:14px;right:14px;height:2px;background:#26b5a0}
+  .topbar .spacer{flex:1}.topbar .meta{color:#999;font-size:12px}
+  .topbar .online-badge{display:inline-block;padding:2px 8px;border-radius:10px;background:#e6f7f4;color:#26b5a0;font-size:11px;margin-left:12px}
+  .layout{display:flex;height:calc(100vh - 40px)}
+  .sidebar{width:200px;background:#fff;border-right:1px solid #e8e8e8;padding-top:12px;overflow-y:auto}
+  .sidebar .section-title{padding:8px 16px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px}
+  .sidebar .nav-item{padding:9px 20px;font-size:13px;color:#666;cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+  .sidebar .nav-item:hover{color:#26b5a0;background:#f9fffe}
+  .sidebar .nav-item.active{color:#26b5a0;border-left-color:#26b5a0;font-weight:600;background:#f0faf8}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .tabs{display:flex;background:#fff;border-bottom:1px solid #e8e8e8;padding:0 24px}
+  .tab{padding:8px 18px;font-size:12px;color:#999;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+  .tab:hover{color:#26b5a0}.tab.active{color:#26b5a0;border-bottom-color:#26b5a0;font-weight:600}
+  .content{flex:1;padding:12px 16px;overflow-y:auto}
+  .filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .filter-bar select,.filter-bar input{padding:4px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:12px;outline:none}
+  .filter-bar select:focus,.filter-bar input:focus{border-color:#26b5a0}
+  .btn{padding:4px 12px;border:none;border-radius:4px;font-size:12px;cursor:pointer}.btn:hover{opacity:.85}
+  .btn-primary{background:#26b5a0;color:#fff}.btn-outline{background:#fff;color:#26b5a0;border:1px solid #26b5a0}
+  .btn-export{background:#fff;color:#555;border:1px solid #d9d9d9}.btn-export:hover{border-color:#26b5a0;color:#26b5a0}
+  .kpi-row{display:flex;gap:10px;margin-bottom:10px}
+  .kpi-card{flex:1;background:#fff;border-radius:6px;padding:8px 14px;box-shadow:0 1px 3px rgba(0,0,0,.06);position:relative;overflow:hidden}
+  .kpi-card .kpi-label{font-size:11px;color:#999;margin-bottom:2px}
+  .kpi-card .kpi-value{font-size:20px;font-weight:700}
+  .kpi-card .kpi-sub{font-size:11px;color:#999;margin-top:2px}
+  .kpi-card .kpi-trend{font-size:11px;margin-top:1px}
+  .kpi-card .kpi-trend.up{color:#26b5a0}.kpi-card .kpi-trend.down{color:#f56c6c}
+  .kpi-card .kpi-bar{position:absolute;bottom:0;left:0;right:0;height:3px}
+  .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .chart-card{background:#fff;border-radius:6px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .chart-card.full{grid-column:1/-1}
+  .chart-card canvas{max-height:140px}.chart-card.full canvas{max-height:120px}
+  .chart-title{font-size:12px;font-weight:600;color:#333;margin-bottom:6px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  th{background:#f7f7f7;text-align:left;padding:6px 10px;font-size:11px;font-weight:600;color:#555;border-bottom:1px solid #e8e8e8;white-space:nowrap}
+  td{padding:5px 10px;font-size:12px;border-bottom:1px solid #f0f0f0;color:#444}
+  tr:hover td{background:#f9fffe}
+  .section-label{font-size:12px;font-weight:600;color:#333;margin:8px 0 6px}
+  .pagination{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:12px;font-size:12px;color:#666}
+  .pagination button{padding:4px 10px;border:1px solid #d9d9d9;border-radius:3px;background:#fff;cursor:pointer;font-size:12px}
+  .pagination button.active-page{background:#26b5a0;color:#fff;border-color:#26b5a0}
+  .pagination button:hover{border-color:#26b5a0}
+  .age-badge{display:inline-block;padding:1px 8px;border-radius:3px;font-size:11px;font-weight:600}
+  .age-7d{background:#fff3e0;color:#e6a23c}.age-14d{background:#fde2e2;color:#f56c6c}
+  .age-30d{background:#f0e0ff;color:#8b5cf6}.age-60d{background:#333;color:#fff}
+  /* Area panel */
+  .area-panel{width:220px;background:#fff;border-right:1px solid #e8e8e8;display:flex;flex-direction:row;overflow:hidden}
+  .area-icon-strip{width:36px;background:#fafafa;border-right:1px solid #f0f0f0;display:flex;flex-direction:column;align-items:center;padding-top:6px;gap:2px;flex-shrink:0}
+  .area-icon-strip .icon-btn{width:30px;height:30px;border:none;background:transparent;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;position:relative}
+  .area-icon-strip .icon-btn:hover{background:#e6f7f4}
+  .area-icon-strip .icon-btn.active{background:#e6f7f4}
+  .area-icon-strip .icon-btn.active::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:3px;background:#26b5a0;border-radius:0 2px 2px 0}
+  .area-icon-strip .icon-btn svg{width:18px;height:18px}
+  .area-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .area-content .area-search{padding:8px 10px;border-bottom:1px solid #f0f0f0}
+  .area-content .area-search input{width:100%;padding:5px 8px;border:1px solid #d9d9d9;border-radius:4px;font-size:11px;outline:none}
+  .area-content .area-search input:focus{border-color:#26b5a0}
+  .area-content .area-search input::placeholder{color:#bbb}
+  .area-tab-body{flex:1;overflow-y:auto}
+  .area-tab-body .tab-pane{display:none;height:100%}.area-tab-body .tab-pane.active{display:block}
+  .area-tree{padding:4px 0;font-size:13px;user-select:none;height:100%;overflow-y:auto}
+  .area-tree ul{list-style:none;margin:0;padding:0}
+  .area-tree .tree-row{display:flex;align-items:center;gap:4px;padding:4px 8px;cursor:pointer;border-radius:3px;margin:1px 4px;transition:background .12s;white-space:nowrap}
+  .area-tree .tree-row:hover{background:#f0faf8}
+  .area-tree .tree-row.selected{background:#26b5a0;color:#fff}
+  .area-tree .tree-row.selected .tree-icon{filter:brightness(10)}
+  .area-tree .tree-toggle{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#999;flex-shrink:0;transition:transform .15s}
+  .area-tree .tree-toggle.expanded{transform:rotate(90deg)}
+  .area-tree .tree-toggle.leaf{visibility:hidden}
+  .area-tree .tree-icon{width:14px;height:14px;flex-shrink:0}
+  .area-tree .tree-label{font-size:11px;overflow:hidden;text-overflow:ellipsis}
+  .area-tree .children{padding-left:14px}.area-tree .children.collapsed{display:none}
+  .group-list{padding:6px 0}
+  .group-item{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;font-size:11px;color:#555;margin:1px 4px;border-radius:3px}
+  .group-item:hover{background:#f0faf8;color:#26b5a0}
+  .group-item.selected{background:#26b5a0;color:#fff}
+  .group-item svg{width:14px;height:14px;flex-shrink:0}
+  .fav-list{padding:6px 0}
+  .fav-item{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;font-size:11px;color:#555;margin:1px 4px;border-radius:3px}
+  .fav-item:hover{background:#fff8e6}
+  .fav-item .fav-star{color:#e6a23c;font-size:12px}
+  .area-toolbar{display:flex;align-items:center;gap:4px;padding:6px 8px;border-top:1px solid #f0f0f0;background:#fafafa}
+  .area-toolbar button{width:26px;height:26px;border:1px solid #d9d9d9;border-radius:4px;background:#fff;cursor:pointer;font-size:14px;color:#666;display:inline-flex;align-items:center;justify-content:center}
+  .area-toolbar button:hover{border-color:#26b5a0;color:#26b5a0}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">⊙ HES</span>
+  <span class="nav-link">Dashboard</span><span class="nav-link">Device ▾</span><span class="nav-link">Operation ▾</span>
+  <span class="nav-link">Collection ▾</span><span class="nav-link">Installation ▾</span><span class="nav-link">Readings ▾</span>
+  <span class="nav-link">Network ▾</span><span class="nav-link">Exception ▾</span><span class="nav-link">Master Data ▾</span>
+  <span class="nav-link">VEE ▾</span><span class="nav-link active">Report ▾</span>
+  <span class="spacer"></span><span class="meta">21/04/2026 15:06:54</span><span class="online-badge">Online: 118</span>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="section-title">Reporting</div>
+    <div class="nav-item">Collection Performance</div>
+    <div class="nav-item">Data Quality Index</div>
+    <div class="nav-item">Comm Success & Failure</div>
+    <div class="nav-item">Retry Analysis</div>
+    <div class="nav-item">Latency Report</div>
+    <div class="nav-item active">Aging Non-Comm</div>
+    <div class="nav-item">Network Topology</div>
+    <div class="nav-item">Signal Strength</div>
+    <div class="nav-item">Battery Status</div>
+    <div class="nav-item">Asset Mismatch</div>
+    <div class="nav-item">Compliance Reports</div>
+  </div>
+
+  <!-- Area Panel -->
+  <div class="area-panel">
+    <div class="area-icon-strip">
+      <button class="icon-btn active" title="Region" onclick="switchAreaTab('region',this)">
+        <svg viewBox="0 0 20 20"><rect x="7" y="2" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="1.5" y="13" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="12.5" y="13" width="6" height="4" rx="1" fill="#26b5a0"/><line x1="10" y1="6" x2="10" y2="9" stroke="#26b5a0" stroke-width="1.4"/><line x1="4.5" y1="9" x2="15.5" y2="9" stroke="#26b5a0" stroke-width="1.4"/><line x1="4.5" y1="9" x2="4.5" y2="13" stroke="#26b5a0" stroke-width="1.4"/><line x1="15.5" y1="9" x2="15.5" y2="13" stroke="#26b5a0" stroke-width="1.4"/></svg>
+      </button>
+      <button class="icon-btn" title="Group" onclick="switchAreaTab('group',this)">
+        <svg viewBox="0 0 20 20"><path d="M3 3h5v5H3V3zm9 0h5v5h-5V3zM3 12h5v5H3v-5zm9 0h5v5h-5v-5z" fill="#8b5cf6" opacity=".85"/></svg>
+      </button>
+      <button class="icon-btn" title="Favorites" onclick="switchAreaTab('favorites',this)">
+        <svg viewBox="0 0 20 20"><path d="M10 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L10 14.3l-4.8 2.6.9-5.4L2.2 7.7l5.4-.8z" fill="#e6a23c"/></svg>
+      </button>
+    </div>
+    <div class="area-content">
+      <div class="area-search"><input type="text" id="areaSearchInput" placeholder="Department" oninput="filterAreaTree(this.value)"></div>
+      <div class="area-tab-body">
+        <div id="areaTabRegion" class="tab-pane active"><div class="area-tree" id="areaTree"></div></div>
+        <div id="areaTabGroup" class="tab-pane"><div class="group-list" id="groupList"></div></div>
+        <div id="areaTabFavorites" class="tab-pane"><div class="fav-list" id="favList"></div></div>
+      </div>
+      <div class="area-toolbar">
+        <button title="Refresh" onclick="refreshAreaTree()">↻</button>
+        <button title="Expand All" onclick="expandAllNodes()">＋</button>
+        <button title="Collapse All" onclick="collapseAllNodes()">－</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Main ══ -->
+  <div class="main">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('summary',this)">Aging Overview</div>
+      <div class="tab" onclick="switchTab('detail',this)">Device List</div>
+    </div>
+
+    <!-- ════ Summary ════ -->
+    <div id="panel-summary" class="content">
+      <div class="filter-bar">
+        <select id="filterPeriod"><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select>
+        <input type="date" id="filterFrom" value="2026-03-01">
+        <span style="color:#999;">—</span>
+        <input type="date" id="filterTo" value="2026-04-21">
+        <select id="filterDCU"><option value="">All DCUs</option><option>DCU-TR1</option><option>DCU-TR2</option><option>DCU-TR3</option><option>DCU-TR4</option><option>DCU-W1</option><option>DCU-W2</option></select>
+        <select id="filterCommType"><option value="">All Comm Types</option><option>4G</option><option>HPLC</option><option>RF Mesh</option></select>
+        <select id="filterBucket"><option value="">All Aging Buckets</option><option>7d</option><option>14d</option><option>30d</option><option>60d+</option></select>
+        <button class="btn btn-primary">Search</button>
+        <button class="btn btn-outline">Reset</button>
+        <button class="btn btn-export">⬇ Export</button>
+      </div>
+
+      <!-- KPI -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Total Non-Comm Meters</div>
+          <div class="kpi-value" style="color:#f56c6c;">482</div>
+          <div class="kpi-sub">Out of 8,540 total</div>
+          <div class="kpi-trend down">▲ 18 vs prev week</div>
+          <div class="kpi-bar" style="background:#f56c6c;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">7-Day Bucket</div>
+          <div class="kpi-value" style="color:#e6a23c;">198</div>
+          <div class="kpi-sub">41.1% of non-comm</div>
+          <div class="kpi-trend up">▼ 12 vs prev week</div>
+          <div class="kpi-bar" style="background:#e6a23c;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">14-Day Bucket</div>
+          <div class="kpi-value" style="color:#f56c6c;">128</div>
+          <div class="kpi-sub">26.6% of non-comm</div>
+          <div class="kpi-trend down">▲ 15 vs prev week</div>
+          <div class="kpi-bar" style="background:#f56c6c;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">30-Day Bucket</div>
+          <div class="kpi-value" style="color:#8b5cf6;">95</div>
+          <div class="kpi-sub">19.7% of non-comm</div>
+          <div class="kpi-trend down">▲ 8 vs prev week</div>
+          <div class="kpi-bar" style="background:#8b5cf6;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">60+ Day Bucket</div>
+          <div class="kpi-value" style="color:#333;">61</div>
+          <div class="kpi-sub">12.7% — critical</div>
+          <div class="kpi-trend down">▲ 7 vs prev week</div>
+          <div class="kpi-bar" style="background:#333;"></div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="chart-grid">
+        <div class="chart-card full">
+          <div class="chart-title">Non-Communicating Meter Trend by Aging Bucket</div>
+          <canvas id="chartAgingTrend" height="50"></canvas>
+        </div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Aging Bucket Distribution (Current)</div>
+          <canvas id="chartBucketDist" height="110"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Non-Comm by Geographic Area</div>
+          <canvas id="chartByArea" height="110"></canvas>
+        </div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Non-Comm by DCU</div>
+          <canvas id="chartByDCU" height="110"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Recovery Rate by Bucket (Last 4 Weeks)</div>
+          <canvas id="chartRecovery" height="110"></canvas>
+        </div>
+      </div>
+
+      <!-- Summary Table -->
+      <div class="section-label">Aging Summary by Area</div>
+      <table>
+        <thead><tr><th>Area</th><th>Total Meters</th><th>Non-Comm</th><th>7d</th><th>14d</th><th>30d</th><th>60d+</th><th>Non-Comm %</th></tr></thead>
+        <tbody id="areaSummaryBody"></tbody>
+      </table>
+    </div>
+
+    <!-- ════ Detail ════ -->
+    <div id="panel-detail" class="content" style="display:none;">
+      <div class="filter-bar">
+        <input type="text" id="detailSearch" placeholder="Search Device No..." style="width:180px;">
+        <select id="detailType"><option value="">All Types</option><option>Meter</option><option>DCU</option></select>
+        <select id="detailBucket"><option value="">All Buckets</option><option>7d</option><option>14d</option><option>30d</option><option>60d+</option></select>
+        <select id="detailArea"><option value="">All Areas</option><option>Sharjah-E</option><option>Sharjah-W</option><option>Al Dhaid</option><option>Kalba</option><option>Khorfakkan</option><option>Dibba</option></select>
+        <button class="btn btn-primary" onclick="applyDetailFilter()">Search</button>
+        <button class="btn btn-outline" onclick="resetDetailFilter()">Reset</button>
+        <button class="btn btn-export">⬇ Export</button>
+      </div>
+      <table id="detailTable"></table>
+      <div class="pagination" id="detailPagination"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ AREA TREE ══
+const areaTreeData=[{id:'sewa',label:'SEWA',icon:'org',children:[
+  {id:'sharjah-e',label:'Sharjah-E',icon:'area',children:[
+    {id:'dcu-group',label:'DCU',icon:'dcu-folder',children:[
+      {id:'dcu-tr1',label:'DCU-TR1',icon:'dcu'},{id:'dcu-tr2',label:'DCU-TR2',icon:'dcu'},
+      {id:'dcu-tr3',label:'DCU-TR3',icon:'dcu'},{id:'dcu-tr4',label:'DCU-TR4',icon:'dcu'},
+    ]},{id:'p2p',label:'P2P',icon:'area'},
+  ]},
+  {id:'sharjah-w',label:'Sharjah-W',icon:'area',children:[{id:'dcu-group-w',label:'DCU',icon:'dcu-folder',children:[{id:'dcu-w1',label:'DCU-W1',icon:'dcu'},{id:'dcu-w2',label:'DCU-W2',icon:'dcu'}]}]},
+  {id:'al-dhaid',label:'Al Dhaid',icon:'area'},{id:'kalba',label:'Kalba',icon:'area'},
+  {id:'khorfakkan',label:'Khorfakkan',icon:'area'},{id:'dibba',label:'Dibba Al Hisn',icon:'area'},
+]}];
+const iconSvgs={
+  org:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="5" y="1" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="1" y="9" width="5" height="4" rx="1" fill="#26b5a0"/><rect x="10" y="9" width="5" height="4" rx="1" fill="#26b5a0"/><line x1="8" y1="5" x2="8" y2="7" stroke="#26b5a0" stroke-width="1.2"/><line x1="3.5" y1="7" x2="12.5" y2="7" stroke="#26b5a0" stroke-width="1.2"/><line x1="3.5" y1="7" x2="3.5" y2="9" stroke="#26b5a0" stroke-width="1.2"/><line x1="12.5" y1="7" x2="12.5" y2="9" stroke="#26b5a0" stroke-width="1.2"/></svg>`,
+  area:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#e6f7f4" stroke="#26b5a0" stroke-width=".8"/><path d="M4 7l2.5 3L11 6" stroke="#26b5a0" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  'dcu-folder':`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#e6f7f4" stroke="#26b5a0" stroke-width=".8"/><rect x="5" y="6" width="6" height="4" rx="1" fill="#26b5a0" opacity=".3"/></svg>`,
+  dcu:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="#26b5a0" opacity=".15" stroke="#26b5a0" stroke-width=".8"/><circle cx="8" cy="6" r="1.5" fill="#26b5a0"/><line x1="6" y1="10" x2="10" y2="10" stroke="#26b5a0" stroke-width="1" stroke-linecap="round"/></svg>`,
+};
+let selectedAreaId='sewa';
+function buildTreeHTML(ns,d){let h='';ns.forEach(n=>{const has=n.children&&n.children.length>0,exp=d<2,sel=n.id===selectedAreaId;const tc=has?(exp?'tree-toggle expanded':'tree-toggle'):'tree-toggle leaf';h+=`<li><div class="tree-row${sel?' selected':''}" onclick="selectAreaNode('${n.id}',this)"><span class="${tc}" onclick="event.stopPropagation();toggleNode(this)">▶</span>${iconSvgs[n.icon]||iconSvgs.area}<span class="tree-label">${n.label}</span></div>`;if(has){h+=`<ul class="children${exp?'':' collapsed'}">`;h+=buildTreeHTML(n.children,d+1);h+='</ul>';}h+='</li>';});return h;}
+function renderAreaTree(d){document.getElementById('areaTree').innerHTML='<ul>'+buildTreeHTML(d||areaTreeData,0)+'</ul>';}
+function toggleNode(t){t.classList.toggle('expanded');const u=t.closest('li').querySelector(':scope>ul');if(u)u.classList.toggle('collapsed');}
+function selectAreaNode(id,el){document.querySelectorAll('.tree-row.selected').forEach(e=>e.classList.remove('selected'));el.classList.add('selected');selectedAreaId=id;}
+function expandAllNodes(){document.querySelectorAll('.tree-toggle').forEach(t=>t.classList.add('expanded'));document.querySelectorAll('.children').forEach(c=>c.classList.remove('collapsed'));}
+function collapseAllNodes(){document.querySelectorAll('.tree-toggle').forEach(t=>{if(!t.classList.contains('leaf'))t.classList.remove('expanded')});document.querySelectorAll('.children').forEach(c=>c.classList.add('collapsed'));}
+function filterAreaTree(q){if(!q.trim()){renderAreaTree();return;}const lq=q.toLowerCase();function f(ns){return ns.reduce((a,n)=>{const m=n.label.toLowerCase().includes(lq),fc=n.children?f(n.children):[];if(m||fc.length)a.push({...n,children:fc.length?fc:n.children});return a;},[]);}document.getElementById('areaTree').innerHTML='<ul>'+buildTreeHTML(f(areaTreeData),0)+'</ul>';expandAllNodes();}
+function refreshAreaTree(){renderAreaTree();}
+renderAreaTree();
+const areaTabs={region:'areaTabRegion',group:'areaTabGroup',favorites:'areaTabFavorites'};
+const searchPH={region:'Department',group:'Group',favorites:'Favorites'};
+function switchAreaTab(t,b){document.querySelectorAll('.icon-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');Object.values(areaTabs).forEach(id=>document.getElementById(id).classList.remove('active'));document.getElementById(areaTabs[t]).classList.add('active');document.getElementById('areaSearchInput').placeholder=searchPH[t];document.getElementById('areaSearchInput').value='';}
+document.getElementById('groupList').innerHTML=[{l:'Electricity - Single Phase',c:1240},{l:'Electricity - Three Phase',c:860},{l:'Water - Domestic',c:2100}].map(g=>`<div class="group-item" onclick="this.parentElement.querySelectorAll('.group-item').forEach(e=>e.classList.remove('selected'));this.classList.add('selected')"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="3" fill="#8b5cf6" opacity=".15" stroke="#8b5cf6" stroke-width=".8"/></svg><span style="flex:1">${g.l}</span><span style="color:#bbb;font-size:10px">${g.c}</span></div>`).join('');
+document.getElementById('favList').innerHTML=[{l:'VIP-Meter-001',t:'Meter'},{l:'DCU-TR1',t:'DCU'}].map(f=>`<div class="fav-item"><span class="fav-star">★</span><span style="flex:1">${f.l}</span><span style="color:#bbb;font-size:10px">${f.t}</span></div>`).join('');
+
+// ══ COLORS ══
+const teal='#26b5a0',red='#f56c6c',amber='#e6a23c',blue='#409eff',purple='#8b5cf6',dark='#333';
+
+// 1. Aging Trend (stacked area)
+new Chart(document.getElementById('chartAgingTrend'),{
+  type:'line',
+  data:{
+    labels:['W10','W11','W12','W13','W14','W15','W16','W17 (current)'],
+    datasets:[
+      {label:'7d',data:[180,175,190,185,195,210,205,198],borderColor:amber,backgroundColor:'rgba(230,162,60,.15)',fill:true,tension:.3,pointRadius:2},
+      {label:'14d',data:[95,100,105,110,108,115,120,128],borderColor:red,backgroundColor:'rgba(245,108,108,.15)',fill:true,tension:.3,pointRadius:2},
+      {label:'30d',data:[70,72,75,78,80,82,87,95],borderColor:purple,backgroundColor:'rgba(139,92,246,.15)',fill:true,tension:.3,pointRadius:2},
+      {label:'60d+',data:[42,44,45,48,50,52,54,61],borderColor:dark,backgroundColor:'rgba(51,51,51,.1)',fill:true,tension:.3,pointRadius:2},
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:10,font:{size:10}}}},
+    scales:{
+      x:{ticks:{font:{size:9}}},
+      y:{stacked:false,title:{display:true,text:'Meter Count',font:{size:9}},ticks:{font:{size:9}}}
+    }
+  }
+});
+
+// 2. Bucket Distribution (doughnut)
+new Chart(document.getElementById('chartBucketDist'),{
+  type:'doughnut',
+  data:{
+    labels:['7 days','14 days','30 days','60+ days'],
+    datasets:[{data:[198,128,95,61],backgroundColor:[amber,red,purple,dark]}]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,cutout:'50%',
+    plugins:{
+      legend:{position:'right',labels:{padding:8,font:{size:10}}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} (${(ctx.raw/482*100).toFixed(1)}%)`}}
+    }
+  }
+});
+
+// 3. By Area (horizontal stacked bar)
+new Chart(document.getElementById('chartByArea'),{
+  type:'bar',
+  data:{
+    labels:['Sharjah-E','Sharjah-W','Al Dhaid','Kalba','Khorfakkan','Dibba'],
+    datasets:[
+      {label:'7d',data:[82,45,28,18,15,10],backgroundColor:amber,borderRadius:2},
+      {label:'14d',data:[52,30,18,12,10,6],backgroundColor:red,borderRadius:2},
+      {label:'30d',data:[38,22,14,10,7,4],backgroundColor:purple,borderRadius:2},
+      {label:'60d+',data:[25,15,8,6,4,3],backgroundColor:dark,borderRadius:2},
+    ]
+  },
+  options:{
+    indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{font:{size:9}}}},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:9},padding:6}}}
+  }
+});
+
+// 4. By DCU
+new Chart(document.getElementById('chartByDCU'),{
+  type:'bar',
+  data:{
+    labels:['DCU-TR1','DCU-TR2','DCU-TR3','DCU-TR4','DCU-W1','DCU-W2'],
+    datasets:[
+      {label:'7d',data:[35,28,42,22,38,33],backgroundColor:amber,borderRadius:2},
+      {label:'14d',data:[20,18,28,15,25,22],backgroundColor:red,borderRadius:2},
+      {label:'30d',data:[15,12,22,10,18,18],backgroundColor:purple,borderRadius:2},
+      {label:'60d+',data:[10,8,15,6,12,10],backgroundColor:dark,borderRadius:2},
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{font:{size:9}},title:{display:true,text:'Meters',font:{size:9}}}},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:9},padding:6}}}
+  }
+});
+
+// 5. Recovery Rate
+new Chart(document.getElementById('chartRecovery'),{
+  type:'bar',
+  data:{
+    labels:['7d','14d','30d','60d+'],
+    datasets:[
+      {label:'W14',data:[68,42,25,8],backgroundColor:'rgba(38,181,160,.3)',borderRadius:3},
+      {label:'W15',data:[65,40,22,7],backgroundColor:'rgba(38,181,160,.5)',borderRadius:3},
+      {label:'W16',data:[62,38,20,5],backgroundColor:'rgba(38,181,160,.7)',borderRadius:3},
+      {label:'W17',data:[70,45,28,10],backgroundColor:teal,borderRadius:3},
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    scales:{x:{ticks:{font:{size:9}}},y:{max:100,ticks:{callback:v=>v+'%',font:{size:9}},title:{display:true,text:'Recovery %',font:{size:9}}}},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:9},padding:6}}}
+  }
+});
+
+// ══ AREA SUMMARY TABLE ══
+const areaSummary=[
+  {area:'Sharjah-E',total:3200,nc:197,d7:82,d14:52,d30:38,d60:25},
+  {area:'Sharjah-W',total:2100,nc:112,d7:45,d14:30,d30:22,d60:15},
+  {area:'Al Dhaid',total:1200,nc:68,d7:28,d14:18,d30:14,d60:8},
+  {area:'Kalba',total:850,nc:46,d7:18,d14:12,d30:10,d60:6},
+  {area:'Khorfakkan',total:720,nc:36,d7:15,d14:10,d30:7,d60:4},
+  {area:'Dibba',total:470,nc:23,d7:10,d14:6,d30:4,d60:3},
+];
+document.getElementById('areaSummaryBody').innerHTML=areaSummary.map(r=>{
+  const pct=(r.nc/r.total*100).toFixed(1)+'%';
+  const pc=parseFloat(pct)>=8?red:parseFloat(pct)>=5?amber:teal;
+  return `<tr><td>${r.area}</td><td>${r.total.toLocaleString()}</td>
+  <td style="color:${red};font-weight:600">${r.nc}</td>
+  <td style="color:${amber}">${r.d7}</td><td style="color:${red}">${r.d14}</td>
+  <td style="color:${purple}">${r.d30}</td><td style="font-weight:600">${r.d60}</td>
+  <td><span style="font-weight:600;color:${pc}">${pct}</span></td></tr>`;
+}).join('');
+
+// ══ DETAIL TABLE ══
+const detailData=[];
+const areas=['Sharjah-E','Sharjah-E','Sharjah-W','Sharjah-E','Al Dhaid','Kalba','Sharjah-W','Khorfakkan','Sharjah-E','Dibba',
+  'Sharjah-W','Al Dhaid','Sharjah-E','Kalba','Sharjah-E','Khorfakkan','Sharjah-W','Sharjah-E','Al Dhaid','Dibba'];
+const buckets=['60d+','60d+','30d','60d+','30d','14d','60d+','30d','14d','7d','14d','7d','7d','7d','30d','7d','7d','14d','14d','7d'];
+const daysSilent=[92,78,45,68,38,18,65,32,20,5,16,8,6,4,35,7,3,15,12,2];
+for(let i=0;i<20;i++){
+  const dn=(1000000000+Math.floor(Math.random()*9000000000)).toString();
+  const lastComm=new Date(2026,3,21);lastComm.setDate(lastComm.getDate()-daysSilent[i]);
+  const lc=`${String(lastComm.getDate()).padStart(2,'0')}/${String(lastComm.getMonth()+1).padStart(2,'0')}/${lastComm.getFullYear()}`;
+  detailData.push({no:i+1,deviceNo:dn,type:'Meter',area:areas[i],dcu:'DCU-TR'+(1+i%4),commType:i%2?'4G':'HPLC',lastComm:lc,daysSilent:daysSilent[i],bucket:buckets[i]});
+}
+
+const PAGE=10;let page=1,filtered=[...detailData];
+function renderDetail(data,p){
+  const s=(p-1)*PAGE,rows=data.slice(s,s+PAGE);
+  const tbl=document.getElementById('detailTable');
+  let h=`<thead><tr><th>No.</th><th>Device No.</th><th>Area</th><th>DCU</th><th>Comm</th><th>Last Comm</th><th>Days Silent</th><th>Bucket</th></tr></thead><tbody>`;
+  if(!rows.length)h+='<tr><td colspan="8" style="text-align:center;padding:30px;color:#bbb;">No records</td></tr>';
+  else rows.forEach((r,i)=>{
+    const bc=r.bucket==='60d+'?'age-60d':r.bucket==='30d'?'age-30d':r.bucket==='14d'?'age-14d':'age-7d';
+    const dc=r.daysSilent>=60?dark:r.daysSilent>=30?purple:r.daysSilent>=14?red:amber;
+    h+=`<tr><td>${s+i+1}</td><td style="color:#26b5a0;cursor:pointer">${r.deviceNo}</td><td>${r.area}</td><td>${r.dcu}</td><td>${r.commType}</td>
+    <td>${r.lastComm}</td><td style="font-weight:600;color:${dc}">${r.daysSilent}d</td>
+    <td><span class="age-badge ${bc}">${r.bucket}</span></td></tr>`;
+  });
+  h+='</tbody>';tbl.innerHTML=h;
+  const pages=Math.ceil(data.length/PAGE),el=document.getElementById('detailPagination');
+  if(pages<=1){el.innerHTML='';return;}
+  let ph=`<span>Total ${data.length}</span>`;
+  ph+=`<button onclick="goPage(${p-1})" ${p===1?'disabled':''}>&lt;</button>`;
+  for(let i=1;i<=pages;i++)ph+=`<button class="${i===p?'active-page':''}" onclick="goPage(${i})">${i}</button>`;
+  ph+=`<button onclick="goPage(${p+1})" ${p===pages?'disabled':''}>&gt;</button>`;
+  el.innerHTML=ph;
+}
+function goPage(p){const mx=Math.ceil(filtered.length/PAGE);if(p<1||p>mx)return;page=p;renderDetail(filtered,page);}
+function applyDetailFilter(){
+  const q=document.getElementById('detailSearch').value.trim().toLowerCase();
+  const dt=document.getElementById('detailType').value;
+  const bk=document.getElementById('detailBucket').value;
+  const ar=document.getElementById('detailArea').value;
+  filtered=detailData.filter(r=>{
+    if(q&&!r.deviceNo.toLowerCase().includes(q))return false;
+    if(dt&&r.type!==dt)return false;
+    if(bk&&r.bucket!==bk)return false;
+    if(ar&&r.area!==ar)return false;
+    return true;
+  });
+  page=1;renderDetail(filtered,page);
+}
+function resetDetailFilter(){
+  document.getElementById('detailSearch').value='';
+  document.getElementById('detailType').value='';
+  document.getElementById('detailBucket').value='';
+  document.getElementById('detailArea').value='';
+  filtered=[...detailData];page=1;renderDetail(filtered,page);
+}
+renderDetail(filtered,page);
+
+function switchTab(t,el){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-summary').style.display=t==='summary'?'block':'none';
+  document.getElementById('panel-detail').style.display=t==='detail'?'block':'none';
+}
+</script>
+</body>
+</html>

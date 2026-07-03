@@ -6,6 +6,24 @@
 
 ---
 
+## [0.6.1] - 2026-07-04
+
+### 文档对齐（消除文档与代码的 4 类严重矛盾 + 4 类中等问题）
+
+- **统一 InfluxDB 表述**：标注已弃用，时序数据使用 PostgreSQL 时序表（`col_meter_reading`/`col_reading_daily_summary`）。涉及 README、CLAUDE、PRD、tech-review 架构文档、config.py 注释、pyproject.toml 依赖标注
+- **修正测试目录指引**：真实 83 个测试位于 `backend/tests/`（CI 实际运行），非 `tests/backend/`（仅 5 个 stub）。修正 README、CLAUDE、testing-strategy.md
+- **重写 phase-overview.md**：按实际代码进度重新标注各 Phase 完成状态（Phase 1/2/5 ✅，Phase 3/4 🟡 部分完成）
+- **修复幽灵目录**：移除 README 项目结构中对不存在的 `docs/api/`、`docs/reports/` 的引用
+- **补全 .env.example**：对齐 config.py 实际配置项（补充 REDIS_URL/SECRET_KEY/JWT/采集器配置）
+- **启用 lefthook.yml**：替换纯注释示例为实际生效的 pre-commit ruff 检查（lint + format）
+- **标注 requirements.txt 弃用**：依赖已迁移到 pyproject.toml（uv 管理）
+- **更新 development-plan.md**：资产盘点表改为实际数据（31 模型/16 service/105 路由/83 测试），里程碑 M1/M2 标完成、M3-M5 标部分完成
+- **清理 docs/testdata/**：删除误装的 Python 虚拟环境（site-packages）、.ruff_cache、.omc、临时文件；保留数据脚本和 JSON 样本
+- **归档 docs/ui/**：54 个早期 HTML 原型移至 docs/archive/ui/ 作为历史快照
+- **补充 .gitignore**：新增规则防止 site-packages/.omc 等再次混入
+
+---
+
 ## [0.6.0] - 2026-05-17
 
 ### 新增

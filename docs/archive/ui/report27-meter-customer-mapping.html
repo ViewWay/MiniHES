@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report 27 — Meter–Customer Mapping</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; color: #333; }
+
+  .topbar { display: flex; align-items: center; height: 40px; background: #fff; border-bottom: 1px solid #e0e0e0; padding: 0 20px; font-size: 12px; }
+  .topbar .logo { font-weight: 700; font-size: 16px; color: #26b5a0; margin-right: 24px; letter-spacing: 1px; }
+  .topbar .nav-link { padding: 0 14px; line-height: 40px; color: #555; cursor: pointer; position: relative; }
+  .topbar .nav-link:hover { color: #26b5a0; }
+  .topbar .nav-link.active { color: #26b5a0; font-weight: 600; }
+  .topbar .nav-link.active::after { content: ''; position: absolute; bottom: 0; left: 14px; right: 14px; height: 2px; background: #26b5a0; }
+  .topbar .spacer { flex: 1; }
+  .topbar .meta { color: #999; font-size: 12px; }
+  .topbar .online-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; background: #e6f7f4; color: #26b5a0; font-size: 11px; margin-left: 12px; }
+
+  .layout { display: flex; height: calc(100vh - 40px); }
+
+  .sidebar { width: 200px; background: #fff; border-right: 1px solid #e8e8e8; padding-top: 12px; overflow-y: auto; flex-shrink: 0; }
+  .sidebar .section-title { padding: 8px 16px; font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: .5px; }
+  .sidebar .nav-item { padding: 9px 20px; font-size: 13px; color: #666; cursor: pointer; border-left: 3px solid transparent; transition: all .15s; }
+  .sidebar .nav-item:hover { color: #26b5a0; background: #f9fffe; }
+  .sidebar .nav-item.active { color: #26b5a0; border-left-color: #26b5a0; font-weight: 600; background: #f0faf8; }
+
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .content { flex: 1; padding: 12px 16px; overflow-y: auto; }
+
+  /* Filter bar */
+  .filter-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .filter-bar select, .filter-bar input { padding: 4px 10px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 12px; outline: none; }
+  .filter-bar select:focus, .filter-bar input:focus { border-color: #26b5a0; }
+  .btn { padding: 4px 12px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; transition: opacity .2s; }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: #26b5a0; color: #fff; }
+  .btn-outline { background: #fff; color: #26b5a0; border: 1px solid #26b5a0; }
+  .btn-export { background: #fff; color: #555; border: 1px solid #d9d9d9; }
+  .btn-export:hover { border-color: #26b5a0; color: #26b5a0; }
+  .btn-resolve { background: #26b5a0; color: #fff; padding: 3px 9px; font-size: 11px; border-radius: 3px; border: none; cursor: pointer; }
+  .btn-resolve:hover { opacity: .85; }
+
+  /* KPI cards */
+  .kpi-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .kpi-card { flex: 1; background: #fff; border-radius: 6px; padding: 8px 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); position: relative; overflow: hidden; cursor: pointer; transition: box-shadow .15s; }
+  .kpi-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+  .kpi-card.selected { outline: 2px solid #26b5a0; }
+  .kpi-card .kpi-label { font-size: 11px; color: #999; margin-bottom: 2px; }
+  .kpi-card .kpi-value { font-size: 20px; font-weight: 700; }
+  .kpi-card .kpi-sub { font-size: 11px; color: #999; margin-top: 2px; }
+  .kpi-card .kpi-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; }
+
+  /* Charts */
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .chart-card { background: #fff; border-radius: 6px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .chart-card canvas { max-height: 140px; }
+  .chart-title { font-size: 12px; font-weight: 600; color: #333; margin-bottom: 6px; }
+
+  /* Table */
+  .section-label { font-size: 12px; font-weight: 600; color: #333; margin: 8px 0 6px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  th { background: #f7f7f7; text-align: left; padding: 6px 10px; font-size: 11px; font-weight: 600; color: #555; border-bottom: 1px solid #e8e8e8; white-space: nowrap; }
+  td { padding: 5px 10px; font-size: 12px; border-bottom: 1px solid #f0f0f0; color: #444; vertical-align: middle; }
+  tr:hover td { background: #f9fffe; }
+
+  /* Tabs */
+  .tab-bar { display: flex; gap: 0; border-bottom: 2px solid #e8e8e8; margin-bottom: 10px; }
+  .tab-item { padding: 6px 16px; font-size: 12px; color: #666; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s; }
+  .tab-item.active { color: #26b5a0; border-bottom-color: #26b5a0; font-weight: 600; }
+  .tab-item:hover:not(.active) { color: #333; background: #f5f5f5; }
+
+  /* Badges */
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; }
+  .tag-orphan { background: #fde2e2; color: #f56c6c; }
+  .tag-unmapped { background: #fff3e0; color: #e6a23c; }
+  .tag-conflict { background: #fde2e2; color: #c0392b; }
+  .tag-open { background: #fff3e0; color: #e6a23c; }
+  .tag-inprogress { background: #e6f7f4; color: #26b5a0; }
+  .tag-resolved { background: #f0f0f0; color: #909399; }
+
+  /* Pagination */
+  .pagination { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 10px; font-size: 13px; color: #666; }
+  .pagination button { padding: 4px 10px; border: 1px solid #d9d9d9; border-radius: 3px; background: #fff; cursor: pointer; font-size: 12px; }
+  .pagination button.active-page { background: #26b5a0; color: #fff; border-color: #26b5a0; }
+  .pagination button:hover:not(:disabled) { border-color: #26b5a0; }
+
+  /* Area panel */
+  .area-panel{width:220px;background:#fff;border-right:1px solid #e8e8e8;display:flex;flex-direction:row;overflow:hidden;flex-shrink:0}
+  .area-icon-strip{width:36px;background:#fafafa;border-right:1px solid #f0f0f0;display:flex;flex-direction:column;align-items:center;padding-top:6px;gap:2px;flex-shrink:0}
+  .area-icon-strip .icon-btn{width:30px;height:30px;border:none;background:transparent;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;position:relative}
+  .area-icon-strip .icon-btn:hover{background:#e6f7f4}
+  .area-icon-strip .icon-btn.active{background:#e6f7f4}
+  .area-icon-strip .icon-btn.active::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:3px;background:#26b5a0;border-radius:0 2px 2px 0}
+  .area-icon-strip .icon-btn svg{width:18px;height:18px}
+  .area-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .area-content .area-search{padding:8px 10px;border-bottom:1px solid #f0f0f0}
+  .area-content .area-search input{width:100%;padding:5px 8px;border:1px solid #d9d9d9;border-radius:4px;font-size:11px;outline:none}
+  .area-content .area-search input:focus{border-color:#26b5a0}
+  .area-content .area-search input::placeholder{color:#bbb}
+  .area-tab-body{flex:1;overflow-y:auto}
+  .area-tab-body .tab-pane{display:none;height:100%}.area-tab-body .tab-pane.active{display:block}
+  .area-tree{padding:4px 0;font-size:13px;user-select:none;height:100%;overflow-y:auto}
+  .area-tree ul{list-style:none;margin:0;padding:0}
+  .area-tree .tree-row{display:flex;align-items:center;gap:4px;padding:4px 8px;cursor:pointer;border-radius:3px;margin:1px 4px;transition:background .12s;white-space:nowrap}
+  .area-tree .tree-row:hover{background:#f0faf8}.area-tree .tree-row.selected{background:#26b5a0;color:#fff}
+  .area-tree .tree-row.selected .tree-icon{filter:brightness(10)}
+  .area-tree .tree-toggle{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#999;flex-shrink:0;transition:transform .15s}
+  .area-tree .tree-toggle.expanded{transform:rotate(90deg)}.area-tree .tree-toggle.leaf{visibility:hidden}
+  .area-tree .tree-icon{width:14px;height:14px;flex-shrink:0}
+  .area-tree .tree-label{font-size:11px;overflow:hidden;text-overflow:ellipsis}
+  .area-tree .children{padding-left:14px}.area-tree .children.collapsed{display:none}
+  .group-list{padding:6px 0}
+  .group-item{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;font-size:11px;color:#555;margin:1px 4px;border-radius:3px}
+  .group-item:hover{background:#f0faf8;color:#26b5a0}.group-item.selected{background:#26b5a0;color:#fff}
+  .group-item svg{width:14px;height:14px;flex-shrink:0}
+  .fav-list{padding:6px 0}
+  .fav-item{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;font-size:11px;color:#555;margin:1px 4px;border-radius:3px}
+  .fav-item:hover{background:#fff8e6}.fav-item .fav-star{color:#e6a23c;font-size:12px}
+  .area-toolbar{display:flex;align-items:center;gap:4px;padding:6px 8px;border-top:1px solid #f0f0f0;background:#fafafa}
+  .area-toolbar button{width:26px;height:26px;border:1px solid #d9d9d9;border-radius:4px;background:#fff;cursor:pointer;font-size:14px;color:#666;display:inline-flex;align-items:center;justify-content:center}
+  .area-toolbar button:hover{border-color:#26b5a0;color:#26b5a0}
+
+  /* Resolution panel */
+  .resolve-panel { background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.06); padding: 14px 16px; margin-top: 12px; border-left: 3px solid #26b5a0; }
+  .resolve-panel .rp-title { font-size: 13px; font-weight: 600; color: #26b5a0; margin-bottom: 10px; }
+  .resolve-panel .rp-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .resolve-panel .rp-grid2 { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+  .form-group label { display: block; font-size: 11px; color: #888; margin-bottom: 3px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; border: 1px solid #d9d9d9; border-radius: 4px; padding: 5px 8px; font-size: 12px; outline: none;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #26b5a0; }
+  .form-group textarea { resize: vertical; min-height: 56px; }
+  .rp-actions { display: flex; flex-direction: column; gap: 6px; justify-content: flex-end; }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <span class="logo">⊙ HES</span>
+  <span class="nav-link">Dashboard</span>
+  <span class="nav-link">Device ▾</span>
+  <span class="nav-link">Operation ▾</span>
+  <span class="nav-link">Collection ▾</span>
+  <span class="nav-link">Readings ▾</span>
+  <span class="nav-link">Network ▾</span>
+  <span class="nav-link">Exception ▾</span>
+  <span class="nav-link">Master Data ▾</span>
+  <span class="nav-link active">Report ▾</span>
+  <span class="spacer"></span>
+  <span class="meta">22/04/2026 10:32:18</span>
+  <span class="online-badge">Online: 118</span>
+</div>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="section-title">Report</div>
+    <div class="nav-item">Report Dashboard</div>
+    <div class="nav-item">Meter Reading Report</div>
+    <div class="nav-item">Communication Report</div>
+    <div class="nav-item">Event Report</div>
+    <div class="section-title" style="margin-top:8px;">Asset &amp; Identity</div>
+    <div class="nav-item active">Meter–Customer Mapping</div>
+    <div class="nav-item">Asset Inventory</div>
+    <div class="nav-item">Meter Lifecycle</div>
+    <div class="nav-item">Tamper &amp; Fraud</div>
+  </div>
+
+  <!-- Area Panel -->
+  <div class="area-panel">
+    <div class="area-icon-strip">
+      <button class="icon-btn active" title="Region" onclick="switchAreaTab('region',this)"><svg viewBox="0 0 20 20"><rect x="7" y="2" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="1.5" y="13" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="12.5" y="13" width="6" height="4" rx="1" fill="#26b5a0"/><line x1="10" y1="6" x2="10" y2="9" stroke="#26b5a0" stroke-width="1.4"/><line x1="4.5" y1="9" x2="15.5" y2="9" stroke="#26b5a0" stroke-width="1.4"/><line x1="4.5" y1="9" x2="4.5" y2="13" stroke="#26b5a0" stroke-width="1.4"/><line x1="15.5" y1="9" x2="15.5" y2="13" stroke="#26b5a0" stroke-width="1.4"/></svg></button>
+      <button class="icon-btn" title="Group" onclick="switchAreaTab('group',this)"><svg viewBox="0 0 20 20"><path d="M3 3h5v5H3V3zm9 0h5v5h-5V3zM3 12h5v5H3v-5zm9 0h5v5h-5v-5z" fill="#8b5cf6" opacity=".85"/></svg></button>
+      <button class="icon-btn" title="Favorites" onclick="switchAreaTab('favorites',this)"><svg viewBox="0 0 20 20"><path d="M10 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L10 14.3l-4.8 2.6.9-5.4L2.2 7.7l5.4-.8z" fill="#e6a23c"/></svg></button>
+    </div>
+    <div class="area-content">
+      <div class="area-search"><input type="text" id="areaSearchInput" placeholder="Department" oninput="filterAreaTree(this.value)"></div>
+      <div class="area-tab-body">
+        <div id="areaTabRegion" class="tab-pane active"><div class="area-tree" id="areaTree"></div></div>
+        <div id="areaTabGroup" class="tab-pane"><div class="group-list" id="groupList"></div></div>
+        <div id="areaTabFavorites" class="tab-pane"><div class="fav-list" id="favList"></div></div>
+      </div>
+      <div class="area-toolbar">
+        <button title="Refresh" onclick="renderAreaTree()">↻</button>
+        <button title="Expand All" onclick="expandAllNodes()">＋</button>
+        <button title="Collapse All" onclick="collapseAllNodes()">－</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="content">
+
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <select id="filterPeriod" style="width:110px">
+          <option>April 2026</option>
+          <option>March 2026</option>
+          <option>February 2026</option>
+        </select>
+        <select id="filterType" style="width:190px">
+          <option value="">All Discrepancy Types</option>
+          <option>Orphaned Meter</option>
+          <option>Unmapped Premise</option>
+          <option>Mapping Conflict</option>
+        </select>
+        <select id="filterStatus" style="width:120px">
+          <option value="">All Status</option>
+          <option>Open</option>
+          <option>In Progress</option>
+          <option>Resolved</option>
+        </select>
+        <input type="text" id="filterSearch" placeholder="Meter ID / Customer ID / Premise..." style="width:220px">
+        <button class="btn btn-primary" onclick="applyFilter()">Search</button>
+        <button class="btn btn-outline" onclick="resetFilter()">Reset</button>
+        <button class="btn btn-export">⬇ Export CSV</button>
+        <button class="btn btn-export">⬇ Export PDF</button>
+        <span style="margin-left:auto;font-size:11px;color:#999;">
+          HES snapshot: <b style="color:#333;">2026-03-31 23:59</b> &nbsp;|&nbsp;
+          SAP CIS snapshot: <b style="color:#333;">2026-03-31 23:55</b>
+        </span>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-row">
+        <div class="kpi-card" onclick="filterByType('all',this)">
+          <div class="kpi-label">Total Meters (HES)</div>
+          <div class="kpi-value" style="color:#26b5a0;">48,320</div>
+          <div class="kpi-sub">Active in HES this period</div>
+          <div class="kpi-bar" style="background:#26b5a0;"></div>
+        </div>
+        <div class="kpi-card" onclick="filterByType('Orphaned Meter',this)">
+          <div class="kpi-label">Orphaned Meters</div>
+          <div class="kpi-value" style="color:#f56c6c;">142</div>
+          <div class="kpi-sub">No matching customer in CIS</div>
+          <div class="kpi-bar" style="background:#f56c6c;"></div>
+        </div>
+        <div class="kpi-card" onclick="filterByType('Unmapped Premise',this)">
+          <div class="kpi-label">Unmapped Premises</div>
+          <div class="kpi-value" style="color:#e6a23c;">87</div>
+          <div class="kpi-sub">CIS premise with no HES meter</div>
+          <div class="kpi-bar" style="background:#e6a23c;"></div>
+        </div>
+        <div class="kpi-card" onclick="filterByType('Mapping Conflict',this)">
+          <div class="kpi-label">Mapping Conflicts</div>
+          <div class="kpi-value" style="color:#f56c6c;">34</div>
+          <div class="kpi-sub">HES ≠ SAP CIS assignment</div>
+          <div class="kpi-bar" style="background:#f56c6c;"></div>
+        </div>
+        <div class="kpi-card" onclick="filterByType('Resolved',this)">
+          <div class="kpi-label">Resolved This Period</div>
+          <div class="kpi-value" style="color:#909399;">18</div>
+          <div class="kpi-sub">Corrections applied</div>
+          <div class="kpi-bar" style="background:#909399;"></div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Discrepancy Breakdown</div>
+          <canvas id="chartBreakdown" height="100"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Discrepancies by Region</div>
+          <canvas id="chartRegion" height="100"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Resolution Status</div>
+          <canvas id="chartStatus" height="100"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Monthly Trend (Discrepancies Detected)</div>
+          <canvas id="chartTrend" height="100"></canvas>
+        </div>
+      </div>
+
+      <!-- Tabs + Table -->
+      <div class="tab-bar">
+        <div class="tab-item active" onclick="switchTab(this,'all')">All (263)</div>
+        <div class="tab-item" onclick="switchTab(this,'Orphaned Meter')">Orphaned Meters (142)</div>
+        <div class="tab-item" onclick="switchTab(this,'Unmapped Premise')">Unmapped Premises (87)</div>
+        <div class="tab-item" onclick="switchTab(this,'Mapping Conflict')">Mapping Conflicts (34)</div>
+        <div class="tab-item" onclick="switchTab(this,'Resolved')">Resolved (18)</div>
+      </div>
+
+      <div class="section-label">Discrepancy Records</div>
+      <table id="mainTable"></table>
+      <div class="pagination" id="mainPagination"></div>
+
+      <!-- Resolution Panel -->
+      <div class="resolve-panel" id="resolvePanel" style="display:none">
+        <div class="rp-title">Discrepancy Resolution — <span id="rpId"></span></div>
+        <div class="rp-grid">
+          <div class="form-group">
+            <label>Meter ID (HES)</label>
+            <input type="text" id="rpMeter" placeholder="HES-XXXXXXXX">
+          </div>
+          <div class="form-group">
+            <label>Premise ID (CIS)</label>
+            <input type="text" id="rpPremise" placeholder="P-XXXXX">
+          </div>
+          <div class="form-group">
+            <label>Customer ID (CIS)</label>
+            <input type="text" id="rpCustomer" placeholder="CUS-XXXXX">
+          </div>
+          <div class="form-group">
+            <label>Resolution Action</label>
+            <select id="rpAction">
+              <option>Assign Meter to Premise</option>
+              <option>Unassign Orphaned Meter</option>
+              <option>Override CIS Mapping</option>
+              <option>Mark as Decommissioned</option>
+              <option>Escalate to CIS Team</option>
+            </select>
+          </div>
+        </div>
+        <div class="rp-grid2">
+          <div class="form-group">
+            <label>Resolution Notes</label>
+            <textarea id="rpNotes" placeholder="Describe the reason for this correction..."></textarea>
+          </div>
+          <div class="rp-actions">
+            <button class="btn btn-primary" onclick="submitResolve()">Submit Correction</button>
+            <button class="btn btn-outline" onclick="closeResolve()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const teal='#26b5a0', red='#f56c6c', amber='#e6a23c', gray='#909399';
+
+// ── Area Tree ────────────────────────────────────
+const areaTreeData=[{id:'sewa',label:'SEWA',icon:'org',children:[
+  {id:'sharjah-e',label:'Sharjah-E',icon:'area',children:[{id:'dcu-group',label:'DCU',icon:'dcu-folder',children:[{id:'dcu-tr1',label:'DCU-TR1',icon:'dcu'},{id:'dcu-tr2',label:'DCU-TR2',icon:'dcu'},{id:'dcu-tr3',label:'DCU-TR3',icon:'dcu'},{id:'dcu-tr4',label:'DCU-TR4',icon:'dcu'}]},{id:'p2p',label:'P2P',icon:'area'}]},
+  {id:'sharjah-w',label:'Sharjah-W',icon:'area',children:[{id:'dcu-group-w',label:'DCU',icon:'dcu-folder',children:[{id:'dcu-w1',label:'DCU-W1',icon:'dcu'},{id:'dcu-w2',label:'DCU-W2',icon:'dcu'}]}]},
+  {id:'al-dhaid',label:'Al Dhaid',icon:'area'},{id:'kalba',label:'Kalba',icon:'area'},{id:'khorfakkan',label:'Khorfakkan',icon:'area'},{id:'dibba',label:'Dibba Al Hisn',icon:'area'},
+]}];
+const iconSvgs={org:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="5" y="1" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="1" y="9" width="5" height="4" rx="1" fill="#26b5a0"/><rect x="10" y="9" width="5" height="4" rx="1" fill="#26b5a0"/><line x1="8" y1="5" x2="8" y2="7" stroke="#26b5a0" stroke-width="1.2"/><line x1="3.5" y1="7" x2="12.5" y2="7" stroke="#26b5a0" stroke-width="1.2"/><line x1="3.5" y1="7" x2="3.5" y2="9" stroke="#26b5a0" stroke-width="1.2"/><line x1="12.5" y1="7" x2="12.5" y2="9" stroke="#26b5a0" stroke-width="1.2"/></svg>`,area:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#e6f7f4" stroke="#26b5a0" stroke-width=".8"/><path d="M4 7l2.5 3L11 6" stroke="#26b5a0" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,'dcu-folder':`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#e6f7f4" stroke="#26b5a0" stroke-width=".8"/><rect x="5" y="6" width="6" height="4" rx="1" fill="#26b5a0" opacity=".3"/></svg>`,dcu:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="#26b5a0" opacity=".15" stroke="#26b5a0" stroke-width=".8"/><circle cx="8" cy="6" r="1.5" fill="#26b5a0"/><line x1="6" y1="10" x2="10" y2="10" stroke="#26b5a0" stroke-width="1" stroke-linecap="round"/></svg>`};
+let selectedAreaId='sewa';
+function buildTreeHTML(ns,d){let h='';ns.forEach(n=>{const has=n.children&&n.children.length>0,exp=d<2,sel=n.id===selectedAreaId;const tc=has?(exp?'tree-toggle expanded':'tree-toggle'):'tree-toggle leaf';h+=`<li><div class="tree-row${sel?' selected':''}" onclick="selectAreaNode('${n.id}',this)"><span class="${tc}" onclick="event.stopPropagation();toggleNode(this)">▶</span>${iconSvgs[n.icon]||iconSvgs.area}<span class="tree-label">${n.label}</span></div>`;if(has){h+=`<ul class="children${exp?'':' collapsed'}">`;h+=buildTreeHTML(n.children,d+1);h+='</ul>';}h+='</li>';});return h;}
+function renderAreaTree(d){document.getElementById('areaTree').innerHTML='<ul>'+buildTreeHTML(d||areaTreeData,0)+'</ul>';}
+function toggleNode(t){t.classList.toggle('expanded');const u=t.closest('li').querySelector(':scope>ul');if(u)u.classList.toggle('collapsed');}
+function selectAreaNode(id,el){document.querySelectorAll('.tree-row.selected').forEach(e=>e.classList.remove('selected'));el.classList.add('selected');selectedAreaId=id;}
+function expandAllNodes(){document.querySelectorAll('.tree-toggle').forEach(t=>t.classList.add('expanded'));document.querySelectorAll('.children').forEach(c=>c.classList.remove('collapsed'));}
+function collapseAllNodes(){document.querySelectorAll('.tree-toggle').forEach(t=>{if(!t.classList.contains('leaf'))t.classList.remove('expanded')});document.querySelectorAll('.children').forEach(c=>c.classList.add('collapsed'));}
+function filterAreaTree(q){if(!q.trim()){renderAreaTree();return;}const lq=q.toLowerCase();function f(ns){return ns.reduce((a,n)=>{const m=n.label.toLowerCase().includes(lq),fc=n.children?f(n.children):[];if(m||fc.length)a.push({...n,children:fc.length?fc:n.children});return a;},[]);}document.getElementById('areaTree').innerHTML='<ul>'+buildTreeHTML(f(areaTreeData),0)+'</ul>';expandAllNodes();}
+renderAreaTree();
+const areaTabs={region:'areaTabRegion',group:'areaTabGroup',favorites:'areaTabFavorites'};
+function switchAreaTab(t,b){document.querySelectorAll('.icon-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');Object.values(areaTabs).forEach(id=>document.getElementById(id).classList.remove('active'));document.getElementById(areaTabs[t]).classList.add('active');document.getElementById('areaSearchInput').placeholder={region:'Department',group:'Group',favorites:'Favorites'}[t];document.getElementById('areaSearchInput').value='';}
+document.getElementById('groupList').innerHTML=[{l:'Electricity - Single Phase',c:1240},{l:'Electricity - Three Phase',c:860},{l:'Water - Bulk Meter',c:180},{l:'Water - Domestic',c:2100},{l:'VIP Customers',c:65}].map(g=>`<div class="group-item" onclick="this.parentElement.querySelectorAll('.group-item').forEach(e=>e.classList.remove('selected'));this.classList.add('selected')"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="3" fill="#8b5cf6" opacity=".15" stroke="#8b5cf6" stroke-width=".8"/></svg><span style="flex:1">${g.l}</span><span style="color:#bbb;font-size:10px">${g.c}</span></div>`).join('');
+document.getElementById('favList').innerHTML=[{l:'VIP-Meter-001',t:'Meter'},{l:'DCU-TR1 (Sharjah-E)',t:'DCU'},{l:'P-00772',t:'Premise'}].map(f=>`<div class="fav-item"><span class="fav-star">★</span><span style="flex:1">${f.l}</span><span style="color:#bbb;font-size:10px">${f.t}</span></div>`).join('');
+
+// ── Charts ──────────────────────────────────────
+new Chart(document.getElementById('chartBreakdown'),{
+  type:'bar',
+  data:{labels:['Orphaned Meter','Unmapped Premise','Mapping Conflict'],
+    datasets:[{label:'Count',data:[142,87,34],backgroundColor:[red,amber,'#c0392b'],borderRadius:4}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{y:{beginAtZero:true,ticks:{font:{size:10}}},x:{ticks:{font:{size:10}}}}}
+});
+
+new Chart(document.getElementById('chartRegion'),{
+  type:'bar',
+  data:{labels:['Sharjah-E','Sharjah-W','Al Dhaid','Kalba','Khorfakkan','Dibba'],
+    datasets:[{label:'Discrepancies',data:[98,62,38,28,22,15],backgroundColor:red,borderRadius:4}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{beginAtZero:true,ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}}}
+});
+
+new Chart(document.getElementById('chartStatus'),{
+  type:'doughnut',
+  data:{labels:['Open','In Progress','Resolved'],
+    datasets:[{data:[198,47,18],backgroundColor:[amber,teal,gray]}]},
+  options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
+    plugins:{legend:{position:'right',labels:{padding:8,font:{size:10}}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw}`}}}}
+});
+
+new Chart(document.getElementById('chartTrend'),{
+  type:'line',
+  data:{labels:['Nov','Dec','Jan','Feb','Mar','Apr'],
+    datasets:[
+      {label:'Orphaned',data:[120,135,128,140,138,142],borderColor:red,backgroundColor:'rgba(245,108,108,.1)',fill:true,tension:.3,pointRadius:3},
+      {label:'Unmapped',data:[70,75,80,82,85,87],borderColor:amber,tension:.3,pointRadius:3},
+      {label:'Conflict',data:[28,30,32,31,33,34],borderColor:'#c0392b',borderDash:[4,3],tension:.3,pointRadius:2},
+    ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:10}}}},
+    scales:{y:{beginAtZero:false,ticks:{font:{size:10}}},x:{ticks:{font:{size:10}}}}}
+});
+
+// ── Table Data ───────────────────────────────────
+const rawData = [
+  {meter:'HES-00041823',serial:'KF2024-00183',premise:'—',custId:'—',custName:'—',type:'Orphaned Meter',hesAssign:'Premise P-9921',cisAssign:'Not found',detected:'2026-03-15',status:'Open'},
+  {meter:'—',serial:'—',premise:'P-00772',custId:'CUS-88341',custName:'Al Rashid Trading LLC',type:'Unmapped Premise',hesAssign:'Not found',cisAssign:'Premise P-00772',detected:'2026-03-20',status:'Open'},
+  {meter:'HES-00039104',serial:'KF2023-07741',premise:'P-01145',custId:'CUS-22019',custName:'Gulf Star Properties',type:'Mapping Conflict',hesAssign:'Premise P-01145',cisAssign:'Premise P-01146',detected:'2026-03-22',status:'In Progress'},
+  {meter:'HES-00052210',serial:'KF2024-11002',premise:'—',custId:'—',custName:'—',type:'Orphaned Meter',hesAssign:'Premise P-3301',cisAssign:'Not found',detected:'2026-03-28',status:'Open'},
+  {meter:'HES-00018877',serial:'KF2022-04412',premise:'P-00088',custId:'CUS-10034',custName:'Emirates Water Authority',type:'Mapping Conflict',hesAssign:'Premise P-00088',cisAssign:'Premise P-00089',detected:'2026-03-30',status:'Resolved'},
+  {meter:'—',serial:'—',premise:'P-05512',custId:'CUS-67120',custName:'Sunrise Residential Complex',type:'Unmapped Premise',hesAssign:'Not found',cisAssign:'Premise P-05512',detected:'2026-03-31',status:'Open'},
+  {meter:'HES-00061100',serial:'KF2024-20011',premise:'—',custId:'—',custName:'—',type:'Orphaned Meter',hesAssign:'Premise P-4410',cisAssign:'Not found',detected:'2026-03-10',status:'In Progress'},
+  {meter:'HES-00033201',serial:'KF2023-15500',premise:'P-02200',custId:'CUS-31100',custName:'Sharjah Municipality',type:'Mapping Conflict',hesAssign:'Premise P-02200',cisAssign:'Premise P-02201',detected:'2026-03-12',status:'Open'},
+  {meter:'—',serial:'—',premise:'P-08801',custId:'CUS-90012',custName:'Al Noor Hospital',type:'Unmapped Premise',hesAssign:'Not found',cisAssign:'Premise P-08801',detected:'2026-03-18',status:'Resolved'},
+  {meter:'HES-00044500',serial:'KF2024-05500',premise:'—',custId:'—',custName:'—',type:'Orphaned Meter',hesAssign:'Premise P-7700',cisAssign:'Not found',detected:'2026-03-25',status:'Open'},
+  {meter:'HES-00027700',serial:'KF2023-09900',premise:'P-03300',custId:'CUS-44400',custName:'Kalba Industrial Zone',type:'Mapping Conflict',hesAssign:'Premise P-03300',cisAssign:'Premise P-03302',detected:'2026-03-14',status:'Open'},
+  {meter:'—',serial:'—',premise:'P-11200',custId:'CUS-55500',custName:'Khorfakkan Port Authority',type:'Unmapped Premise',hesAssign:'Not found',cisAssign:'Premise P-11200',detected:'2026-03-08',status:'In Progress'},
+];
+
+const PAGE = 10;
+let page = 1;
+let filtered = [...rawData];
+
+function typeTag(t) {
+  if(t==='Orphaned Meter') return `<span class="tag tag-orphan">${t}</span>`;
+  if(t==='Unmapped Premise') return `<span class="tag tag-unmapped">${t}</span>`;
+  return `<span class="tag tag-conflict">${t}</span>`;
+}
+function statusTag(s) {
+  if(s==='Open') return `<span class="tag tag-open">${s}</span>`;
+  if(s==='In Progress') return `<span class="tag tag-inprogress">${s}</span>`;
+  return `<span class="tag tag-resolved">${s}</span>`;
+}
+
+function renderTable(data, pg) {
+  const start = (pg-1)*PAGE;
+  const rows = data.slice(start, start+PAGE);
+  const t = document.getElementById('mainTable');
+  let h = `<thead><tr>
+    <th>#</th><th>Meter ID (HES)</th><th>Serial No.</th><th>Premise ID</th>
+    <th>Customer ID</th><th>Customer Name</th><th>Discrepancy Type</th>
+    <th>HES Assignment</th><th>CIS Assignment</th><th>Detected</th><th>Status</th><th>Action</th>
+  </tr></thead><tbody>`;
+  if(!rows.length) {
+    h += '<tr><td colspan="12" style="text-align:center;padding:40px;color:#bbb;">No records found</td></tr>';
+  } else {
+    rows.forEach((r,i) => {
+      const canResolve = r.status !== 'Resolved';
+      h += `<tr>
+        <td>${start+i+1}</td>
+        <td style="color:#26b5a0;cursor:pointer;">${r.meter}</td>
+        <td>${r.serial}</td>
+        <td>${r.premise}</td>
+        <td>${r.custId}</td>
+        <td>${r.custName}</td>
+        <td>${typeTag(r.type)}</td>
+        <td style="font-size:11px;color:#666;">${r.hesAssign}</td>
+        <td style="font-size:11px;color:#666;">${r.cisAssign}</td>
+        <td style="white-space:nowrap;">${r.detected}</td>
+        <td>${statusTag(r.status)}</td>
+        <td>${canResolve ? `<button class="btn-resolve" onclick="openResolve('${r.meter||r.premise}','${r.meter}','${r.premise}','${r.custId}')">Resolve</button>` : '<span style="color:#bbb;font-size:11px;">—</span>'}</td>
+      </tr>`;
+    });
+  }
+  h += '</tbody>';
+  t.innerHTML = h;
+  renderPag(data.length, pg);
+}
+
+function renderPag(total, pg) {
+  const pages = Math.ceil(total/PAGE);
+  const el = document.getElementById('mainPagination');
+  if(pages <= 1) { el.innerHTML = ''; return; }
+  let h = `<span style="font-size:11px;">Total ${total} records</span>`;
+  h += `<button onclick="goPage(${pg-1})" ${pg===1?'disabled':''}>&lt;</button>`;
+  for(let i=1;i<=pages;i++) h += `<button class="${i===pg?'active-page':''}" onclick="goPage(${i})">${i}</button>`;
+  h += `<button onclick="goPage(${pg+1})" ${pg===pages?'disabled':''}>&gt;</button>`;
+  el.innerHTML = h;
+}
+
+function goPage(p) {
+  const pages = Math.ceil(filtered.length/PAGE);
+  if(p<1||p>pages) return;
+  page = p; renderTable(filtered, page);
+}
+
+function applyFilter() {
+  const type = document.getElementById('filterType').value;
+  const status = document.getElementById('filterStatus').value;
+  const q = document.getElementById('filterSearch').value.trim().toLowerCase();
+  filtered = rawData.filter(r => {
+    if(type && r.type !== type) return false;
+    if(status && r.status !== status) return false;
+    if(q && !r.meter.toLowerCase().includes(q) && !r.custId.toLowerCase().includes(q) && !r.premise.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  page = 1; renderTable(filtered, page);
+}
+
+function resetFilter() {
+  document.getElementById('filterType').value = '';
+  document.getElementById('filterStatus').value = '';
+  document.getElementById('filterSearch').value = '';
+  filtered = [...rawData]; page = 1; renderTable(filtered, page);
+}
+
+function filterByType(type, card) {
+  document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  if(type === 'all') filtered = [...rawData];
+  else if(type === 'Resolved') filtered = rawData.filter(r => r.status === 'Resolved');
+  else filtered = rawData.filter(r => r.type === type);
+  page = 1; renderTable(filtered, page);
+}
+
+function switchTab(el, type) {
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  filterByType(type === 'all' ? 'all' : type, document.querySelector('.kpi-card'));
+  if(type === 'all') { filtered = [...rawData]; }
+  else if(type === 'Resolved') { filtered = rawData.filter(r => r.status === 'Resolved'); }
+  else { filtered = rawData.filter(r => r.type === type); }
+  page = 1; renderTable(filtered, page);
+}
+
+function openResolve(label, meter, premise, custId) {
+  document.getElementById('rpId').textContent = label;
+  document.getElementById('rpMeter').value = meter === '—' ? '' : meter;
+  document.getElementById('rpPremise').value = premise === '—' ? '' : premise;
+  document.getElementById('rpCustomer').value = custId === '—' ? '' : custId;
+  document.getElementById('rpNotes').value = '';
+  const panel = document.getElementById('resolvePanel');
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeResolve() {
+  document.getElementById('resolvePanel').style.display = 'none';
+}
+
+function submitResolve() {
+  const notes = document.getElementById('rpNotes').value.trim();
+  if(!notes) { alert('Please enter resolution notes before submitting.'); return; }
+  const action = document.getElementById('rpAction').value;
+  alert(`Correction submitted:\n${action}\n\nNotes: ${notes}\n\nRecord will be updated and flagged for CIS sync.`);
+  closeResolve();
+}
+
+renderTable(filtered, page);
+</script>
+</body>
+</html>

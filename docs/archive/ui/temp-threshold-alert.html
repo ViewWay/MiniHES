@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meter Temperature Threshold Alerting — Events</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;color:#333}
+  .topbar{display:flex;align-items:center;height:40px;background:#fff;border-bottom:1px solid #e0e0e0;padding:0 20px;font-size:12px}
+  .topbar .logo{font-weight:700;font-size:16px;color:#26b5a0;margin-right:24px;letter-spacing:1px}
+  .topbar .nav-link{padding:0 14px;line-height:40px;color:#555;cursor:pointer;position:relative}
+  .topbar .nav-link:hover{color:#26b5a0}
+  .topbar .nav-link.active{color:#26b5a0;font-weight:600}
+  .topbar .nav-link.active::after{content:'';position:absolute;bottom:0;left:14px;right:14px;height:2px;background:#26b5a0}
+  .topbar .spacer{flex:1}.topbar .meta{color:#999;font-size:12px}
+  .topbar .online-badge{display:inline-block;padding:2px 8px;border-radius:10px;background:#e6f7f4;color:#26b5a0;font-size:11px;margin-left:12px}
+  .layout{display:flex;height:calc(100vh - 40px)}
+  .sidebar{width:200px;background:#fff;border-right:1px solid #e8e8e8;padding-top:12px;overflow-y:auto}
+  .sidebar .section-title{padding:8px 16px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px}
+  .sidebar .nav-item{padding:9px 20px;font-size:13px;color:#666;cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+  .sidebar .nav-item:hover{color:#26b5a0;background:#f9fffe}
+  .sidebar .nav-item.active{color:#26b5a0;border-left-color:#26b5a0;font-weight:600;background:#f0faf8}
+  /* Area Panel */
+  .area-panel{width:220px;background:#fff;border-right:1px solid #e8e8e8;display:flex;flex-direction:row;overflow:hidden}
+  .area-icon-strip{width:36px;background:#fafafa;border-right:1px solid #f0f0f0;display:flex;flex-direction:column;align-items:center;padding-top:6px;gap:2px;flex-shrink:0}
+  .area-icon-strip .icon-btn{width:30px;height:30px;border:none;background:transparent;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;position:relative}
+  .area-icon-strip .icon-btn:hover{background:#e6f7f4}
+  .area-icon-strip .icon-btn.active{background:#e6f7f4}
+  .area-icon-strip .icon-btn.active::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:3px;background:#26b5a0;border-radius:0 2px 2px 0}
+  .area-icon-strip .icon-btn svg{width:18px;height:18px}
+  .area-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .area-content .area-search{padding:8px 10px;border-bottom:1px solid #f0f0f0}
+  .area-content .area-search input{width:100%;padding:5px 8px;border:1px solid #d9d9d9;border-radius:4px;font-size:11px;outline:none}
+  .area-content .area-search input:focus{border-color:#26b5a0}
+  .area-content .area-search input::placeholder{color:#bbb}
+  .area-tab-body{flex:1;overflow-y:auto}
+  .area-tab-body .tab-pane{display:none;height:100%}
+  .area-tab-body .tab-pane.active{display:block}
+  .area-tree{padding:4px 0;font-size:13px;user-select:none;height:100%;overflow-y:auto}
+  .area-tree ul{list-style:none;margin:0;padding:0}
+  .area-tree li{position:relative}
+  .area-tree .tree-row{display:flex;align-items:center;gap:4px;padding:4px 8px;cursor:pointer;border-radius:3px;margin:1px 4px;transition:background .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .area-tree .tree-row:hover{background:#f0faf8}
+  .area-tree .tree-row.selected{background:#26b5a0;color:#fff}
+  .area-tree .tree-row.selected .tree-icon{filter:brightness(10)}
+  .area-tree .tree-toggle{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#999;flex-shrink:0;transition:transform .15s}
+  .area-tree .tree-toggle.expanded{transform:rotate(90deg)}
+  .area-tree .tree-toggle.leaf{visibility:hidden}
+  .area-tree .tree-icon{width:14px;height:14px;flex-shrink:0}
+  .area-tree .tree-label{font-size:11px;overflow:hidden;text-overflow:ellipsis}
+  .area-tree .children{padding-left:14px}
+  .area-tree .children.collapsed{display:none}
+  .group-list{padding:6px 0}
+  .group-item{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;font-size:11px;color:#555;transition:background .12s;margin:1px 4px;border-radius:3px}
+  .group-item:hover{background:#f0faf8;color:#26b5a0}
+  .group-item.selected{background:#26b5a0;color:#fff}
+  .group-item svg{width:14px;height:14px;flex-shrink:0}
+  .fav-list{padding:6px 0}
+  .fav-item{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;font-size:11px;color:#555;transition:background .12s;margin:1px 4px;border-radius:3px}
+  .fav-item:hover{background:#fff8e6}
+  .fav-item .fav-star{color:#e6a23c;font-size:12px;flex-shrink:0}
+  .fav-item .fav-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .area-toolbar{display:flex;align-items:center;gap:4px;padding:6px 8px;border-top:1px solid #f0f0f0;background:#fafafa}
+  .area-toolbar button{width:26px;height:26px;border:1px solid #d9d9d9;border-radius:4px;background:#fff;cursor:pointer;font-size:14px;color:#666;display:inline-flex;align-items:center;justify-content:center}
+  .area-toolbar button:hover{border-color:#26b5a0;color:#26b5a0}
+  /* Main */
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  /* Sub-tabs */
+  .tabs{display:flex;background:#fff;border-bottom:1px solid #e8e8e8;padding:0 24px}
+  .tab{padding:8px 18px;font-size:12px;color:#999;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+  .tab:hover{color:#26b5a0}
+  .tab.active{color:#26b5a0;border-bottom-color:#26b5a0;font-weight:600}
+  .content{flex:1;padding:12px 16px;overflow-y:auto}
+  .filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .filter-bar select,.filter-bar input{padding:4px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:12px;outline:none}
+  .filter-bar select:focus,.filter-bar input:focus{border-color:#26b5a0}
+  .btn{padding:4px 12px;border:none;border-radius:4px;font-size:12px;cursor:pointer;transition:opacity .2s}
+  .btn:hover{opacity:.85}
+  .btn-primary{background:#26b5a0;color:#fff}
+  .btn-outline{background:#fff;color:#26b5a0;border:1px solid #26b5a0}
+  .btn-export{background:#fff;color:#555;border:1px solid #d9d9d9}
+  .btn-export:hover{border-color:#26b5a0;color:#26b5a0}
+  /* KPI */
+  .kpi-row{display:flex;gap:10px;margin-bottom:10px}
+  .kpi-card{flex:1;background:#fff;border-radius:6px;padding:8px 14px;box-shadow:0 1px 3px rgba(0,0,0,.06);position:relative;overflow:hidden}
+  .kpi-card .kpi-label{font-size:11px;color:#999;margin-bottom:2px}
+  .kpi-card .kpi-value{font-size:20px;font-weight:700}
+  .kpi-card .kpi-sub{font-size:11px;color:#999;margin-top:2px}
+  .kpi-card .kpi-trend{font-size:11px;margin-top:1px}
+  .kpi-card .kpi-trend.up{color:#26b5a0}.kpi-card .kpi-trend.down{color:#f56c6c}
+  .kpi-card .kpi-bar{position:absolute;bottom:0;left:0;right:0;height:3px}
+  /* Charts */
+  .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .chart-card{background:#fff;border-radius:6px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .chart-card.full{grid-column:1/-1}
+  .chart-card canvas{max-height:140px}
+  .chart-card.full canvas{max-height:130px}
+  .chart-title{font-size:12px;font-weight:600;color:#333;margin-bottom:6px}
+  /* Table */
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  th{background:#f7f7f7;text-align:left;padding:6px 10px;font-size:11px;font-weight:600;color:#555;border-bottom:1px solid #e8e8e8;white-space:nowrap}
+  td{padding:5px 10px;font-size:12px;border-bottom:1px solid #f0f0f0;color:#444}
+  tr:hover td{background:#f9fffe}
+  .tag{display:inline-block;padding:2px 10px;border-radius:3px;font-size:11px}
+  .tag-critical{background:#fde2e2;color:#f56c6c}
+  .tag-warning{background:#fff3e0;color:#e6a23c}
+  .tag-normal{background:#e6f7f4;color:#26b5a0}
+  .tag-open{background:#fde2e2;color:#f56c6c}
+  .tag-ack{background:#fff3e0;color:#e6a23c}
+  .tag-closed{background:#f0f0f0;color:#999}
+  /* Thermometer gauge */
+  .thermo{display:inline-flex;align-items:center;gap:6px}
+  .thermo .bar-track{width:60px;height:8px;background:#eee;border-radius:4px;overflow:hidden}
+  .thermo .bar-fill{height:100%;border-radius:4px}
+  .thermo .val{font-size:12px;font-weight:600;white-space:nowrap}
+  /* Pagination */
+  .pagination{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:10px;font-size:13px;color:#666}
+  .pagination button{padding:4px 10px;border:1px solid #d9d9d9;border-radius:3px;background:#fff;cursor:pointer;font-size:12px}
+  .pagination button.active-page{background:#26b5a0;color:#fff;border-color:#26b5a0}
+  .pagination button:hover{border-color:#26b5a0}
+  .section-label{font-size:12px;font-weight:600;color:#333;margin:8px 0 6px}
+  /* Threshold config panel */
+  .config-panel{background:#fff;border-radius:6px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:10px}
+  .config-panel .cp-title{font-size:12px;font-weight:600;color:#333;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .config-row{display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+  .config-row label{font-size:11px;color:#666;width:120px;flex-shrink:0}
+  .config-row input[type=number]{width:80px;padding:4px 8px;border:1px solid #d9d9d9;border-radius:4px;font-size:12px;outline:none}
+  .config-row input[type=number]:focus{border-color:#26b5a0}
+  .config-row .unit{font-size:11px;color:#999}
+  .config-row .hint{font-size:10px;color:#bbb;margin-left:4px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">⊙ HES</span>
+  <span class="nav-link">Dashboard</span><span class="nav-link">Device ▾</span><span class="nav-link">Operation ▾</span>
+  <span class="nav-link">Collection ▾</span><span class="nav-link">Installation ▾</span>
+  <span class="nav-link active">Readings ▾</span>
+  <span class="nav-link">Network ▾</span><span class="nav-link">Exception ▾</span><span class="nav-link">Master Data ▾</span>
+  <span class="nav-link">VEE ▾</span><span class="nav-link">Report ▾</span>
+  <span class="spacer"></span><span class="meta">22/04/2026 13:45:20</span><span class="online-badge">Online: 118</span>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="section-title">Readings & Events</div>
+    <div class="nav-item">Reading Profile</div>
+    <div class="nav-item">Billing Register</div>
+    <div class="nav-item">Data Validation</div>
+    <div class="nav-item">Events</div>
+    <div class="nav-item active">Temp Threshold Alert</div>
+    <div class="nav-item">Alarms</div>
+    <div class="nav-item">Event Forwarding</div>
+  </div>
+
+  <!-- Area Panel -->
+  <div class="area-panel">
+    <div class="area-icon-strip">
+      <button class="icon-btn active" title="Region" onclick="switchAreaTab('region',this)">
+        <svg viewBox="0 0 20 20"><rect x="7" y="2" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="1.5" y="13" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="12.5" y="13" width="6" height="4" rx="1" fill="#26b5a0"/><line x1="10" y1="6" x2="10" y2="9" stroke="#26b5a0" stroke-width="1.4"/><line x1="4.5" y1="9" x2="15.5" y2="9" stroke="#26b5a0" stroke-width="1.4"/><line x1="4.5" y1="9" x2="4.5" y2="13" stroke="#26b5a0" stroke-width="1.4"/><line x1="15.5" y1="9" x2="15.5" y2="13" stroke="#26b5a0" stroke-width="1.4"/></svg>
+      </button>
+      <button class="icon-btn" title="Group" onclick="switchAreaTab('group',this)">
+        <svg viewBox="0 0 20 20"><path d="M3 3h5v5H3V3zm9 0h5v5h-5V3zM3 12h5v5H3v-5zm9 0h5v5h-5v-5z" fill="#8b5cf6" opacity=".85"/></svg>
+      </button>
+      <button class="icon-btn" title="Favorites" onclick="switchAreaTab('favorites',this)">
+        <svg viewBox="0 0 20 20"><path d="M10 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L10 14.3l-4.8 2.6.9-5.4L2.2 7.7l5.4-.8z" fill="#e6a23c"/></svg>
+      </button>
+    </div>
+    <div class="area-content">
+      <div class="area-search"><input type="text" id="areaSearchInput" placeholder="Department" oninput="filterAreaTree(this.value)"></div>
+      <div class="area-tab-body">
+        <div id="areaTabRegion" class="tab-pane active"><div class="area-tree" id="areaTree"></div></div>
+        <div id="areaTabGroup" class="tab-pane"><div class="group-list" id="groupList"></div></div>
+        <div id="areaTabFavorites" class="tab-pane"><div class="fav-list" id="favList"></div></div>
+      </div>
+      <div class="area-toolbar">
+        <button title="Refresh" onclick="renderAreaTree()">↻</button>
+        <button title="Expand All" onclick="expandAllNodes()">＋</button>
+        <button title="Collapse All" onclick="collapseAllNodes()">－</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('alerts',this)">Temperature Alerts</div>
+      <div class="tab" onclick="switchTab('trend',this)">Temperature Trend</div>
+      <div class="tab" onclick="switchTab('config',this)">Threshold Config</div>
+    </div>
+
+    <!-- ═══ Alerts Tab ═══ -->
+    <div id="panel-alerts" class="content">
+      <div class="filter-bar">
+        <select id="fSev"><option value="">All Severity</option><option>Critical</option><option>Warning</option></select>
+        <select id="fStatus"><option value="">All Status</option><option>Open</option><option>Acknowledged</option><option>Closed</option></select>
+        <select id="fRegion"><option value="">All Regions</option><option>Sharjah-E</option><option>Sharjah-W</option><option>Al Dhaid</option><option>Kalba</option><option>Khorfakkan</option><option>Dibba</option></select>
+        <input type="date" id="fFrom" value="2026-04-15">
+        <span style="color:#999">—</span>
+        <input type="date" id="fTo" value="2026-04-22">
+        <input type="text" id="fSearch" placeholder="Search Device No..." style="width:160px">
+        <button class="btn btn-primary" onclick="applyFilter()">Search</button>
+        <button class="btn btn-outline" onclick="resetFilter()">Reset</button>
+        <button class="btn btn-export" onclick="alert('Export triggered')">⬇ Export</button>
+      </div>
+
+      <!-- KPI -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Active Temp Alerts (Today)</div>
+          <div class="kpi-value" style="color:#f56c6c">47</div>
+          <div class="kpi-sub">32 Warning + 15 Critical</div>
+          <div class="kpi-trend down">▲ 8 vs yesterday</div>
+          <div class="kpi-bar" style="background:#f56c6c"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Critical (≥ 85°C)</div>
+          <div class="kpi-value" style="color:#f56c6c">15</div>
+          <div class="kpi-sub">Immediate action required</div>
+          <div class="kpi-trend down">▲ 5 vs yesterday</div>
+          <div class="kpi-bar" style="background:#f56c6c"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Warning (75–84°C)</div>
+          <div class="kpi-value" style="color:#e6a23c">32</div>
+          <div class="kpi-sub">Monitor closely</div>
+          <div class="kpi-trend down">▲ 3 vs yesterday</div>
+          <div class="kpi-bar" style="background:#e6a23c"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg Peak Temp (Today)</div>
+          <div class="kpi-value" style="color:#e6a23c">78.4°C</div>
+          <div class="kpi-sub">Max recorded: 91.2°C</div>
+          <div class="kpi-trend down">▲ 2.1°C vs yesterday</div>
+          <div class="kpi-bar" style="background:#e6a23c"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Open / Unresolved</div>
+          <div class="kpi-value" style="color:#f56c6c">28</div>
+          <div class="kpi-sub">19 Ack'd, 0 Closed today</div>
+          <div class="kpi-trend down">▲ 6 vs yesterday</div>
+          <div class="kpi-bar" style="background:#f56c6c"></div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="chart-grid">
+        <div class="chart-card full">
+          <div class="chart-title">7-Day Temperature Alert Count Trend (Warning vs Critical)</div>
+          <canvas id="chartTrend7d" height="50"></canvas>
+        </div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Alert Count by Region (Today)</div>
+          <canvas id="chartRegion" height="100"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Alert Distribution by Hour (Today)</div>
+          <canvas id="chartHour" height="100"></canvas>
+        </div>
+      </div>
+
+      <!-- Alert Table -->
+      <div class="section-label">Temperature Threshold Alert Events</div>
+      <table id="alertTable"></table>
+      <div class="pagination" id="alertPag"></div>
+    </div>
+
+    <!-- ═══ Trend Tab ═══ -->
+    <div id="panel-trend" class="content" style="display:none">
+      <div class="filter-bar">
+        <input type="text" id="tSearch" placeholder="Device No..." style="width:180px">
+        <input type="date" id="tFrom" value="2026-04-15">
+        <span style="color:#999">—</span>
+        <input type="date" id="tTo" value="2026-04-22">
+        <button class="btn btn-primary" onclick="loadTrend()">Search</button>
+        <button class="btn btn-outline" onclick="resetTrend()">Reset</button>
+      </div>
+      <div class="chart-card full" style="margin-bottom:10px">
+        <div class="chart-title">Temperature Trend — Device 9527001045 (Apr 15–22, 2026)
+          <span style="font-size:10px;color:#999;font-weight:400;margin-left:8px">— Warning threshold: 75°C &nbsp;— Critical threshold: 85°C</span>
+        </div>
+        <canvas id="chartTrendDetail" height="60"></canvas>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Daily Max Temperature (Last 7 Days)</div>
+          <canvas id="chartDailyMax" height="100"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Temperature Distribution (°C buckets)</div>
+          <canvas id="chartDist" height="100"></canvas>
+        </div>
+      </div>
+      <div class="section-label">Reading Profile — Temperature Data</div>
+      <table id="trendTable"></table>
+      <div class="pagination" id="trendPag"></div>
+    </div>
+
+    <!-- ═══ Config Tab ═══ -->
+    <div id="panel-config" class="content" style="display:none">
+      <div class="config-panel">
+        <div class="cp-title">🌡️ Temperature Threshold Configuration
+          <span style="font-size:10px;color:#999;font-weight:400">Applied globally — can be overridden per meter group</span>
+        </div>
+        <div class="config-row">
+          <label>Warning Threshold</label>
+          <input type="number" value="75" min="50" max="100" id="warnThresh">
+          <span class="unit">°C</span>
+          <span class="hint">Alert severity: Warning. Recommend inspection within 48h.</span>
+        </div>
+        <div class="config-row">
+          <label>Critical Threshold</label>
+          <input type="number" value="85" min="50" max="120" id="critThresh">
+          <span class="unit">°C</span>
+          <span class="hint">Alert severity: Critical. Immediate action required. Fire-risk zone.</span>
+        </div>
+        <div class="config-row">
+          <label>Alert Suppression</label>
+          <input type="number" value="30" min="5" max="240" id="suppress">
+          <span class="unit">min</span>
+          <span class="hint">Minimum interval between repeated alerts for the same meter.</span>
+        </div>
+        <div class="config-row">
+          <label>Auto-Notification</label>
+          <select style="width:200px;padding:4px 8px;border:1px solid #d9d9d9;border-radius:4px;font-size:12px;outline:none">
+            <option>Email + In-App</option><option>In-App Only</option><option>Email Only</option><option>Disabled</option>
+          </select>
+          <span class="hint">Notification channel for Critical alerts.</span>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="alert('Threshold configuration saved.')">Save Configuration</button>
+          <button class="btn btn-outline" onclick="resetConfig()">Reset to Default</button>
+        </div>
+      </div>
+
+      <div class="section-label">Per-Group Threshold Overrides</div>
+      <table>
+        <thead><tr><th>Meter Group</th><th>Warning (°C)</th><th>Critical (°C)</th><th>Suppression (min)</th><th>Notification</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td>CT Meters (High-Load)</td><td>70</td><td>80</td><td>15</td><td>Email + In-App</td><td><button class="btn btn-outline" style="font-size:10px;padding:2px 8px">Edit</button></td></tr>
+          <tr><td>Outdoor Meters (Sharjah-E)</td><td>78</td><td>88</td><td>30</td><td>Email + In-App</td><td><button class="btn btn-outline" style="font-size:10px;padding:2px 8px">Edit</button></td></tr>
+          <tr><td>VIP Customers</td><td>72</td><td>82</td><td>10</td><td>Email + In-App</td><td><button class="btn btn-outline" style="font-size:10px;padding:2px 8px">Edit</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const teal='#26b5a0',red='#f56c6c',amber='#e6a23c',gray='#909399';
+
+// ══ AREA TREE ══
+const areaTreeData=[{id:'sewa',label:'SEWA',icon:'org',children:[
+  {id:'sharjah-e',label:'Sharjah-E',icon:'area',children:[
+    {id:'dg',label:'DCU',icon:'df',children:[{id:'t1',label:'DCU-TR1',icon:'dcu'},{id:'t2',label:'DCU-TR2',icon:'dcu'},{id:'t3',label:'DCU-TR3',icon:'dcu'},{id:'t4',label:'DCU-TR4',icon:'dcu'}]},
+    {id:'p2p',label:'P2P',icon:'area'}]},
+  {id:'sharjah-w',label:'Sharjah-W',icon:'area',children:[{id:'dgw',label:'DCU',icon:'df',children:[{id:'w1',label:'DCU-W1',icon:'dcu'},{id:'w2',label:'DCU-W2',icon:'dcu'}]}]},
+  {id:'al-dhaid',label:'Al Dhaid',icon:'area'},{id:'kalba',label:'Kalba',icon:'area'},
+  {id:'khorfakkan',label:'Khorfakkan',icon:'area'},{id:'dibba',label:'Dibba Al Hisn',icon:'area'}]}];
+const iconSvgs={
+  org:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="5" y="1" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="1" y="9" width="5" height="4" rx="1" fill="#26b5a0"/><rect x="10" y="9" width="5" height="4" rx="1" fill="#26b5a0"/><line x1="8" y1="5" x2="8" y2="7" stroke="#26b5a0" stroke-width="1.2"/><line x1="3.5" y1="7" x2="12.5" y2="7" stroke="#26b5a0" stroke-width="1.2"/><line x1="3.5" y1="7" x2="3.5" y2="9" stroke="#26b5a0" stroke-width="1.2"/><line x1="12.5" y1="7" x2="12.5" y2="9" stroke="#26b5a0" stroke-width="1.2"/></svg>`,
+  area:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#e6f7f4" stroke="#26b5a0" stroke-width=".8"/><path d="M4 7l2.5 3L11 6" stroke="#26b5a0" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  df:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#e6f7f4" stroke="#26b5a0" stroke-width=".8"/><rect x="5" y="6" width="6" height="4" rx="1" fill="#26b5a0" opacity=".3"/></svg>`,
+  dcu:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="#26b5a0" opacity=".15" stroke="#26b5a0" stroke-width=".8"/><circle cx="8" cy="6" r="1.5" fill="#26b5a0"/><line x1="6" y1="10" x2="10" y2="10" stroke="#26b5a0" stroke-width="1" stroke-linecap="round"/></svg>`};
+let selArea='sewa';
+function buildTree(ns,d){let h='';ns.forEach(n=>{const hc=n.children&&n.children.length,ex=d<2,sl=n.id===selArea;
+  const tc=hc?(ex?'tree-toggle expanded':'tree-toggle'):'tree-toggle leaf';
+  h+=`<li><div class="tree-row${sl?' selected':''}" onclick="selNode('${n.id}',this)"><span class="${tc}" onclick="event.stopPropagation();tog(this)">▶</span>${iconSvgs[n.icon]||iconSvgs.area}<span class="tree-label">${n.label}</span></div>`;
+  if(hc)h+=`<ul class="children${ex?'':' collapsed'}">${buildTree(n.children,d+1)}</ul>`;h+='</li>';});return h;}
+function renderAreaTree(d){document.getElementById('areaTree').innerHTML='<ul>'+buildTree(d||areaTreeData,0)+'</ul>';}
+function tog(el){el.classList.toggle('expanded');const c=el.closest('li').querySelector(':scope>ul');if(c)c.classList.toggle('collapsed');}
+function selNode(id,el){document.querySelectorAll('.tree-row.selected').forEach(e=>e.classList.remove('selected'));el.classList.add('selected');selArea=id;}
+function expandAllNodes(){document.querySelectorAll('.tree-toggle').forEach(t=>t.classList.add('expanded'));document.querySelectorAll('.children').forEach(c=>c.classList.remove('collapsed'));}
+function collapseAllNodes(){document.querySelectorAll('.tree-toggle:not(.leaf)').forEach(t=>t.classList.remove('expanded'));document.querySelectorAll('.children').forEach(c=>c.classList.add('collapsed'));}
+function filterAreaTree(q){if(!q.trim()){renderAreaTree();return;}const lq=q.toLowerCase();
+  function f(ns){return ns.reduce((a,n)=>{const m=n.label.toLowerCase().includes(lq);const fc=n.children?f(n.children):[];if(m||fc.length)a.push({...n,children:fc.length?fc:n.children});return a;},[]);}
+  document.getElementById('areaTree').innerHTML='<ul>'+buildTree(f(areaTreeData),0)+'</ul>';expandAllNodes();}
+renderAreaTree();
+const areaTabs={region:'areaTabRegion',group:'areaTabGroup',favorites:'areaTabFavorites'};
+const searchPH={region:'Department',group:'Group',favorites:'Favorites'};
+function switchAreaTab(tab,btn){document.querySelectorAll('.area-icon-strip .icon-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  Object.values(areaTabs).forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById(areaTabs[tab]).classList.add('active');
+  document.getElementById('areaSearchInput').placeholder=searchPH[tab];document.getElementById('areaSearchInput').value='';}
+document.getElementById('groupList').innerHTML=[
+  {l:'CT Meters (High-Load)',c:320},{l:'Electricity - Three Phase',c:860},{l:'Outdoor Meters',c:540},
+  {l:'VIP Customers',c:65},{l:'Priority - High',c:450}
+].map(g=>`<div class="group-item" onclick="this.classList.toggle('selected')">
+  <svg viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="3" fill="#8b5cf6" opacity=".15" stroke="#8b5cf6" stroke-width=".8"/><path d="M4.5 8h7M8 4.5v7" stroke="#8b5cf6" stroke-width="1.2" stroke-linecap="round"/></svg>
+  <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.l}</span><span style="color:#bbb;font-size:10px">${g.c}</span></div>`).join('');
+document.getElementById('favList').innerHTML=[{l:'VIP-Meter-001',t:'Meter'},{l:'CT-Meter-045',t:'Meter'}].map(f=>`
+  <div class="fav-item"><span class="fav-star">★</span><span class="fav-label">${f.l}</span><span style="color:#bbb;font-size:10px;margin-left:auto">${f.t}</span></div>`).join('');
+
+// ══ CHARTS — ALERTS TAB ══
+const days7=['Apr 16','Apr 17','Apr 18','Apr 19','Apr 20','Apr 21','Apr 22'];
+new Chart(document.getElementById('chartTrend7d'),{type:'bar',
+  data:{labels:days7,datasets:[
+    {label:'Warning (75–84°C)',data:[18,22,20,25,29,32,32],backgroundColor:'rgba(230,162,60,.7)',borderRadius:3},
+    {label:'Critical (≥85°C)',data:[4,6,5,8,10,10,15],backgroundColor:'rgba(245,108,108,.85)',borderRadius:3},
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{stacked:true,ticks:{font:{size:10}}},y:{stacked:true,beginAtZero:true,ticks:{font:{size:10}}}},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:11}}}}}
+});
+
+new Chart(document.getElementById('chartRegion'),{type:'bar',
+  data:{labels:['Sharjah-E','Sharjah-W','Al Dhaid','Kalba','Khorfakkan','Dibba'],
+    datasets:[
+      {label:'Critical',data:[8,3,1,1,1,1],backgroundColor:red,borderRadius:3},
+      {label:'Warning',data:[18,6,3,2,2,1],backgroundColor:amber,borderRadius:3},
+    ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{stacked:true,ticks:{font:{size:10}}},y:{stacked:true,beginAtZero:true,ticks:{font:{size:10}}}},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:10}}}}}
+});
+
+new Chart(document.getElementById('chartHour'),{type:'line',
+  data:{labels:['00','02','04','06','08','10','12','14','16','18','20','22'],
+    datasets:[{label:'Alert Count',data:[1,0,1,2,4,6,8,9,7,5,3,1],borderColor:red,backgroundColor:'rgba(245,108,108,.1)',fill:true,tension:.4,pointRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{ticks:{font:{size:10}},title:{display:true,text:'Hour of Day',font:{size:9}}},y:{beginAtZero:true,ticks:{font:{size:10}}}}}
+});
+
+// ══ ALERT TABLE DATA ══
+const regions=['Sharjah-E','Sharjah-E','Sharjah-E','Sharjah-W','Sharjah-E','Sharjah-E','Sharjah-W','Al Dhaid','Sharjah-E','Sharjah-E','Kalba','Sharjah-E','Sharjah-W','Sharjah-E','Sharjah-E','Sharjah-E'];
+const dcus=['DCU-TR1','DCU-TR2','DCU-TR1','DCU-W1','DCU-TR3','DCU-TR4','DCU-W2','—','DCU-TR1','DCU-TR2','—','DCU-TR3','DCU-W1','DCU-TR4','DCU-TR1','DCU-TR2'];
+const temps=[91.2,88.5,86.1,85.8,84.3,82.7,81.5,80.2,79.8,78.4,77.9,77.1,76.8,76.2,75.8,75.3];
+const statuses=['Open','Open','Open','Acknowledged','Open','Acknowledged','Open','Closed','Open','Acknowledged','Closed','Open','Open','Acknowledged','Open','Closed'];
+const alertData=[];
+for(let i=0;i<16;i++){
+  const no='952700'+(1000+Math.floor(Math.random()*9000));
+  const t=temps[i];const sev=t>=85?'Critical':'Warning';
+  const h=Math.floor(Math.random()*14)+8;const m=Math.floor(Math.random()*60);
+  const ts=`22/04/2026 ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}`;
+  alertData.push({no,sev,temp:t,region:regions[i],dcu:dcus[i],status:statuses[i],time:ts,threshold:sev==='Critical'?85:75});
+}
+
+const PAGE=10;let pg=1,filtered=[...alertData];
+function sevTag(s){return s==='Critical'?`<span class="tag tag-critical">${s}</span>`:`<span class="tag tag-warning">${s}</span>`;}
+function statusTag(s){if(s==='Open')return`<span class="tag tag-open">${s}</span>`;if(s==='Acknowledged')return`<span class="tag tag-ack">${s}</span>`;return`<span class="tag tag-closed">${s}</span>`;}
+function thermoBar(t){const pct=Math.min((t-60)/50*100,100);const c=t>=85?red:t>=75?amber:teal;
+  return`<div class="thermo"><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c}"></div></div><span class="val" style="color:${c}">${t}°C</span></div>`;}
+
+function renderAlerts(data,p){
+  const s=(p-1)*PAGE;const rows=data.slice(s,s+PAGE);const t=document.getElementById('alertTable');
+  let h=`<thead><tr><th>#</th><th>Device No.</th><th>Severity</th><th>Temperature</th><th>Threshold</th><th>Region</th><th>DCU</th><th>Alert Time</th><th>Status</th><th>Action</th></tr></thead><tbody>`;
+  if(!rows.length)h+='<tr><td colspan="10" style="text-align:center;padding:40px;color:#bbb">No records found</td></tr>';
+  else rows.forEach((r,i)=>{
+    h+=`<tr><td>${s+i+1}</td>
+      <td style="color:${teal};cursor:pointer">${r.no}</td>
+      <td>${sevTag(r.sev)}</td><td>${thermoBar(r.temp)}</td>
+      <td style="color:#999">${r.threshold}°C</td>
+      <td>${r.region}</td><td>${r.dcu}</td><td>${r.time}</td>
+      <td>${statusTag(r.status)}</td>
+      <td>${r.status==='Open'?`<button class="btn btn-outline" style="font-size:10px;padding:2px 8px" onclick="ackAlert(this)">Acknowledge</button>`:'<span style="color:#ccc;font-size:11px">—</span>'}</td></tr>`;
+  });
+  h+='</tbody>';t.innerHTML=h;renderPag(data.length,p);
+}
+function ackAlert(btn){const td=btn.closest('td');td.innerHTML='<span class="tag tag-ack">Acknowledged</span>';}
+function renderPag(total,p){
+  const pages=Math.ceil(total/PAGE);const el=document.getElementById('alertPag');
+  if(pages<=1){el.innerHTML='';return;}
+  let h=`<span>Total ${total} records</span>`;
+  h+=`<button onclick="goPg(${p-1})" ${p===1?'disabled':''}>&lt;</button>`;
+  for(let i=1;i<=pages;i++)h+=`<button class="${i===p?'active-page':''}" onclick="goPg(${i})">${i}</button>`;
+  h+=`<button onclick="goPg(${p+1})" ${p===pages?'disabled':''}>&gt;</button>`;el.innerHTML=h;
+}
+function goPg(p){const pages=Math.ceil(filtered.length/PAGE);if(p<1||p>pages)return;pg=p;renderAlerts(filtered,pg);}
+function applyFilter(){
+  const sv=document.getElementById('fSev').value,st=document.getElementById('fStatus').value,
+    rg=document.getElementById('fRegion').value,q=document.getElementById('fSearch').value.trim().toLowerCase();
+  filtered=alertData.filter(r=>{if(sv&&r.sev!==sv)return false;if(st&&r.status!==st)return false;if(rg&&r.region!==rg)return false;if(q&&!r.no.toLowerCase().includes(q))return false;return true;});
+  pg=1;renderAlerts(filtered,pg);
+}
+function resetFilter(){['fSev','fStatus','fRegion','fSearch'].forEach(id=>document.getElementById(id).value='');filtered=[...alertData];pg=1;renderAlerts(filtered,pg);}
+renderAlerts(filtered,pg);
+
+// ══ CHARTS — TREND TAB ══
+const hours48=[];for(let d=0;d<8;d++)for(let h=0;h<6;h++)hours48.push(`Apr${15+d} ${String(h*4).padStart(2,'0')}:00`);
+const tempReadings=hours48.map((_,i)=>{const base=62+Math.sin(i/4)*8+Math.random()*6;return Math.round(base*10)/10;});
+// spike a few readings above threshold
+[[12,88],[13,91],[28,86],[29,89],[36,87],[44,85],[45,90],[46,88]].forEach(([i,v])=>{if(i<tempReadings.length)tempReadings[i]=v;});
+
+new Chart(document.getElementById('chartTrendDetail'),{type:'line',
+  data:{labels:hours48,datasets:[
+    {label:'Temperature (°C)',data:tempReadings,borderColor:'#e6a23c',backgroundColor:'rgba(230,162,60,.08)',fill:true,tension:.3,pointRadius:0,borderWidth:1.5},
+    {label:'Warning 75°C',data:hours48.map(()=>75),borderColor:'rgba(230,162,60,.5)',borderDash:[4,3],pointRadius:0,borderWidth:1},
+    {label:'Critical 85°C',data:hours48.map(()=>85),borderColor:'rgba(245,108,108,.6)',borderDash:[4,3],pointRadius:0,borderWidth:1},
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:10}}}},
+    scales:{x:{ticks:{maxTicksLimit:12,font:{size:9}}},y:{min:55,max:100,ticks:{callback:v=>v+'°C',font:{size:10}}}}}
+});
+
+new Chart(document.getElementById('chartDailyMax'),{type:'bar',
+  data:{labels:days7,datasets:[{label:'Max Temp (°C)',data:[72,75,74,80,83,85,91],
+    backgroundColor:days7.map((_,i)=>[72,75,74,80,83,85,91][i]>=85?red:[72,75,74,80,83,85,91][i]>=75?amber:teal),borderRadius:4}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{y:{min:60,max:100,ticks:{callback:v=>v+'°C',font:{size:10}}},x:{ticks:{font:{size:10}}}}}
+});
+
+new Chart(document.getElementById('chartDist'),{type:'bar',
+  data:{labels:['<65°C','65–70°C','70–75°C','75–80°C','80–85°C','≥85°C'],
+    datasets:[{label:'Reading Count',data:[120,280,410,180,95,48],
+      backgroundColor:['#26b5a0','#26b5a0','#26b5a0',amber,amber,red],borderRadius:4}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{y:{beginAtZero:true,ticks:{font:{size:10}}},x:{ticks:{font:{size:10}}}}}
+});
+
+// Trend table
+const trendData=[];
+for(let i=0;i<20;i++){
+  const d=15+Math.floor(i/3);const h=Math.floor(Math.random()*24);const m=Math.floor(Math.random()*60);
+  const temp=Math.round((62+Math.random()*30)*10)/10;
+  trendData.push({time:`${String(d).padStart(2,'0')}/04/2026 ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`,temp,status:temp>=85?'Critical':temp>=75?'Warning':'Normal'});
+}
+trendData.sort((a,b)=>b.temp-a.temp);
+let tpg=1,tfiltered=[...trendData];
+function renderTrend(data,p){
+  const s=(p-1)*PAGE;const rows=data.slice(s,s+PAGE);const t=document.getElementById('trendTable');
+  let h=`<thead><tr><th>#</th><th>Timestamp</th><th>Temperature</th><th>Status</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{const c=r.temp>=85?red:r.temp>=75?amber:teal;
+    h+=`<tr><td>${s+i+1}</td><td>${r.time}</td><td>${thermoBar(r.temp)}</td>
+      <td><span class="tag ${r.status==='Critical'?'tag-critical':r.status==='Warning'?'tag-warning':'tag-normal'}">${r.status}</span></td></tr>`;});
+  h+='</tbody>';t.innerHTML=h;
+  const pages=Math.ceil(data.length/PAGE);const el=document.getElementById('trendPag');
+  if(pages<=1){el.innerHTML='';return;}
+  let ph=`<span>Total ${data.length} records</span>`;
+  ph+=`<button onclick="goTpg(${p-1})" ${p===1?'disabled':''}>&lt;</button>`;
+  for(let i=1;i<=pages;i++)ph+=`<button class="${i===p?'active-page':''}" onclick="goTpg(${i})">${i}</button>`;
+  ph+=`<button onclick="goTpg(${p+1})" ${p===pages?'disabled':''}>&gt;</button>`;el.innerHTML=ph;
+}
+function goTpg(p){const pages=Math.ceil(tfiltered.length/PAGE);if(p<1||p>pages)return;tpg=p;renderTrend(tfiltered,tpg);}
+function loadTrend(){renderTrend(tfiltered,1);}
+function resetTrend(){document.getElementById('tSearch').value='';renderTrend(tfiltered,1);}
+renderTrend(tfiltered,tpg);
+
+// ══ TAB SWITCHING ══
+function switchTab(tab,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
+  ['alerts','trend','config'].forEach(id=>document.getElementById('panel-'+id).style.display=id===tab?'block':'none');
+}
+function resetConfig(){document.getElementById('warnThresh').value=75;document.getElementById('critThresh').value=85;document.getElementById('suppress').value=30;}
+</script>
+</body>
+</html>

@@ -11,7 +11,7 @@
 |------|----------|
 | 前端 | vue-vben-admin 5.7.0 (Vue 3 + TypeScript + Ant Design Vue + Vite) |
 | 后端 | Python FastAPI + APScheduler (定时任务) |
-| 数据库 | PostgreSQL (业务数据) + Redis (缓存/队列) + InfluxDB (时序数据) |
+| 数据库 | PostgreSQL (业务数据 + 时序数据) + Redis (缓存/队列) |
 | 包管理 | uv (后端) + pnpm (前端) |
 | 图表 | ECharts |
 | 认证 | JWT (python-jose) + passlib |
@@ -792,6 +792,8 @@ CREATE TABLE col_data_quality (
 
 **存储方案对比**:
 
+> ⚠️ **实现变更声明（2026-07）**：以下原设计采用 InfluxDB 存储时序数据。经评估后**已弃用 InfluxDB**，所有时序抄读数据统一存入 PostgreSQL 时序表（`col_meter_reading` + `col_reading_daily_summary`），简化部署运维。下文保留原始 InfluxDB 设计作为历史参考，但**实际实现以 PG 时序表为准**。
+
 | 方案 | 优点 | 缺点 | 适用场景 |
 |------|------|------|----------|
 | PostgreSQL ✅ | 成熟稳定，支持事务，JSONB支持 | 数据表膨胀快，时序查询慢 | **业务数据** |
@@ -831,7 +833,7 @@ CREATE TABLE col_data_quality (
 | 最新数据 | Redis | 实时 | 大屏实时展示 |
 | 任务队列 | Redis | 临时 | APScheduler任务状态缓存 |
 
-### 4.3 InfluxDB 数据模型设计
+### 4.3 InfluxDB 数据模型设计（⚠️ 已弃用 — 实际改用 PG 时序表）
 
 #### 4.3.1 Measurement 分拆设计
 
@@ -1016,7 +1018,7 @@ archive_mode = on
 archive_command = 'cp %p /backup/wal/%f'
 ```
 
-#### 4.5.2 InfluxDB 备份策略
+#### 4.5.2 InfluxDB 备份策略（⚠️ 已弃用 — 改用 PG 时序表后随 PG 统一备份）
 
 | 备份类型 | 频率 | 保留 | 说明 |
 |----------|------|------|------|

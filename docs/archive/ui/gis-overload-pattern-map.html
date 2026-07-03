@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GIS Integration - Overload Pattern Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',Arial,sans-serif; background:#f5f5f5; color:#333; }
+.layout { display:flex; height:100vh; }
+.sidebar { width:160px; background:#fff; border-right:1px solid #e8e8e8; padding-top:16px; flex-shrink:0; }
+.nav-item { padding:12px 20px; font-size:14px; color:#666; cursor:pointer; border-left:3px solid transparent; }
+.nav-item:hover { color:#26b5a0; background:#f9fffe; }
+.nav-item.active { color:#26b5a0; border-left-color:#26b5a0; font-weight:600; }
+.nav-group-title { padding:10px 20px 4px; font-size:11px; color:#aaa; text-transform:uppercase; letter-spacing:.5px; }
+.nav-item.sub { padding-left:32px; font-size:13px; }
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.top-bar { background:#fff; padding:14px 24px; border-bottom:1px solid #e8e8e8; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.top-bar h2 { font-size:16px; font-weight:600; color:#333; }
+.breadcrumb { font-size:12px; color:#999; } .breadcrumb span { color:#26b5a0; }
+.btn { padding:6px 16px; border:none; border-radius:4px; font-size:13px; cursor:pointer; transition:opacity .2s; }
+.btn:hover { opacity:.85; } .btn-primary { background:#26b5a0; color:#fff; } .btn-outline { background:#fff; color:#26b5a0; border:1px solid #26b5a0; }
+.content-area { flex:1; display:flex; overflow:hidden; position:relative; }
+.area-panel { width:240px; background:#fff; border-right:1px solid #e8e8e8; display:flex; flex-direction:column; flex-shrink:0; z-index:5; }
+.area-search { padding:10px 12px; border-bottom:1px solid #e8e8e8; }
+.area-search input { width:100%; padding:6px 10px 6px 30px; border:1px solid #d9d9d9; border-radius:4px; font-size:13px; outline:none; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 8px center no-repeat; }
+.area-search input:focus { border-color:#26b5a0; }
+.area-tree { flex:1; overflow-y:auto; padding:8px 0; font-size:13px; }
+.map-wrap { flex:1; position:relative; }
+#map { width:100%; height:100%; }
+.stats-overlay { position:absolute; top:12px; left:12px; right:12px; z-index:1000; display:flex; gap:8px; pointer-events:none; }
+.stat-card { flex:1; background:rgba(255,255,255,.92); backdrop-filter:blur(6px); border-radius:6px; padding:8px 12px; box-shadow:0 2px 8px rgba(0,0,0,.12); pointer-events:auto; min-width:0; }
+.stat-card .stat-label { font-size:10px; color:#888; margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.stat-card .stat-value { font-size:16px; font-weight:700; }
+.stat-card .stat-value.red { color:#f56c6c; } .stat-card .stat-value.orange { color:#e6a23c; } .stat-card .stat-value.yellow { color:#c9b200; } .stat-card .stat-value.teal { color:#26b5a0; } .stat-card .stat-value.blue { color:#409eff; } .stat-card .stat-value.purple { color:#7b68ee; }
+.map-legend { position:absolute; bottom:24px; right:12px; z-index:1000; background:rgba(255,255,255,.94); backdrop-filter:blur(6px); border-radius:6px; padding:12px 16px; box-shadow:0 2px 8px rgba(0,0,0,.12); font-size:12px; }
+.legend-title { font-weight:600; color:#555; margin-bottom:6px; }
+.legend-item { display:flex; align-items:center; gap:8px; margin-bottom:5px; color:#555; }
+.legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+.legend-icon { width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.detail-panel { width:340px; background:#fff; border-left:1px solid #e8e8e8; display:none; flex-direction:column; flex-shrink:0; z-index:5; }
+.detail-panel.open { display:flex; }
+.panel-header { padding:14px 18px; border-bottom:1px solid #e8e8e8; display:flex; justify-content:space-between; align-items:center; }
+.panel-title { font-size:14px; font-weight:600; color:#333; }
+.panel-close { cursor:pointer; color:#999; font-size:16px; } .panel-close:hover { color:#f56c6c; }
+.panel-body { flex:1; overflow-y:auto; padding:16px 18px; }
+.tree-node { display:flex; align-items:center; padding:4px 8px; cursor:pointer; white-space:nowrap; }
+.tree-node:hover { background:#f0faf8; } .tree-node.selected { background:#e6f7f4; } .tree-node.hidden { display:none; }
+.tree-toggle { width:16px; text-align:center; color:#999; font-size:10px; flex-shrink:0; margin-right:2px; user-select:none; }
+.tree-icon { width:18px; height:18px; margin-right:6px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; }
+.tree-label { font-size:13px; color:#333; }
+.icon-dept { color:#26b5a0; } .icon-city { color:#5b9bd5; } .icon-sub { color:#e6a23c; } .icon-feeder { color:#7b68ee; } .icon-tr { color:#26b5a0; font-weight:700; }
+.tree-children { padding-left:18px; } .tree-children.collapsed { display:none; }
+.info-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f5f5f5; font-size:13px; }
+.info-label { color:#999; } .info-value { color:#333; font-weight:500; }
+.section-title { font-size:13px; font-weight:600; color:#555; margin:14px 0 8px; padding-bottom:4px; border-bottom:1px solid #e8e8e8; }
+.severity-badge { display:inline-block; padding:2px 10px; border-radius:3px; font-size:12px; font-weight:600; }
+.severity-badge.critical { background:#fde2e2; color:#f56c6c; }
+.severity-badge.high { background:#f3e8fd; color:#7b68ee; }
+.severity-badge.moderate { background:#fdf0d5; color:#e6a23c; }
+.severity-badge.normal { background:#e6f7f4; color:#26b5a0; }
+.stat-mini { display:flex; gap:8px; margin:8px 0; }
+.stat-mini-item { flex:1; background:#fafafa; border-radius:4px; padding:8px 6px; text-align:center; }
+.stat-mini-item .sm-val { font-size:15px; font-weight:700; }
+.stat-mini-item .sm-lbl { font-size:10px; color:#999; margin-top:2px; }
+.pct-bar-bg { width:100%; height:8px; background:#f0f0f0; border-radius:4px; overflow:hidden; }
+.pct-bar { height:100%; border-radius:4px; }
+.pct-bar.good { background:#26b5a0; } .pct-bar.warn { background:#e6a23c; } .pct-bar.bad { background:#f56c6c; } .pct-bar.purple { background:#7b68ee; }
+.load-chart { display:flex; align-items:flex-end; gap:1px; height:60px; margin:8px 0 4px; position:relative; }
+.load-bar { flex:1; border-radius:1px 1px 0 0; min-width:2px; position:relative; z-index:1; }
+.load-bar.safe { background:#26b5a0; } .load-bar.warn { background:#e6a23c; } .load-bar.over { background:#f56c6c; }
+.load-line { position:absolute; bottom:0; left:0; right:0; height:1px; border-top:2px dashed #f56c6c; z-index:2; }
+.chart-labels { display:flex; justify-content:space-between; font-size:10px; color:#bbb; }
+.mini-chart { display:flex; align-items:flex-end; gap:2px; height:50px; margin:8px 0 4px; }
+.mini-bar { flex:1; border-radius:2px 2px 0 0; min-width:4px; }
+.mini-bar.high-bar { background:#f56c6c; } .mini-bar.med-bar { background:#e6a23c; } .mini-bar.low-bar { background:#c9b200; } .mini-bar.zero { background:#f0f0f0; }
+.wo-card { background:#fafafa; border:1px solid #e8e8e8; border-radius:6px; padding:12px 14px; margin:8px 0; }
+.wo-row { display:flex; justify-content:space-between; padding:4px 0; font-size:13px; }
+.wo-label { color:#999; } .wo-val { font-weight:600; }
+.wo-val.dispatched { color:#409eff; } .wo-val.unhandled { color:#e6a23c; } .wo-val.processing { color:#7b68ee; } .wo-val.completed { color:#26b5a0; } .wo-val.undispatched { color:#999; }
+.btn-service { display:block; width:100%; padding:10px; margin-top:12px; background:#26b5a0; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; text-align:center; }
+.btn-service:hover { background:#1fa08c; }
+.recurrence-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:3px; font-size:11px; font-weight:600; }
+.recurrence-badge.freq { background:#fde2e2; color:#f56c6c; }
+.recurrence-badge.occ { background:#fdf0d5; color:#e6a23c; }
+.recurrence-badge.rare { background:#e6f7f4; color:#26b5a0; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <div class="nav-item">Dashboard</div>
+    <div class="nav-item">Collection Statistics</div>
+    <div class="nav-item">On Demand</div>
+    <div class="nav-item">Firmware Mgmt</div>
+    <div class="nav-group-title">GIS Integration</div>
+    <div class="nav-item sub">Missing Read Cluster</div>
+    <div class="nav-item sub">Reverse Power Flow</div>
+    <div class="nav-item sub">PQ Hotspot Map</div>
+    <div class="nav-item sub">Tamper Pattern Map</div>
+    <div class="nav-item sub active">Overload Pattern Map</div>
+    <div class="nav-item sub">Meter Location</div>
+    <div class="nav-item sub">Coverage Map</div>
+    <div class="nav-item">Reports</div>
+    <div class="nav-item">Config</div>
+    <div class="nav-item">Logs</div>
+  </div>
+  <div class="main">
+    <div class="top-bar">
+      <div>
+        <div class="breadcrumb">GIS Integration → <span>Overload Pattern Map</span></div>
+        <h2>Overload Pattern Map</h2>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <select id="overloadFilter" style="padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;">
+          <option value="">All Overload Levels</option>
+          <option value="critical">Critical (&gt;120%)</option>
+          <option value="high">High (100–120%)</option>
+          <option value="moderate">Moderate (80–100%)</option>
+          <option value="normal">Normal (&lt;80%)</option>
+        </select>
+        <select id="assetFilter" style="padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;">
+          <option value="">All Asset Types</option>
+          <option value="transformer">Transformer</option>
+          <option value="feeder">Feeder</option>
+        </select>
+        <button class="btn btn-primary" onclick="applyFilter()">Apply</button>
+        <button class="btn btn-outline" onclick="location.reload()">↻ Refresh</button>
+      </div>
+    </div>
+    <div class="content-area">
+      <div class="area-panel">
+        <div class="area-search"><input type="text" id="treeSearch" placeholder="Department" oninput="filterTree(this.value)"></div>
+        <div class="area-tree" id="areaTree"></div>
+      </div>
+      <div class="map-wrap">
+        <div class="stats-overlay">
+          <div class="stat-card"><div class="stat-label">Monitored Assets</div><div class="stat-value blue">48</div></div>
+          <div class="stat-card"><div class="stat-label">Critical (&gt;120%)</div><div class="stat-value red">6</div></div>
+          <div class="stat-card"><div class="stat-label">High (100–120%)</div><div class="stat-value purple">9</div></div>
+          <div class="stat-card"><div class="stat-label">Moderate (80–100%)</div><div class="stat-value orange">14</div></div>
+          <div class="stat-card"><div class="stat-label">Normal (&lt;80%)</div><div class="stat-value teal">19</div></div>
+          <div class="stat-card"><div class="stat-label">Overload Events (30d)</div><div class="stat-value red">218</div></div>
+          <div class="stat-card"><div class="stat-label">Upgrade Planned</div><div class="stat-value blue">4</div></div>
+          <div class="stat-card"><div class="stat-label">Load Redistributed</div><div class="stat-value teal">2</div></div>
+        </div>
+        <div class="map-legend">
+          <div class="legend-title">Load Level</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f56c6c;"></div> Critical (&gt;120% rated)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#7b68ee;"></div> High (100–120%)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e6a23c;"></div> Moderate (80–100%)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#26b5a0;"></div> Normal (&lt;80%)</div>
+          <div class="legend-title" style="margin-top:8px;">Asset Type</div>
+          <div class="legend-item"><div class="legend-icon">⏚</div> Transformer</div>
+          <div class="legend-item"><div class="legend-icon">⎓</div> Feeder</div>
+          <div class="legend-title" style="margin-top:8px;">Recurrence</div>
+          <div class="legend-item"><svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="none" stroke="#f56c6c" stroke-width="2" stroke-dasharray="3,2"/></svg> Frequent overload</div>
+        </div>
+        <div id="map"></div>
+      </div>
+      <div id="detailPanel" class="detail-panel">
+        <div class="panel-header">
+          <span class="panel-title">Asset Details</span>
+          <span class="panel-close" onclick="closePanel()">✕</span>
+        </div>
+        <div id="panelContent" class="panel-body"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
+<script>
+const treeData = [
+  { id:'kaifa', label:'KAIFA', icon:'🏢', iconClass:'icon-dept', children:[
+    { id:'chengdu', label:'ChengDu', icon:'🌆', iconClass:'icon-city', children:[
+      { id:'cd-sub', label:'CD-Substation', icon:'🏭', iconClass:'icon-sub', children:[
+        { id:'cd-feeder', label:'CD-Feeder', icon:'⚡', iconClass:'icon-feeder', children:[
+          { id:'cd-tr-1', label:'CD-TR-1', icon:'🔌', iconClass:'icon-tr' },
+          { id:'cd-tr-2', label:'CD-TR-2', icon:'🔌', iconClass:'icon-tr' },
+          { id:'cd-tr-3', label:'CD-TR-3', icon:'🔌', iconClass:'icon-tr' },
+        ]},
+      ]},
+      { id:'exhibition', label:'Exhibition', icon:'🌆', iconClass:'icon-city' },
+    ]},
+    { id:'m-dept', label:'M_Department', icon:'🏢', iconClass:'icon-dept', children:[
+      { id:'m-sub1', label:'M-Substation', icon:'🏭', iconClass:'icon-sub' },
+    ]},
+    { id:'showregion', label:'ShowRegion', icon:'🌆', iconClass:'icon-city' },
+    { id:'testo', label:'TestO', icon:'🏢', iconClass:'icon-dept', children:[
+      { id:'test-sub', label:'Test-Sub', icon:'🏭', iconClass:'icon-sub' },
+    ]},
+    { id:'w-dept', label:'W_Department', icon:'🏢', iconClass:'icon-dept', children:[
+      { id:'w-sub1', label:'W-Substation', icon:'🏭', iconClass:'icon-sub' },
+    ]},
+  ]}
+];
+function buildTree(nodes, container, depth) {
+  nodes.forEach(n => {
+    const hasKids = n.children && n.children.length > 0;
+    const el = document.createElement('div');
+    el.className = 'tree-node'; el.setAttribute('data-id', n.id); el.setAttribute('data-label', n.label.toLowerCase());
+    el.style.paddingLeft = (8 + depth * 18) + 'px';
+    el.innerHTML = `<span class="tree-toggle">${hasKids?'▶':''}</span><span class="tree-icon ${n.iconClass}">${n.icon}</span><span class="tree-label">${n.label}</span>`;
+    container.appendChild(el);
+    let cb = null;
+    if (hasKids) { cb = document.createElement('div'); cb.className = 'tree-children collapsed'; container.appendChild(cb); buildTree(n.children, cb, depth+1); }
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.tree-node.selected').forEach(e => e.classList.remove('selected'));
+      el.classList.add('selected');
+      if (cb) { const c = cb.classList.toggle('collapsed'); el.querySelector('.tree-toggle').textContent = c?'▶':'▼'; }
+      const coords = { 'chengdu':[30.572,104.066,12],'cd-sub':[30.58,104.07,14],'cd-feeder':[30.575,104.065,15],'cd-tr-1':[30.578,104.062,16],'cd-tr-2':[30.573,104.068,16],'cd-tr-3':[30.569,104.058,16],'exhibition':[30.585,104.055,14] };
+      if (coords[n.id]) map.setView([coords[n.id][0],coords[n.id][1]], coords[n.id][2]);
+    });
+  });
+}
+function filterTree(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('.tree-node').forEach(el => el.classList.toggle('hidden', q && !el.getAttribute('data-label').includes(q)));
+  if (q) document.querySelectorAll('.tree-children').forEach(el => el.classList.remove('collapsed'));
+}
+
+// ========== Asset Data ==========
+const assets = [
+  { id:'TX-CD-001', lat:30.5790, lng:104.0615, level:'critical', assetType:'transformer', area:'CD-TR-1', name:'Jinjiang DT-01', ratedKVA:500, currentLoad:142, peakLoad:156, avgLoad:128, overloadEvents:42, recurrence:18, lastOverload:'Apr 21, 2026 14:30', connectedMeters:85, addr:'Block A, Jinjiang District',
+    loadProfile:[65,58,52,48,45,50,72,95,118,135,148,156,152,145,138,142,150,148,135,120,105,92,80,70], recurrenceTrend:[4,6,5,8,7,6,4,2],
+    wo:{ status:'processing', dispatch:'Dispatched', orderNo:'WO-2026-00370', updated:'Apr 21, 2026 09:00', assignee:'Zhang Wei', action:'Upgrade to 800 kVA' } },
+  { id:'TX-CD-002', lat:30.5775, lng:104.0638, level:'critical', assetType:'transformer', area:'CD-TR-1', name:'Jinjiang DT-02', ratedKVA:630, currentLoad:135, peakLoad:148, avgLoad:118, overloadEvents:35, recurrence:14, lastOverload:'Apr 21, 2026 13:45', connectedMeters:102, addr:'Tower 3, Jinjiang District',
+    loadProfile:[60,55,50,46,42,48,68,90,112,128,140,148,145,138,130,135,142,140,128,115,100,88,75,65], recurrenceTrend:[3,5,4,7,6,5,3,2],
+    wo:{ status:'unhandled', dispatch:'Dispatched', orderNo:'WO-2026-00375', updated:'Apr 21, 2026 07:30', assignee:'Li Ming', action:'Load redistribution' } },
+  { id:'FD-CD-001', lat:30.5760, lng:104.0608, level:'high', assetType:'feeder', area:'CD-TR-1', name:'Jinjiang Feeder-01', ratedKVA:2000, currentLoad:112, peakLoad:118, avgLoad:98, overloadEvents:22, recurrence:8, lastOverload:'Apr 20, 2026 15:20', connectedMeters:320, addr:'Jinjiang District Main',
+    loadProfile:[55,50,45,42,40,45,65,85,102,112,115,118,116,110,105,108,114,112,102,95,85,75,65,58], recurrenceTrend:[2,3,3,4,4,3,2,1],
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—', action:'—' } },
+  { id:'TX-CD-003', lat:30.5740, lng:104.0682, level:'critical', assetType:'transformer', area:'CD-TR-2', name:'Wuhou DT-01', ratedKVA:400, currentLoad:138, peakLoad:162, avgLoad:125, overloadEvents:48, recurrence:22, lastOverload:'Apr 21, 2026 14:00', connectedMeters:72, addr:'Bldg 8, Wuhou District',
+    loadProfile:[62,56,50,45,42,48,75,98,125,142,155,162,158,148,140,145,152,148,132,118,102,90,78,68], recurrenceTrend:[5,7,6,9,8,6,5,2],
+    wo:{ status:'processing', dispatch:'Dispatched', orderNo:'WO-2026-00365', updated:'Apr 21, 2026 10:00', assignee:'Wang Fang', action:'Upgrade to 630 kVA' } },
+  { id:'TX-CD-004', lat:30.5725, lng:104.0698, level:'moderate', assetType:'transformer', area:'CD-TR-2', name:'Wuhou DT-02', ratedKVA:500, currentLoad:88, peakLoad:96, avgLoad:78, overloadEvents:8, recurrence:3, lastOverload:'Apr 18, 2026 14:30', connectedMeters:68, addr:'Block C, Wuhou District',
+    loadProfile:[45,40,38,35,32,38,55,72,82,88,92,96,94,90,85,88,92,90,82,75,65,58,50,48], recurrenceTrend:[0,1,1,2,2,1,1,0],
+    wo:{ status:'completed', dispatch:'Dispatched', orderNo:'WO-2026-00340', updated:'Apr 19, 2026 15:00', assignee:'Chen Jie', action:'Load balanced' } },
+  { id:'FD-CD-002', lat:30.5748, lng:104.0660, level:'moderate', assetType:'feeder', area:'CD-TR-2', name:'Wuhou Feeder-01', ratedKVA:1500, currentLoad:92, peakLoad:98, avgLoad:82, overloadEvents:12, recurrence:4, lastOverload:'Apr 19, 2026 13:00', connectedMeters:245, addr:'Wuhou District Main',
+    loadProfile:[48,42,40,38,35,40,58,75,85,92,95,98,96,92,88,90,95,92,85,78,68,60,52,50], recurrenceTrend:[1,2,1,2,3,1,1,1],
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—', action:'—' } },
+  { id:'TX-CD-005', lat:30.5700, lng:104.0578, level:'high', assetType:'transformer', area:'CD-TR-3', name:'Qingyang DT-01', ratedKVA:630, currentLoad:115, peakLoad:125, avgLoad:105, overloadEvents:28, recurrence:10, lastOverload:'Apr 21, 2026 12:00', connectedMeters:95, addr:'Unit 5, Qingyang District',
+    loadProfile:[58,52,48,44,40,46,68,88,105,115,120,125,122,118,112,115,120,118,108,98,85,75,65,60], recurrenceTrend:[2,4,3,5,5,4,3,2],
+    wo:{ status:'unhandled', dispatch:'Dispatched', orderNo:'WO-2026-00380', updated:'Apr 21, 2026 08:00', assignee:'Zhao Peng', action:'Evaluate upgrade' } },
+  { id:'TX-CD-006', lat:30.5685, lng:104.0592, level:'moderate', assetType:'transformer', area:'CD-TR-3', name:'Qingyang DT-02', ratedKVA:500, currentLoad:85, peakLoad:92, avgLoad:75, overloadEvents:6, recurrence:2, lastOverload:'Apr 17, 2026 14:00', connectedMeters:62, addr:'Block 2, Qingyang District',
+    loadProfile:[42,38,35,32,30,35,52,68,78,85,88,92,90,86,82,85,88,86,78,72,62,55,48,45], recurrenceTrend:[0,1,0,1,2,1,1,0],
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—', action:'—' } },
+  { id:'FD-CD-003', lat:30.5712, lng:104.0558, level:'normal', assetType:'feeder', area:'CD-TR-3', name:'Qingyang Feeder-01', ratedKVA:2000, currentLoad:68, peakLoad:75, avgLoad:62, overloadEvents:0, recurrence:0, lastOverload:'—', connectedMeters:280, addr:'Qingyang District Main',
+    loadProfile:[35,30,28,25,22,28,42,55,62,68,72,75,74,70,66,68,72,70,64,58,50,42,38,36], recurrenceTrend:[0,0,0,0,0,0,0,0],
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—', action:'—' } },
+  { id:'TX-CD-007', lat:30.5808, lng:104.0705, level:'high', assetType:'transformer', area:'CD-TR-1', name:'Jinjiang DT-03', ratedKVA:400, currentLoad:108, peakLoad:118, avgLoad:95, overloadEvents:18, recurrence:7, lastOverload:'Apr 20, 2026 14:45', connectedMeters:58, addr:'Bldg 15, Jinjiang District',
+    loadProfile:[52,48,44,40,38,42,62,82,95,108,112,118,115,110,105,108,112,110,100,90,78,68,58,55], recurrenceTrend:[1,3,2,4,3,3,1,1],
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—', action:'—' } },
+  { id:'TX-CD-008', lat:30.5825, lng:104.0575, level:'normal', assetType:'transformer', area:'Exhibition', name:'Exhibition DT-01', ratedKVA:800, currentLoad:52, peakLoad:65, avgLoad:45, overloadEvents:0, recurrence:0, lastOverload:'—', connectedMeters:120, addr:'Hall B, Exhibition Center',
+    loadProfile:[28,25,22,20,18,22,35,45,50,52,58,65,62,58,55,52,58,55,48,42,35,30,28,28], recurrenceTrend:[0,0,0,0,0,0,0,0],
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—', action:'—' } },
+  { id:'TX-CD-009', lat:30.5835, lng:104.0548, level:'high', assetType:'transformer', area:'Exhibition', name:'Exhibition DT-02', ratedKVA:500, currentLoad:110, peakLoad:122, avgLoad:98, overloadEvents:20, recurrence:8, lastOverload:'Apr 21, 2026 13:00', connectedMeters:78, addr:'Hall D, Exhibition Center',
+    loadProfile:[55,50,45,42,38,44,65,85,98,110,115,122,118,112,108,110,115,112,102,92,80,70,60,58], recurrenceTrend:[2,3,3,4,3,3,1,1],
+    wo:{ status:'processing', dispatch:'Dispatched', orderNo:'WO-2026-00372', updated:'Apr 21, 2026 08:30', assignee:'Wang Fang', action:'Load redistribution' } },
+];
+
+function getMarkerSvg(d) {
+  const colors = { critical:'#f56c6c', high:'#7b68ee', moderate:'#e6a23c', normal:'#26b5a0' };
+  const typeIcon = d.assetType === 'transformer' ? '⏚' : '⎓';
+  const color = colors[d.level];
+  const ring = (d.recurrence >= 8) ? `<circle cx="14" cy="14" r="13" fill="none" stroke="${color}" stroke-width="2" stroke-dasharray="4,2"/>` : '';
+  return `<svg width="28" height="28" viewBox="0 0 28 28">${ring}<circle cx="14" cy="14" r="10" fill="${color}" stroke="#fff" stroke-width="2"/><text x="14" y="18" text-anchor="middle" font-size="12" fill="#fff">${typeIcon}</text></svg>`;
+}
+
+let map, heatLayer, markerLayer, markers = [];
+function initMap() {
+  map = L.map('map', { zoomControl:false }).setView([30.572, 104.066], 13);
+  L.control.zoom({ position:'bottomleft' }).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution:'&copy; OpenStreetMap, &copy; CARTO', maxZoom:19, subdomains:'abcd'
+  }).addTo(map);
+  const heatPts = assets.map(d => [d.lat, d.lng, d.level==='critical'?1.0:d.level==='high'?0.7:d.level==='moderate'?0.4:0.15]);
+  heatLayer = L.heatLayer(heatPts, { radius:40, blur:28, maxZoom:15, max:1.0,
+    gradient:{0.1:'#26b5a0',0.35:'#c9b200',0.55:'#e6a23c',0.75:'#7b68ee',0.9:'#f56c6c',1.0:'#d32f2f'} }).addTo(map);
+  markerLayer = L.layerGroup();
+  assets.forEach(d => {
+    const icon = L.divIcon({ className:'', html:getMarkerSvg(d), iconSize:[28,28], iconAnchor:[14,14] });
+    const m = L.marker([d.lat,d.lng],{icon}).on('click',()=>showAsset(d));
+    m.bindTooltip(`${d.id} — ${d.name}<br><span style="font-size:11px;">${d.currentLoad}% load · ${d.level}</span>`,{direction:'top',offset:[0,-14]});
+    markers.push({marker:m,data:d});
+    markerLayer.addLayer(m);
+  });
+  map.on('zoomend', updateLayers);
+  updateLayers();
+}
+function updateLayers() {
+  if (map.getZoom() >= 15) { map.removeLayer(heatLayer); map.addLayer(markerLayer); }
+  else { map.removeLayer(markerLayer); map.addLayer(heatLayer); }
+}
+
+function showAsset(d) {
+  document.getElementById('detailPanel').classList.add('open');
+  setTimeout(() => map.invalidateSize(), 50);
+
+  const levelLabels = { critical:'Critical (>120%)', high:'High (100–120%)', moderate:'Moderate (80–100%)', normal:'Normal (<80%)' };
+  const recCls = d.recurrence >= 8 ? 'freq' : d.recurrence >= 3 ? 'occ' : 'rare';
+  const recLabel = d.recurrence >= 8 ? 'Frequent' : d.recurrence >= 3 ? 'Occasional' : 'Rare';
+
+  // 24h load profile
+  const hours = Array.from({length:24},(_,i)=>i);
+  let loadBars = '';
+  d.loadProfile.forEach((v,i) => {
+    const h = Math.max(v / 170 * 58, 2);
+    const cls = v > 120 ? 'over' : v > 100 ? 'warn' : 'safe';
+    loadBars += `<div class="load-bar ${cls}" style="height:${h}px;" title="${String(i).padStart(2,'0')}:00 — ${v}% load"></div>`;
+  });
+  const ratedLineBottom = (100 / 170 * 58);
+
+  // Recurrence trend
+  const maxR = Math.max(...d.recurrenceTrend, 1);
+  let recBars = '';
+  d.recurrenceTrend.forEach((v,i) => {
+    const h = Math.max(v/maxR*48, 2);
+    const cls = v >= 6 ? 'high-bar' : v >= 3 ? 'med-bar' : v > 0 ? 'low-bar' : 'zero';
+    recBars += `<div class="mini-bar ${cls}" style="height:${h}px;" title="Week ${Math.floor(i/2)+1}: ${v}"></div>`;
+  });
+
+  const capPct = d.currentLoad;
+  const capCls = capPct > 120 ? 'bad' : capPct > 100 ? 'purple' : capPct > 80 ? 'warn' : 'good';
+  const capColor = capPct > 120 ? '#f56c6c' : capPct > 100 ? '#7b68ee' : capPct > 80 ? '#e6a23c' : '#26b5a0';
+
+  const wo = d.wo;
+  const woStatusLabel = { undispatched:'Undispatched', unhandled:'Unhandled', processing:'Processing', completed:'Completed' };
+
+  document.getElementById('panelContent').innerHTML = `
+    <div style="margin-bottom:12px;">
+      <div class="info-row"><span class="info-label">Asset ID</span><span class="info-value" style="font-weight:700;">${d.id}</span></div>
+      <div class="info-row"><span class="info-label">Name</span><span class="info-value">${d.name}</span></div>
+      <div class="info-row"><span class="info-label">Overload Level</span><span class="severity-badge ${d.level}">${levelLabels[d.level]}</span></div>
+      <div class="info-row"><span class="info-label">Recurrence</span><span class="recurrence-badge ${recCls}">${d.recurrence}x — ${recLabel}</span></div>
+      <div class="info-row"><span class="info-label">Type</span><span class="info-value">${d.assetType === 'transformer' ? '⏚ Transformer' : '⎓ Feeder'}</span></div>
+      <div class="info-row"><span class="info-label">Rated Capacity</span><span class="info-value">${d.ratedKVA} kVA</span></div>
+      <div class="info-row"><span class="info-label">Area</span><span class="info-value">${d.area}</span></div>
+      <div class="info-row"><span class="info-label">Address</span><span class="info-value">${d.addr}</span></div>
+      <div class="info-row"><span class="info-label">Connected Meters</span><span class="info-value">${d.connectedMeters}</span></div>
+      <div class="info-row"><span class="info-label">Last Overload</span><span class="info-value">${d.lastOverload}</span></div>
+    </div>
+
+    <div class="section-title">Load Statistics</div>
+    <div class="stat-mini">
+      <div class="stat-mini-item"><div class="sm-val" style="color:${capColor};">${d.currentLoad}%</div><div class="sm-lbl">Current Load</div></div>
+      <div class="stat-mini-item"><div class="sm-val" style="color:#f56c6c;">${d.peakLoad}%</div><div class="sm-lbl">Peak (30d)</div></div>
+      <div class="stat-mini-item"><div class="sm-val">${d.avgLoad}%</div><div class="sm-lbl">Avg (30d)</div></div>
+      <div class="stat-mini-item"><div class="sm-val" style="color:#f56c6c;">${d.overloadEvents}</div><div class="sm-lbl">Overloads</div></div>
+    </div>
+
+    <div class="section-title">Capacity Utilization</div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+      <span style="color:#999;">Current: ${d.currentLoad}% of ${d.ratedKVA} kVA</span>
+      <span style="color:${capColor};font-weight:700;">${d.currentLoad}%</span>
+    </div>
+    <div class="pct-bar-bg" style="height:10px;"><div class="pct-bar ${capCls}" style="width:${Math.min(d.currentLoad, 150) / 150 * 100}%;height:100%;"></div></div>
+
+    <div class="section-title">24h Load Profile (% of Rated)</div>
+    <div class="load-chart" style="position:relative;">
+      ${loadBars}
+      <div class="load-line" style="bottom:${ratedLineBottom}px;" title="100% rated capacity"></div>
+    </div>
+    <div class="chart-labels"><span>00</span><span>04</span><span>08</span><span>12</span><span>16</span><span>20</span><span>24</span></div>
+    <div style="font-size:11px;color:#999;margin-top:2px;">
+      <span style="border-top:2px dashed #f56c6c;display:inline-block;width:20px;vertical-align:middle;margin-right:4px;"></span>100% rated capacity
+    </div>
+
+    <div class="section-title">Overload Recurrence (Last 4 Weeks)</div>
+    <div class="mini-chart">${recBars}</div>
+    <div class="chart-labels"><span>W1</span><span></span><span>W2</span><span></span><span>W3</span><span></span><span>W4</span><span></span></div>
+
+    <div class="section-title">Work Order Status</div>
+    <div class="wo-card">
+      <div class="wo-row"><span class="wo-label">Dispatch</span><span class="wo-val ${wo.status}">${wo.dispatch}</span></div>
+      <div class="wo-row"><span class="wo-label">Progress</span><span class="wo-val ${wo.status}">${woStatusLabel[wo.status]}</span></div>
+      <div class="wo-row"><span class="wo-label">Order No.</span><span class="wo-val" style="color:#409eff;">${wo.orderNo}</span></div>
+      <div class="wo-row"><span class="wo-label">Planned Action</span><span class="wo-val">${wo.action}</span></div>
+      <div class="wo-row"><span class="wo-label">Assignee</span><span class="wo-val">${wo.assignee}</span></div>
+      <div class="wo-row"><span class="wo-label">Updated</span><span class="wo-val">${wo.updated}</span></div>
+    </div>
+
+    <button class="btn-service" onclick="alert('Service order created for ${d.id}!')">+ Service Order</button>
+  `;
+  map.setView([d.lat, d.lng], Math.max(map.getZoom(), 16));
+}
+
+function closePanel() {
+  document.getElementById('detailPanel').classList.remove('open');
+  setTimeout(() => map.invalidateSize(), 50);
+}
+
+function applyFilter() {
+  const ol = document.getElementById('overloadFilter').value;
+  const at = document.getElementById('assetFilter').value;
+  markerLayer.clearLayers();
+  const filtered = [];
+  markers.forEach(m => {
+    const d = m.data;
+    if (ol && d.level !== ol) return;
+    if (at && d.assetType !== at) return;
+    markerLayer.addLayer(m.marker);
+    filtered.push(d);
+  });
+  map.removeLayer(heatLayer);
+  const pts = filtered.map(d => [d.lat,d.lng,d.level==='critical'?1.0:d.level==='high'?0.7:d.level==='moderate'?0.4:0.15]);
+  heatLayer = L.heatLayer(pts, { radius:40,blur:28,maxZoom:15,max:1.0,
+    gradient:{0.1:'#26b5a0',0.35:'#c9b200',0.55:'#e6a23c',0.75:'#7b68ee',0.9:'#f56c6c',1.0:'#d32f2f'} });
+  updateLayers();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  buildTree(treeData, document.getElementById('areaTree'), 0);
+  initMap();
+});
+</script>

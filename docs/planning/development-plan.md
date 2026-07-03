@@ -8,17 +8,21 @@
 
 ### 1.1 当前资产盘点
 
-| 维度 | 已有 | 需开发 | 完成率 |
-|------|------|--------|--------|
-| 前端页面 | 52 个 Vue 文件 | 联调适配 | 90% |
-| Mock API | 73 个 TS 文件 | 全部替换为真实 API | 0% |
-| 数据库表 | 28 张表 + 510 行种子数据 | 2 张新表待数据填充 | 95% |
-| 后端 Model | 8 个模块 | 无 | 100% |
-| 后端 Schema | 6 个文件（38 个类） | 补全验证逻辑 | 60% |
-| 后端 Service | **0 个文件** | 全部开发 | 0% |
-| 后端 Endpoint | 21 个文件 / 91 个路由 | 重构为分层架构 | 30% |
-| 后端测试 | 3 个文件 | 全模块覆盖 | 5% |
-| E2E 测试 | 4 个文件 | 补充业务流 | 10% |
+> 最后核对：2026-07-03（对齐实际代码）
+
+| 维度 | 实际状态 | 完成率 |
+|------|---------|--------|
+| 前端页面 | 60 个 .vue（含 35 个业务页 + 16 个 _core + 9 个 system）+ 53 个 .ts | 95% |
+| Mock API | 73 个 mock 端点（backend-mock 保留，前端可切换真实/mock） | - |
+| 数据库表 | 32 张表（含 alembic_version）+ 数千行种子数据，8 个 migration | 100% |
+| 后端 Model | 31 个 SQLAlchemy 模型（user/meter/meter_point/task/alarm/test/system/project/session） | 100% |
+| 后端 Schema | 10 个文件 / 66 个 Pydantic 类 | 95% |
+| 后端 Service | 16 个 service 文件（全量 Service 化，仅 system.py 残留 3 处直接 DB） | 95% |
+| 后端 Endpoint | 20 个文件 / 105 个路由 | 90%（analysis 9 路由为 mock） |
+| 后端测试 | 83 个测试（backend/tests/，CI 通过） | 70% |
+| E2E 测试 | 9 个 Playwright spec（tests/e2e/，CI 未运行） | 20% |
+| DLMS 协议栈 | ACSE/APDU/OBIS 字节级实现真实；cosem/ 对象模型空壳 | 60% |
+| 通信适配器 | TCP cellular + 串口 infrared 真实 IO | 80% |
 
 ### 1.2 核心风险
 
@@ -60,14 +64,14 @@ W3  W4  W5  W6  │  W1  W2  W3  W4  │  W1  W2  W3  W4  │  W1  W2  W3  W4
 
 ### 里程碑
 
-| 里程碑 | 日期 | 交付物 | 前后端联调 |
-|--------|------|--------|-----------|
-| M1 | 05/30 | 认证 + 系统管理 + 项目管理 | auth/system/project |
-| M2 | 06/13 | 样机 + 借用 + 维修 + 采集点 | devices |
-| M3 | 07/04 | 采集任务 + DLMS + 数据入库 | tasks/collector |
-| M4 | 07/18 | 分析报表 + 告警 + 大屏 | analysis/alarms |
-| M5 | 08/01 | 测试报告 + 缺陷 + 全量联调 | 全部模块 |
-| M6 | 08/14 | 上线 | - |
+| 里程碑 | 日期 | 交付物 | 前后端联调 | 状态 |
+|--------|------|--------|-----------|------|
+| M1 | 05/30 | 认证 + 系统管理 + 项目管理 | auth/system/project | ✅ 完成 |
+| M2 | 06/13 | 样机 + 借用 + 维修 + 采集点 | devices | ✅ 完成 |
+| M3 | 07/04 | 采集任务 + DLMS + 数据入库 | tasks/collector | 🟡 进行中（任务 CRUD + DLMS 核心已完成；调度引擎/cosem 待补） |
+| M4 | 07/18 | 分析报表 + 告警 + 大屏 | analysis/alarms | 🟡 部分完成（告警+大屏已完成；analysis 报表待闭环） |
+| M5 | 08/01 | 测试报告 + 缺陷 + 全量联调 | 全部模块 | 🟡 部分完成（test/defect 已完成；报告 PDF 导出待实现） |
+| M6 | 08/14 | 上线 | - | 📋 待实施 |
 
 ---
 
@@ -111,12 +115,12 @@ W3  W4  W5  W6  │  W1  W2  W3  W4  │  W1  W2  W3  W4  │  W1  W2  W3  W4
 
 **Phase 1 交付清单**:
 - [x] 基础设施层完整（config/database/response/exceptions/security/dependencies）
-- [ ] 认证系统（login/logout/refresh）
-- [ ] 系统管理（用户/角色/部门/菜单/审计）
-- [ ] 项目管理（项目/电表类型/线制类型/采集点）
-- [ ] 前端 auth/system/project 联调完成
-- [ ] Phase 1 测试全部通过
-- [ ] `/docs` Swagger UI 接口文档可访问
+- [x] 认证系统（login/logout/refresh/codes）
+- [x] 系统管理（用户/角色/部门/菜单/审计）
+- [x] 项目管理（项目/电表类型/线制类型/采集点）
+- [x] 前端 auth/system/project 联调完成
+- [x] Phase 1 测试全部通过（83 个测试 CI 绿）
+- [x] `/docs` Swagger UI 接口文档可访问
 
 ---
 

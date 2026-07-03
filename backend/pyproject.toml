@@ -10,7 +10,7 @@ dependencies = [
     "apscheduler==3.10.4",
     "asyncpg==0.30.0",
     "fastapi==0.115.0",
-    "influxdb-client>=1.50.0",
+    "influxdb-client>=1.50.0",  # DEPRECATED: InfluxDB 已弃用，时序用 PG 时序表，暂保留避免破坏 lockfile
     "motor==3.6.0",
     "numpy==1.26.0",
     "pandas==2.2.0",

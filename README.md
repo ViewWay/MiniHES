@@ -11,10 +11,12 @@
 | 前端 | vue-vben-admin 5.7.0 (Vue 3 + TypeScript + Ant Design Vue + Vite) |
 | 图表 | ECharts + useChartTheme 主题适配 |
 | 后端 | Python FastAPI + SQLAlchemy 2.0 (async) |
-| 数据库 | PostgreSQL (业务数据) + InfluxDB (时序数据) |
+| 数据库 | PostgreSQL (业务数据 + 时序数据，使用 `col_meter_reading`/`col_reading_daily_summary` 时序表) |
 | 缓存 | Redis |
 | 包管理 | uv (后端) + pnpm (前端) |
 | CI/CD | GitHub Actions (ruff lint + pytest + vue-tsc typecheck) |
+
+> **存储决策说明**：早期选型曾考虑 InfluxDB 作为时序数据库，经评估后**已弃用**，时序抄读数据统一存入 PostgreSQL 时序表，简化部署与运维。
 
 ## 系统架构
 
@@ -38,7 +40,7 @@
 │  ├── 红外  │ 4G/5G │ NB-IoT │ M-Bus │ LoRaWAN │ G3-PLC          │
 ├─────────────────────────────────────────────────────────────────┤
 │  数据存储                                                        │
-│  ├── PostgreSQL (业务数据)  ├── InfluxDB (时序数据)  ├── Redis    │
+│  ├── PostgreSQL (业务数据 + 时序数据)  ├── Redis (缓存)          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -70,13 +72,17 @@ MiniHES/
 │
 ├── docs/                      # 项目文档
 │   ├── tasks/                 # PRD 需求文档
-│   ├── design/                # 架构设计文档
-│   ├── api/                   # API 文档
-│   ├── guides/                # 开发指南
-│   └── reports/               # 审查报告
+│   ├── design/                # 架构设计文档 + 数据库表结构
+│   ├── planning/              # 开发排期 + 阶段概览
+│   ├── guides/                # 开发指南（测试策略等）
+│   ├── archive/               # 历史归档（早期 UI 原型等）
+│   └── CHANGELOG.md           # 变更日志
+│   # 注：API 文档见 FastAPI 启动后的 /docs Swagger UI
 │
-├── tests/                     # 测试
-│   └── backend/               # pytest 后端测试 (83 个)
+├── backend/tests/             # pytest 后端测试 (83 个，CI 实际运行)
+├── tests/                     # 其他测试
+│   ├── backend/               # 早期占位（仅 5 个 stub）
+│   └── e2e/                   # Playwright E2E 测试 (9 个，CI 未运行)
 │
 └── .github/workflows/         # CI/CD (lint + test + typecheck)
 ```
@@ -101,7 +107,7 @@ MiniHES/
 - Python >= 3.11
 - uv (Python 包管理器)
 - pnpm (前端包管理器)
-- PostgreSQL + Redis + InfluxDB
+- PostgreSQL + Redis
 
 ### 前端
 
@@ -129,7 +135,6 @@ VITE_NITRO_MOCK=false       # false=对接真实后端, true=使用 mock
 # 后端 (.env)
 DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/metering_db
 REDIS_URL=redis://localhost:6379/0
-INFLUXDB_URL=http://localhost:8086
 SECRET_KEY=your-secret-key
 ```
 

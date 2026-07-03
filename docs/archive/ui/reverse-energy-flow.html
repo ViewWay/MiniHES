@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reverse Energy Flow Events — Reporting</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;color:#333}
+  .topbar{display:flex;align-items:center;height:40px;background:#fff;border-bottom:1px solid #e0e0e0;padding:0 20px;font-size:12px}
+  .topbar .logo{font-weight:700;font-size:16px;color:#26b5a0;margin-right:24px;letter-spacing:1px}
+  .topbar .nav-link{padding:0 14px;line-height:40px;color:#555;cursor:pointer;position:relative}
+  .topbar .nav-link:hover{color:#26b5a0}.topbar .nav-link.active{color:#26b5a0;font-weight:600}
+  .topbar .nav-link.active::after{content:'';position:absolute;bottom:0;left:14px;right:14px;height:2px;background:#26b5a0}
+  .topbar .spacer{flex:1}.topbar .meta{color:#999;font-size:12px}
+  .topbar .online-badge{display:inline-block;padding:2px 8px;border-radius:10px;background:#e6f7f4;color:#26b5a0;font-size:11px;margin-left:12px}
+  .layout{display:flex;height:calc(100vh - 40px)}
+  .sidebar{width:200px;background:#fff;border-right:1px solid #e8e8e8;padding-top:12px;overflow-y:auto;flex-shrink:0}
+  .sidebar .section-title{padding:8px 16px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px}
+  .sidebar .nav-item{padding:9px 20px;font-size:13px;color:#666;cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+  .sidebar .nav-item:hover{color:#26b5a0;background:#f9fffe}
+  .sidebar .nav-item.active{color:#26b5a0;border-left-color:#26b5a0;font-weight:600;background:#f0faf8}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .content{flex:1;padding:12px 16px;overflow-y:auto}
+  .filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .filter-bar label{font-size:12px;color:#555}
+  .filter-bar select,.filter-bar input{padding:4px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:12px;outline:none}
+  .filter-bar select:focus,.filter-bar input:focus{border-color:#26b5a0}
+  .btn{padding:4px 12px;border:none;border-radius:4px;font-size:12px;cursor:pointer}.btn:hover{opacity:.85}
+  .btn-primary{background:#26b5a0;color:#fff}.btn-outline{background:#fff;color:#26b5a0;border:1px solid #26b5a0}
+  .btn-export{background:#fff;color:#555;border:1px solid #d9d9d9}.btn-export:hover{border-color:#26b5a0;color:#26b5a0}
+  .kpi-row{display:flex;gap:10px;margin-bottom:10px}
+  .kpi-card{flex:1;background:#fff;border-radius:6px;padding:8px 14px;box-shadow:0 1px 3px rgba(0,0,0,.06);position:relative;overflow:hidden}
+  .kpi-card .kpi-label{font-size:11px;color:#999;margin-bottom:2px}
+  .kpi-card .kpi-value{font-size:20px;font-weight:700}
+  .kpi-card .kpi-sub{font-size:11px;color:#999;margin-top:2px}
+  .kpi-card .kpi-trend{font-size:11px;margin-top:1px}
+  .kpi-card .kpi-trend.up{color:#f56c6c}.kpi-card .kpi-trend.down{color:#26b5a0}
+  .kpi-card .kpi-bar{position:absolute;bottom:0;left:0;right:0;height:3px}
+  .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .chart-card{background:#fff;border-radius:6px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .chart-card.full{grid-column:1/-1}
+  .chart-card canvas{max-height:150px}.chart-card.full canvas{max-height:130px}
+  .chart-title{font-size:12px;font-weight:600;color:#333;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+  .chart-title .chart-sub{font-size:11px;font-weight:400;color:#999}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  th{background:#f7f7f7;text-align:left;padding:6px 10px;font-size:11px;font-weight:600;color:#555;border-bottom:1px solid #e8e8e8;white-space:nowrap}
+  td{padding:5px 10px;font-size:12px;border-bottom:1px solid #f0f0f0;color:#444}
+  tr:hover td{background:#f9fffe}
+  .section-label{font-size:12px;font-weight:600;color:#333;margin:8px 0 6px;display:flex;align-items:center;gap:8px}
+  .badge{display:inline-block;padding:1px 8px;border-radius:3px;font-size:11px;font-weight:600}
+  .badge-solar{background:#e6f7f4;color:#26b5a0}
+  .badge-wiring{background:#fde2e2;color:#f56c6c}
+  .badge-fraud{background:#f3e8ff;color:#8b5cf6}
+  .badge-unknown{background:#f5f5f5;color:#909399}
+  .badge-high{background:#fde2e2;color:#f56c6c}
+  .badge-medium{background:#fff3e0;color:#e6a23c}
+  .badge-low{background:#e6f7f4;color:#26b5a0}
+  .badge-new{background:#e0e8ff;color:#409eff}
+  .bar-wrap{display:inline-flex;align-items:center;gap:5px;min-width:90px}
+  .bar-track{flex:1;height:6px;background:#eee;border-radius:3px;overflow:hidden;min-width:45px}
+  .bar-fill{height:100%;border-radius:3px}
+  /* Area panel */
+  .area-panel{width:220px;background:#fff;border-right:1px solid #e8e8e8;display:flex;flex-direction:row;overflow:hidden;flex-shrink:0}
+  .area-icon-strip{width:36px;background:#fafafa;border-right:1px solid #f0f0f0;display:flex;flex-direction:column;align-items:center;padding-top:6px;gap:2px;flex-shrink:0}
+  .area-icon-strip .icon-btn{width:30px;height:30px;border:none;background:transparent;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;position:relative}
+  .area-icon-strip .icon-btn:hover{background:#e6f7f4}
+  .area-icon-strip .icon-btn.active{background:#e6f7f4}
+  .area-icon-strip .icon-btn.active::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:3px;background:#26b5a0;border-radius:0 2px 2px 0}
+  .area-icon-strip .icon-btn svg{width:18px;height:18px}
+  .area-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .area-content .area-search{padding:8px 10px;border-bottom:1px solid #f0f0f0}
+  .area-content .area-search input{width:100%;padding:5px 8px;border:1px solid #d9d9d9;border-radius:4px;font-size:11px;outline:none}
+  .area-content .area-search input:focus{border-color:#26b5a0}
+  .area-content .area-search input::placeholder{color:#bbb}
+  .area-tab-body{flex:1;overflow-y:auto}
+  .area-tab-body .tab-pane{display:none}.area-tab-body .tab-pane.active{display:block}
+  .area-tree{padding:4px 0;font-size:13px;user-select:none;overflow-y:auto}
+  .area-tree ul{list-style:none;margin:0;padding:0}
+  .area-tree .tree-row{display:flex;align-items:center;gap:4px;padding:4px 8px;cursor:pointer;border-radius:3px;margin:1px 4px;transition:background .12s;white-space:nowrap}
+  .area-tree .tree-row:hover{background:#f0faf8}.area-tree .tree-row.selected{background:#26b5a0;color:#fff}
+  .area-tree .tree-toggle{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#999;flex-shrink:0;transition:transform .15s}
+  .area-tree .tree-toggle.expanded{transform:rotate(90deg)}.area-tree .tree-toggle.leaf{visibility:hidden}
+  .area-tree .tree-icon{width:14px;height:14px;flex-shrink:0}
+  .area-tree .tree-label{font-size:11px;overflow:hidden;text-overflow:ellipsis}
+  .area-tree .children{padding-left:14px}.area-tree .children.collapsed{display:none}
+  .group-list,.fav-list{padding:6px 0}
+  .group-item{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;font-size:11px;color:#555;margin:1px 4px;border-radius:3px}
+  .group-item:hover{background:#f0faf8;color:#26b5a0}.group-item.selected{background:#26b5a0;color:#fff}
+  .fav-item{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;font-size:11px;color:#555;margin:1px 4px;border-radius:3px}
+  .fav-item:hover{background:#fff8e6}.fav-item .fav-star{color:#e6a23c;font-size:12px}
+  .area-toolbar{display:flex;align-items:center;gap:4px;padding:6px 8px;border-top:1px solid #f0f0f0;background:#fafafa}
+  .area-toolbar button{width:26px;height:26px;border:1px solid #d9d9d9;border-radius:4px;background:#fff;cursor:pointer;font-size:14px;color:#666;display:inline-flex;align-items:center;justify-content:center}
+  .area-toolbar button:hover{border-color:#26b5a0;color:#26b5a0}
+  /* Drawer */
+  .drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:100}
+  .drawer-overlay.open{display:block}
+  .drawer{position:fixed;right:0;top:40px;bottom:0;width:680px;background:#fff;box-shadow:-4px 0 16px rgba(0,0,0,.12);z-index:101;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s}
+  .drawer.open{transform:translateX(0)}
+  .drawer-header{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #e8e8e8;gap:10px}
+  .drawer-title{font-size:14px;font-weight:600;flex:1}
+  .drawer-close{width:28px;height:28px;border:none;background:transparent;cursor:pointer;font-size:18px;color:#999;border-radius:4px}
+  .drawer-close:hover{background:#f5f5f5;color:#333}
+  .drawer-body{flex:1;overflow-y:auto;padding:12px 16px}
+  .drawer-kpi-row{display:flex;gap:8px;margin-bottom:12px}
+  .drawer-kpi{flex:1;background:#f9fffe;border:1px solid #e6f7f4;border-radius:6px;padding:8px 12px;text-align:center}
+  .drawer-kpi .dk-val{font-size:16px;font-weight:700}
+  .drawer-kpi .dk-lbl{font-size:10px;color:#999;margin-top:2px}
+  .drawer-section{font-size:12px;font-weight:600;color:#333;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid #f0f0f0}
+  .alert-box{padding:10px 12px;border-radius:6px;border-left:3px solid;font-size:12px;color:#666;margin-top:10px}
+  .alert-box.red{background:#fff5f5;border-color:#f56c6c}
+  .alert-box.green{background:#f0faf8;border-color:#26b5a0}
+  .alert-box.purple{background:#faf5ff;border-color:#8b5cf6}
+  .alert-box.amber{background:#fffbf0;border-color:#e6a23c}
+  /* flow indicator */
+  .flow-arrow{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600}
+  .flow-arrow.reverse{color:#f56c6c}
+  .flow-arrow.normal{color:#26b5a0}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">⊙ HES</span>
+  <span class="nav-link">Dashboard</span>
+  <span class="nav-link">Device ▾</span>
+  <span class="nav-link">Operation ▾</span>
+  <span class="nav-link">Collection ▾</span>
+  <span class="nav-link">Installation ▾</span>
+  <span class="nav-link active">Readings ▾</span>
+  <span class="nav-link">Network ▾</span>
+  <span class="nav-link">Exception ▾</span>
+  <span class="nav-link">Master Data ▾</span>
+  <span class="nav-link">VEE ▾</span>
+  <span class="nav-link">Report ▾</span>
+  <span class="spacer"></span>
+  <span class="meta">22/04/2026 11:38:14</span>
+  <span class="online-badge">Online: 118</span>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="section-title">Readings &amp; Events</div>
+    <div class="nav-item">Reading Profile</div>
+    <div class="nav-item">Events</div>
+    <div class="section-title">Consumption Analytics</div>
+    <div class="nav-item">Interval Consumption Trend</div>
+    <div class="nav-item">Peak / Off-Peak Analysis</div>
+    <div class="nav-item">Low / No Consumption</div>
+    <div class="nav-item active">Reverse Energy Flow</div>
+    <div class="nav-item">Seasonal Pattern</div>
+    <div class="section-title">Reports</div>
+    <div class="nav-item">Reverse Flow Report</div>
+    <div class="nav-item">DER Integration</div>
+  </div>
+
+  <!-- Area Panel -->
+  <div class="area-panel">
+    <div class="area-icon-strip">
+      <button class="icon-btn active" title="Region" onclick="switchAreaTab('region',this)">
+        <svg viewBox="0 0 20 20"><rect x="7" y="2" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="1.5" y="13" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="12.5" y="13" width="6" height="4" rx="1" fill="#26b5a0"/><line x1="10" y1="6" x2="10" y2="9" stroke="#26b5a0" stroke-width="1.4"/><line x1="4.5" y1="9" x2="15.5" y2="9" stroke="#26b5a0" stroke-width="1.4"/><line x1="4.5" y1="9" x2="4.5" y2="13" stroke="#26b5a0" stroke-width="1.4"/><line x1="15.5" y1="9" x2="15.5" y2="13" stroke="#26b5a0" stroke-width="1.4"/></svg>
+      </button>
+      <button class="icon-btn" title="Group" onclick="switchAreaTab('group',this)">
+        <svg viewBox="0 0 20 20"><path d="M3 3h5v5H3V3zm9 0h5v5h-5V3zM3 12h5v5H3v-5zm9 0h5v5h-5v-5z" fill="#8b5cf6" opacity=".85"/></svg>
+      </button>
+      <button class="icon-btn" title="Favorites" onclick="switchAreaTab('favorites',this)">
+        <svg viewBox="0 0 20 20"><path d="M10 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L10 14.3l-4.8 2.6.9-5.4L2.2 7.7l5.4-.8z" fill="#e6a23c"/></svg>
+      </button>
+    </div>
+    <div class="area-content">
+      <div class="area-search"><input type="text" id="areaSearchInput" placeholder="Department" oninput="filterAreaTree(this.value)"></div>
+      <div class="area-tab-body">
+        <div id="areaTabRegion" class="tab-pane active"><div class="area-tree" id="areaTree"></div></div>
+        <div id="areaTabGroup" class="tab-pane"><div class="group-list" id="groupList"></div></div>
+        <div id="areaTabFavorites" class="tab-pane"><div class="fav-list" id="favList"></div></div>
+      </div>
+      <div class="area-toolbar">
+        <button title="Refresh" onclick="refreshAreaTree()">↻</button>
+        <button title="Expand All" onclick="expandAllNodes()">＋</button>
+        <button title="Collapse All" onclick="collapseAllNodes()">－</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="content">
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <label>Period:</label>
+        <input type="date" value="2026-04-01">
+        <span style="font-size:11px;color:#bbb">—</span>
+        <input type="date" value="2026-04-22">
+        <select id="filterClassification">
+          <option value="">All Classifications</option>
+          <option>Solar PV Injection</option>
+          <option>Wiring Error</option>
+          <option>Potential Fraud</option>
+          <option>Unknown</option>
+        </select>
+        <select id="filterModel"><option value="">All Models</option><option>KAIFA-1PH</option><option>KAIFA-3PH</option><option>KAIFA-CT</option></select>
+        <select id="filterRisk">
+          <option value="">All Risk Levels</option>
+          <option>High</option>
+          <option>Medium</option>
+          <option>Low</option>
+        </select>
+        <button class="btn btn-primary">Search</button>
+        <button class="btn btn-outline">Reset</button>
+        <button class="btn btn-export">⬇ Export</button>
+      </div>
+
+      <!-- KPI Row -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Meters with Reverse Flow</div>
+          <div class="kpi-value" style="color:#f56c6c;">284</div>
+          <div class="kpi-sub">3.3% of fleet — Apr 2026</div>
+          <div class="kpi-trend up">▲ +22 vs Mar 2026</div>
+          <div class="kpi-bar" style="background:#f56c6c;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total Reverse Energy</div>
+          <div class="kpi-value" style="color:#e6a23c;">1,842 <span style="font-size:13px;font-weight:400">MWh</span></div>
+          <div class="kpi-sub">Injected back to grid</div>
+          <div class="kpi-trend up">▲ +18.4% vs Mar 2026</div>
+          <div class="kpi-bar" style="background:#e6a23c;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Solar PV (Legitimate)</div>
+          <div class="kpi-value" style="color:#26b5a0;">198</div>
+          <div class="kpi-sub">69.7% of reverse flow meters</div>
+          <div class="kpi-bar" style="background:#26b5a0;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Wiring Error Suspected</div>
+          <div class="kpi-value" style="color:#e6a23c;">52</div>
+          <div class="kpi-sub">18.3% — field check needed</div>
+          <div class="kpi-trend up">▲ +8 vs Mar 2026</div>
+          <div class="kpi-bar" style="background:#e6a23c;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Potential Fraud</div>
+          <div class="kpi-value" style="color:#8b5cf6;">34</div>
+          <div class="kpi-sub">12.0% — revenue risk</div>
+          <div class="kpi-trend up">▲ +6 vs Mar 2026</div>
+          <div class="kpi-bar" style="background:#8b5cf6;"></div>
+        </div>
+      </div>
+
+      <!-- Charts Row 1 -->
+      <div class="chart-grid">
+        <div class="chart-card full">
+          <div class="chart-title">
+            Daily Reverse Flow Events &amp; Volume — Apr 2026
+            <span class="chart-sub">Event count + MWh injected</span>
+          </div>
+          <canvas id="chartDailyTrend" height="130"></canvas>
+        </div>
+      </div>
+
+      <!-- Charts Row 2 -->
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Classification Breakdown</div>
+          <canvas id="chartClassification" height="150"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Avg Daily Reverse Flow Profile (15-min)</div>
+          <canvas id="chartProfile" height="150"></canvas>
+        </div>
+      </div>
+
+      <!-- Charts Row 3 -->
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Affected Meters by Area</div>
+          <canvas id="chartByArea" height="140"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Monthly Trend — Reverse Flow Meters</div>
+          <canvas id="chartMonthly" height="140"></canvas>
+        </div>
+      </div>
+
+      <!-- Meter Table -->
+      <div class="section-label">
+        Affected Meter List
+        <span style="font-size:11px;font-weight:400;color:#999">284 meters — Apr 2026</span>
+      </div>
+      <table id="meterTable"></table>
+
+    </div>
+  </div>
+</div>
+
+<!-- Drawer -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="detailDrawer">
+  <div class="drawer-header">
+    <span class="drawer-title" id="drawerTitle">Meter Detail</span>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script>
+// ══ AREA TREE ══
+const areaTreeData=[{id:'sewa',label:'SEWA',icon:'org',children:[
+  {id:'sharjah-e',label:'Sharjah-E',icon:'area',children:[
+    {id:'dcu-group',label:'DCU',icon:'dcu-folder',children:[{id:'dcu-tr1',label:'DCU-TR1',icon:'dcu'},{id:'dcu-tr2',label:'DCU-TR2',icon:'dcu'},{id:'dcu-tr3',label:'DCU-TR3',icon:'dcu'},{id:'dcu-tr4',label:'DCU-TR4',icon:'dcu'}]},
+    {id:'p2p',label:'P2P',icon:'area'}]},
+  {id:'sharjah-w',label:'Sharjah-W',icon:'area',children:[{id:'dcu-group-w',label:'DCU',icon:'dcu-folder',children:[{id:'dcu-w1',label:'DCU-W1',icon:'dcu'},{id:'dcu-w2',label:'DCU-W2',icon:'dcu'}]}]},
+  {id:'al-dhaid',label:'Al Dhaid',icon:'area'},{id:'kalba',label:'Kalba',icon:'area'},{id:'khorfakkan',label:'Khorfakkan',icon:'area'},{id:'dibba',label:'Dibba Al Hisn',icon:'area'},
+]}];
+const iconSvgs={
+  org:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="5" y="1" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="1" y="9" width="5" height="4" rx="1" fill="#26b5a0"/><rect x="10" y="9" width="5" height="4" rx="1" fill="#26b5a0"/><line x1="8" y1="5" x2="8" y2="7" stroke="#26b5a0" stroke-width="1.2"/><line x1="3.5" y1="7" x2="12.5" y2="7" stroke="#26b5a0" stroke-width="1.2"/><line x1="3.5" y1="7" x2="3.5" y2="9" stroke="#26b5a0" stroke-width="1.2"/><line x1="12.5" y1="7" x2="12.5" y2="9" stroke="#26b5a0" stroke-width="1.2"/></svg>`,
+  area:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#e6f7f4" stroke="#26b5a0" stroke-width=".8"/><path d="M4 7l2.5 3L11 6" stroke="#26b5a0" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  'dcu-folder':`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#e6f7f4" stroke="#26b5a0" stroke-width=".8"/><rect x="5" y="6" width="6" height="4" rx="1" fill="#26b5a0" opacity=".3"/></svg>`,
+  dcu:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="#26b5a0" opacity=".15" stroke="#26b5a0" stroke-width=".8"/><circle cx="8" cy="6" r="1.5" fill="#26b5a0"/><line x1="6" y1="10" x2="10" y2="10" stroke="#26b5a0" stroke-width="1" stroke-linecap="round"/></svg>`
+};
+let selectedAreaId='sewa';
+function buildTreeHTML(ns,d){let h='';ns.forEach(n=>{const has=n.children&&n.children.length>0,exp=d<2,sel=n.id===selectedAreaId;const tc=has?(exp?'tree-toggle expanded':'tree-toggle'):'tree-toggle leaf';h+=`<li><div class="tree-row${sel?' selected':''}" onclick="selectAreaNode('${n.id}',this)"><span class="${tc}" onclick="event.stopPropagation();toggleNode(this)">▶</span>${iconSvgs[n.icon]||iconSvgs.area}<span class="tree-label">${n.label}</span></div>`;if(has){h+=`<ul class="children${exp?'':' collapsed'}">`;h+=buildTreeHTML(n.children,d+1);h+='</ul>';}h+='</li>';});return h;}
+function renderAreaTree(d){document.getElementById('areaTree').innerHTML='<ul>'+buildTreeHTML(d||areaTreeData,0)+'</ul>';}
+function toggleNode(t){t.classList.toggle('expanded');const u=t.closest('li').querySelector(':scope>ul');if(u)u.classList.toggle('collapsed');}
+function selectAreaNode(id,el){document.querySelectorAll('.tree-row.selected').forEach(e=>e.classList.remove('selected'));el.classList.add('selected');selectedAreaId=id;}
+function expandAllNodes(){document.querySelectorAll('.tree-toggle').forEach(t=>t.classList.add('expanded'));document.querySelectorAll('.children').forEach(c=>c.classList.remove('collapsed'));}
+function collapseAllNodes(){document.querySelectorAll('.tree-toggle').forEach(t=>{if(!t.classList.contains('leaf'))t.classList.remove('expanded')});document.querySelectorAll('.children').forEach(c=>c.classList.add('collapsed'));}
+function filterAreaTree(q){if(!q.trim()){renderAreaTree();return;}const lq=q.toLowerCase();function f(ns){return ns.reduce((a,n)=>{const m=n.label.toLowerCase().includes(lq),fc=n.children?f(n.children):[];if(m||fc.length)a.push({...n,children:fc.length?fc:n.children});return a;},[]);}document.getElementById('areaTree').innerHTML='<ul>'+buildTreeHTML(f(areaTreeData),0)+'</ul>';expandAllNodes();}
+function refreshAreaTree(){renderAreaTree();}
+renderAreaTree();
+const areaTabs={region:'areaTabRegion',group:'areaTabGroup',favorites:'areaTabFavorites'};
+function switchAreaTab(t,b){document.querySelectorAll('.icon-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');Object.values(areaTabs).forEach(id=>document.getElementById(id).classList.remove('active'));document.getElementById(areaTabs[t]).classList.add('active');document.getElementById('areaSearchInput').placeholder={region:'Department',group:'Group',favorites:'Favorites'}[t];document.getElementById('areaSearchInput').value='';}
+document.getElementById('groupList').innerHTML=[{l:'Residential',c:5200},{l:'Commercial',c:1800},{l:'Industrial',c:640},{l:'Government',c:900}].map(g=>`<div class="group-item" onclick="this.parentElement.querySelectorAll('.group-item').forEach(e=>e.classList.remove('selected'));this.classList.add('selected')"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="3" fill="#8b5cf6" opacity=".15" stroke="#8b5cf6" stroke-width=".8"/></svg><span style="flex:1">${g.l}</span><span style="color:#bbb;font-size:10px">${g.c}</span></div>`).join('');
+document.getElementById('favList').innerHTML=[{l:'KF1-00421',t:'Meter'},{l:'Sharjah-E',t:'Area'}].map(f=>`<div class="fav-item"><span class="fav-star">★</span><span style="flex:1">${f.l}</span><span style="color:#bbb;font-size:10px">${f.t}</span></div>`).join('');
+
+// ══ COLORS ══
+const teal='#26b5a0',red='#f56c6c',amber='#e6a23c',blue='#409eff',purple='#8b5cf6',gray='#c0c4cc';
+
+// 1. Daily trend — dual axis: event count (bar) + MWh (line)
+const days22=Array.from({length:22},(_,i)=>`Apr ${i+1}`);
+const evtCount=days22.map(()=>Math.floor(Math.random()*18+8));
+const mwhVol=days22.map(()=>+(Math.random()*60+50).toFixed(1));
+new Chart(document.getElementById('chartDailyTrend'),{
+  data:{labels:days22,datasets:[
+    {type:'bar',label:'Event Count',data:evtCount,backgroundColor:'rgba(245,108,108,.55)',borderRadius:3,yAxisID:'y'},
+    {type:'line',label:'Reverse Volume (MWh)',data:mwhVol,borderColor:amber,backgroundColor:'rgba(230,162,60,.08)',fill:true,pointRadius:2,tension:.35,borderWidth:2,yAxisID:'y2'},
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    scales:{
+      y:{position:'left',ticks:{font:{size:9}},title:{display:true,text:'Events',font:{size:9}}},
+      y2:{position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>v+' MWh',font:{size:9}},title:{display:true,text:'MWh',font:{size:9}}},
+      x:{ticks:{font:{size:8},maxRotation:45}}
+    },
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:10},padding:10}}}}
+});
+
+// 2. Classification doughnut
+new Chart(document.getElementById('chartClassification'),{type:'doughnut',
+  data:{labels:['Solar PV Injection','Wiring Error','Potential Fraud','Unknown'],
+    datasets:[{data:[198,52,34,0],backgroundColor:[teal,amber,purple,gray]}]},
+  options:{responsive:true,maintainAspectRatio:false,cutout:'45%',
+    plugins:{legend:{position:'right',labels:{padding:8,font:{size:10}}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} (${(ctx.raw/284*100).toFixed(1)}%)`}}}}
+});
+
+// 3. Avg daily 15-min reverse flow profile
+const intervals=[];for(let h=0;h<24;h++)for(let m=0;m<60;m+=15)intervals.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+const rfProfile=intervals.map((_,i)=>{
+  const h=Math.floor(i/4);
+  // solar peak 09-17, near zero at night
+  if(h>=9&&h<17)return+(Math.random()*4+2).toFixed(2);
+  if(h>=7&&h<9||h>=17&&h<19)return+(Math.random()*1.5+0.5).toFixed(2);
+  return+(Math.random()*.3).toFixed(2);
+});
+new Chart(document.getElementById('chartProfile'),{type:'bar',
+  data:{labels:intervals,datasets:[{
+    label:'Avg Reverse Flow (MWh/15min)',
+    data:rfProfile,
+    backgroundColor:intervals.map((_,i)=>{const h=Math.floor(i/4);return(h>=9&&h<17)?'rgba(230,162,60,.7)':'rgba(245,108,108,.35)';}),
+    borderWidth:0,borderRadius:1
+  }]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{ticks:{maxTicksLimit:12,font:{size:8}},grid:{display:false}},y:{ticks:{callback:v=>v+' MWh',font:{size:9}}}},
+    plugins:{legend:{display:false}}}
+});
+
+// 4. By Area stacked
+new Chart(document.getElementById('chartByArea'),{type:'bar',
+  data:{labels:['Sharjah-E','Sharjah-W','Al Dhaid','Kalba','Khorfakkan','Dibba'],
+    datasets:[
+      {label:'Solar PV',data:[68,48,32,22,18,10],backgroundColor:teal,borderRadius:2},
+      {label:'Wiring Error',data:[18,12,8,6,5,3],backgroundColor:amber,borderRadius:2},
+      {label:'Potential Fraud',data:[12,8,6,4,3,1],backgroundColor:purple,borderRadius:2},
+    ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{stacked:true,ticks:{font:{size:8}}},y:{stacked:true,ticks:{font:{size:9}}}},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:9},padding:4}}}}
+});
+
+// 5. Monthly trend (6 months)
+new Chart(document.getElementById('chartMonthly'),{type:'line',
+  data:{labels:['Nov 2025','Dec 2025','Jan 2026','Feb 2026','Mar 2026','Apr 2026'],
+    datasets:[
+      {label:'Solar PV',data:[142,148,158,168,178,198],borderColor:teal,backgroundColor:'rgba(38,181,160,.08)',fill:true,pointRadius:3,tension:.35},
+      {label:'Wiring Error',data:[38,40,42,44,44,52],borderColor:amber,pointRadius:3,tension:.35},
+      {label:'Potential Fraud',data:[22,24,26,28,28,34],borderColor:purple,pointRadius:3,tension:.35,borderDash:[4,3]},
+    ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    scales:{y:{ticks:{font:{size:9}}},x:{ticks:{font:{size:9}}}},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:9},padding:6}}}}
+});
+
+// ══ METER TABLE ══
+const meters=[
+  {sn:'KF1-00421',model:'KAIFA-1PH',area:'Sharjah-E',cls:'Solar PV Injection',clsCls:'badge-solar',events:48,volume:'142 MWh',maxRate:'8.4 kW',firstSeen:'2026-01-12',risk:'Low'},
+  {sn:'KF3-00112',model:'KAIFA-3PH',area:'Al Dhaid',cls:'Potential Fraud',clsCls:'badge-fraud',events:62,volume:'284 MWh',maxRate:'18.2 kW',firstSeen:'2026-03-08',risk:'High'},
+  {sn:'KFC-00088',model:'KAIFA-CT',area:'Khorfakkan',cls:'Wiring Error',clsCls:'badge-wiring',events:14,volume:'38 MWh',maxRate:'22.6 kW',firstSeen:'2026-04-02',risk:'High'},
+  {sn:'KF1-00835',model:'KAIFA-1PH',area:'Sharjah-W',cls:'Solar PV Injection',clsCls:'badge-solar',events:36,volume:'98 MWh',maxRate:'6.2 kW',firstSeen:'2025-11-20',risk:'Low'},
+  {sn:'KF3-00567',model:'KAIFA-3PH',area:'Sharjah-E',cls:'Potential Fraud',clsCls:'badge-fraud',events:88,volume:'412 MWh',maxRate:'31.4 kW',firstSeen:'2026-02-14',risk:'High'},
+  {sn:'KF1-01024',model:'KAIFA-1PH',area:'Dibba',cls:'Wiring Error',clsCls:'badge-wiring',events:8,volume:'22 MWh',maxRate:'14.8 kW',firstSeen:'2026-04-10',risk:'Medium'},
+  {sn:'KFW-00391',model:'KAIFA-1PH',area:'Sharjah-W',cls:'Solar PV Injection',clsCls:'badge-solar',events:28,volume:'76 MWh',maxRate:'5.8 kW',firstSeen:'2026-01-28',risk:'Low'},
+  {sn:'KF3-00204',model:'KAIFA-3PH',area:'Kalba',cls:'Unknown',clsCls:'badge-unknown',events:6,volume:'14 MWh',maxRate:'9.2 kW',firstSeen:'2026-04-18',risk:'Medium'},
+];
+const riskCls={High:'badge-high',Medium:'badge-medium',Low:'badge-low'};
+const mtbl=document.getElementById('meterTable');
+let mh=`<thead><tr><th>Meter S/N</th><th>Model</th><th>Area</th><th>Classification</th><th>Events (Apr)</th><th>Reverse Volume</th><th>Max Rate</th><th>First Detected</th><th>Risk</th><th>Action</th></tr></thead><tbody>`;
+meters.forEach(m=>{
+  mh+=`<tr>
+    <td style="font-weight:600;color:#26b5a0;cursor:pointer" onclick="openMeterDrawer('${m.sn}')">${m.sn}</td>
+    <td style="font-size:11px;color:#999">${m.model}</td>
+    <td>${m.area}</td>
+    <td><span class="badge ${m.clsCls}">${m.cls}</span></td>
+    <td style="font-weight:600;color:#f56c6c">${m.events}</td>
+    <td style="font-weight:600;color:#e6a23c">${m.volume}</td>
+    <td style="font-size:11px">${m.maxRate}</td>
+    <td style="font-size:11px;color:#999">${m.firstSeen}</td>
+    <td><span class="badge ${riskCls[m.risk]}">${m.risk}</span></td>
+    <td><button class="btn btn-outline" style="padding:2px 8px;font-size:11px" onclick="openMeterDrawer('${m.sn}')">Detail</button></td>
+  </tr>`;
+});
+mh+='</tbody>';
+mtbl.innerHTML=mh;
+
+// ══ DRAWER ══
+const alertMap={
+  'Solar PV Injection':{color:'green',msg:'Meter is registered with a solar PV installation. Reverse flow is expected during daylight hours. Verify DER registration is up to date and net metering tariff is applied correctly.'},
+  'Wiring Error':{color:'amber',msg:'Reverse flow pattern does not match solar generation profile. Possible CT polarity reversal or incorrect phase wiring. Schedule field inspection to verify meter installation.'},
+  'Potential Fraud':{color:'red',msg:'High-magnitude reverse flow detected without registered DER. Pattern inconsistent with legitimate solar generation. Escalate to revenue protection team for investigation.'},
+  'Unknown':{color:'amber',msg:'Reverse flow detected but classification is inconclusive. Gather additional data over the next 2 weeks before escalating.'},
+};
+
+function openMeterDrawer(sn){
+  const m=meters.find(x=>x.sn===sn);if(!m)return;
+  const alert=alertMap[m.cls]||alertMap['Unknown'];
+
+  // 15-min profile for this meter
+  const intervals96=[];for(let h=0;h<24;h++)for(let min=0;min<60;min+=15)intervals96.push(`${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`);
+  const isSolar=m.cls==='Solar PV Injection';
+  const isFraud=m.cls==='Potential Fraud';
+  const profileData=intervals96.map((_,i)=>{
+    const h=Math.floor(i/4);
+    if(isSolar){return(h>=9&&h<17)?+(Math.random()*parseFloat(m.maxRate)*.8+parseFloat(m.maxRate)*.1).toFixed(2):0;}
+    if(isFraud){return(h>=0&&h<6||h>=20)?+(Math.random()*parseFloat(m.maxRate)*.6+parseFloat(m.maxRate)*.2).toFixed(2):(Math.random()>.7?+(Math.random()*2).toFixed(2):0);}
+    return(h>=8&&h<20)?+(Math.random()*parseFloat(m.maxRate)*.5).toFixed(2):0;
+  });
+
+  document.getElementById('drawerTitle').textContent=`Meter: ${sn} — Reverse Flow Detail`;
+  document.getElementById('drawerBody').innerHTML=`
+    <div class="drawer-kpi-row">
+      <div class="drawer-kpi"><div class="dk-val" style="color:#f56c6c">${m.events}</div><div class="dk-lbl">Events (Apr)</div></div>
+      <div class="drawer-kpi"><div class="dk-val" style="color:#e6a23c">${m.volume}</div><div class="dk-lbl">Reverse Volume</div></div>
+      <div class="drawer-kpi"><div class="dk-val" style="color:#333">${m.maxRate}</div><div class="dk-lbl">Max Rate</div></div>
+      <div class="drawer-kpi"><div class="dk-val" style="color:${m.risk==='High'?'#f56c6c':m.risk==='Medium'?'#e6a23c':'#26b5a0'}">${m.risk}</div><div class="dk-lbl">Risk</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <div><span style="font-size:11px;color:#999">Classification: </span><span class="badge ${m.clsCls}">${m.cls}</span></div>
+      <div><span style="font-size:11px;color:#999">First Detected: </span><span style="font-size:12px">${m.firstSeen}</span></div>
+      <div><span style="font-size:11px;color:#999">Model: </span><span style="font-size:12px">${m.model}</span></div>
+      <div><span style="font-size:11px;color:#999">Area: </span><span style="font-size:12px">${m.area}</span></div>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:#333;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #f0f0f0">Avg Daily Reverse Flow Profile (15-min intervals)</div>
+    <canvas id="drawerChart" height="90" style="margin-bottom:10px"></canvas>
+    <div style="font-size:12px;font-weight:600;color:#333;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid #f0f0f0">Analysis &amp; Recommendation</div>
+    <div class="alert-box ${alert.color}">
+      <strong>${m.cls}:</strong> ${alert.msg}
+    </div>
+    <div style="font-size:12px;font-weight:600;color:#333;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid #f0f0f0">Recent Events</div>
+    <table style="box-shadow:none">
+      <thead><tr><th>Date</th><th>Start Time</th><th>Duration</th><th>Volume (kWh)</th><th>Max Rate (kW)</th></tr></thead>
+      <tbody>${Array.from({length:6},(_,i)=>{
+        const d=22-i;const vol=+(Math.random()*80+20).toFixed(1);const rate=+(Math.random()*parseFloat(m.maxRate)*.8+parseFloat(m.maxRate)*.2).toFixed(1);
+        return `<tr><td>Apr ${d}, 2026</td><td>${String(9+Math.floor(Math.random()*3)).padStart(2,'0')}:${['00','15','30','45'][Math.floor(Math.random()*4)]}</td><td>${Math.floor(Math.random()*4+2)}h ${['00','15','30','45'][Math.floor(Math.random()*4)]}m</td><td style="color:#e6a23c;font-weight:600">${vol}</td><td>${rate}</td></tr>`;
+      }).join('')}</tbody>
+    </table>
+  `;
+  setTimeout(()=>{
+    new Chart(document.getElementById('drawerChart'),{type:'bar',
+      data:{labels:intervals96,datasets:[{
+        label:'Reverse Flow (kW)',
+        data:profileData,
+        backgroundColor:isSolar?'rgba(38,181,160,.65)':isFraud?'rgba(139,92,246,.65)':'rgba(230,162,60,.65)',
+        borderWidth:0,borderRadius:1
+      }]},
+      options:{responsive:true,maintainAspectRatio:false,
+        scales:{x:{ticks:{maxTicksLimit:12,font:{size:8}},grid:{display:false}},y:{ticks:{callback:v=>v+' kW',font:{size:9}}}},
+        plugins:{legend:{display:false}}}
+    });
+  },50);
+  document.getElementById('drawerOverlay').classList.add('open');
+  document.getElementById('detailDrawer').classList.add('open');
+}
+
+function closeDrawer(){
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.getElementById('detailDrawer').classList.remove('open');
+}
+</script>
+</body>
+</html>
