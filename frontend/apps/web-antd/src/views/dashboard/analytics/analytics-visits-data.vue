@@ -53,14 +53,14 @@ onMounted(() => {
               color: '#b6a2de',
             },
             name: '访问',
-            value: [90, 50, 86, 40, 50, 20],
+            value: [] as number[],
           },
           {
             itemStyle: {
               color: '#5ab1ef',
             },
             name: '趋势',
-            value: [70, 75, 70, 76, 20, 85],
+            value: [] as number[],
           },
         ],
         itemStyle: {

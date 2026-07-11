@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { EchartsUIType } from '@vben/plugins/echarts';
 
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -23,7 +23,7 @@ import {
 import { getMeterDetail } from '#/api/modules/meter';
 import { useChartTheme } from '#/composables/useChartTheme';
 
-const { isDark, chartColors, themedAxis, themedTooltip, themedLegend, themedGauge } = useChartTheme();
+const { chartColors, themedAxis, themedTooltip, themedLegend, themedGauge, watchThemeAndRerender } = useChartTheme();
 const route = useRoute();
 const router = useRouter();
 const meterId = ref(Number(route.params.id) || 0);
@@ -32,27 +32,27 @@ const loading = ref(true);
 const meterInfo = ref<Record<string, any>>({});
 
 const meterData = ref({
-  voltage_a: 220.5,
-  voltage_b: 219.8,
-  voltage_c: 221.2,
-  current_a: 5.2,
-  current_b: 4.8,
-  current_c: 5.5,
-  power_a: 1146.6,
-  power_b: 1055.0,
-  power_c: 1216.6,
-  pf_a: 0.98,
-  pf_b: 0.97,
-  pf_c: 0.99,
-  frequency: 50.01,
-  stack_usage: 45,
-  eeprom_writes: 1234,
+  voltage_a: 0,
+  voltage_b: 0,
+  voltage_c: 0,
+  current_a: 0,
+  current_b: 0,
+  current_c: 0,
+  power_a: 0,
+  power_b: 0,
+  power_c: 0,
+  pf_a: 0,
+  pf_b: 0,
+  pf_c: 0,
+  frequency: 0,
+  stack_usage: 0,
+  eeprom_writes: 0,
   phase_angle_a: 0,
-  phase_angle_b: 120,
-  phase_angle_c: 240,
+  phase_angle_b: 0,
+  phase_angle_c: 0,
 });
 
-const stabilityScore = ref(92);
+const stabilityScore = ref(0);
 
 const timeLabels = ref<string[]>([]);
 const voltageHistoryA = ref<number[]>([]);
@@ -99,10 +99,6 @@ function timeNow(): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 }
 
-function jitter(base: number, variance: number): number {
-  return Number((base + (Math.random() - 0.5) * 2 * variance).toFixed(2));
-}
-
 async function fetchMeterData() {
   loading.value = true;
   try {
@@ -147,15 +143,13 @@ async function fetchMeterData() {
 }
 
 function initHistoryData() {
-  for (let i = 0; i < 30; i++) {
-    timeLabels.value.push('--:--:--');
-    voltageHistoryA.value.push(jitter(meterData.value.voltage_a, 2));
-    voltageHistoryB.value.push(jitter(meterData.value.voltage_b, 2));
-    voltageHistoryC.value.push(jitter(meterData.value.voltage_c, 2));
-    currentHistoryA.value.push(jitter(meterData.value.current_a, 0.3));
-    currentHistoryB.value.push(jitter(meterData.value.current_b, 0.3));
-    currentHistoryC.value.push(jitter(meterData.value.current_c, 0.3));
-  }
+  timeLabels.value = [];
+  voltageHistoryA.value = [];
+  voltageHistoryB.value = [];
+  voltageHistoryC.value = [];
+  currentHistoryA.value = [];
+  currentHistoryB.value = [];
+  currentHistoryC.value = [];
 }
 
 function renderAllCharts() {
@@ -213,8 +207,8 @@ function renderAllCharts() {
   });
 
   const eventHours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
-  const readEvents = Array.from({ length: 24 }, () => Math.floor(Math.random() * 20 + 5));
-  const errorEvents = Array.from({ length: 24 }, () => Math.floor(Math.random() * 3));
+  const readEvents: number[] = [];
+  const errorEvents: number[] = [];
 
   renderEventChart({
     tooltip: themedTooltip(),
@@ -229,58 +223,85 @@ function renderAllCharts() {
   });
 }
 
-function pollData() {
-  meterData.value.voltage_a = jitter(meterData.value.voltage_a, 1);
-  meterData.value.voltage_b = jitter(meterData.value.voltage_b, 1);
-  meterData.value.voltage_c = jitter(meterData.value.voltage_c, 1);
-  meterData.value.current_a = jitter(meterData.value.current_a, 0.2);
-  meterData.value.current_b = jitter(meterData.value.current_b, 0.2);
-  meterData.value.current_c = jitter(meterData.value.current_c, 0.2);
-  meterData.value.power_a = Number((meterData.value.voltage_a * meterData.value.current_a * meterData.value.pf_a).toFixed(1));
-  meterData.value.power_b = Number((meterData.value.voltage_b * meterData.value.current_b * meterData.value.pf_b).toFixed(1));
-  meterData.value.power_c = Number((meterData.value.voltage_c * meterData.value.current_c * meterData.value.pf_c).toFixed(1));
-  meterData.value.frequency = jitter(meterData.value.frequency, 0.02);
+async function pollData() {
+  // Only update from API response; do not generate fake data.
+  try {
+    const resp = await getMeterDetail(meterId.value);
+    if (resp?.realtime) {
+      const rt = resp.realtime;
+      meterData.value = {
+        voltage_a: rt.voltage_a ?? meterData.value.voltage_a,
+        voltage_b: rt.voltage_b ?? meterData.value.voltage_b,
+        voltage_c: rt.voltage_c ?? meterData.value.voltage_c,
+        current_a: rt.current_a ?? meterData.value.current_a,
+        current_b: rt.current_b ?? meterData.value.current_b,
+        current_c: rt.current_c ?? meterData.value.current_c,
+        power_a: rt.power_a ?? meterData.value.power_a,
+        power_b: rt.power_b ?? meterData.value.power_b,
+        power_c: rt.power_c ?? meterData.value.power_c,
+        pf_a: rt.pf_a ?? meterData.value.pf_a,
+        pf_b: rt.pf_b ?? meterData.value.pf_b,
+        pf_c: rt.pf_c ?? meterData.value.pf_c,
+        frequency: rt.frequency ?? meterData.value.frequency,
+        stack_usage: rt.stack_usage ?? meterData.value.stack_usage,
+        eeprom_writes: rt.eeprom_writes ?? meterData.value.eeprom_writes,
+        phase_angle_a: rt.phase_angle_a ?? meterData.value.phase_angle_a,
+        phase_angle_b: rt.phase_angle_b ?? meterData.value.phase_angle_b,
+        phase_angle_c: rt.phase_angle_c ?? meterData.value.phase_angle_c,
+      };
 
-  const now = timeNow();
-  timeLabels.value.push(now);
-  voltageHistoryA.value.push(meterData.value.voltage_a);
-  voltageHistoryB.value.push(meterData.value.voltage_b);
-  voltageHistoryC.value.push(meterData.value.voltage_c);
-  currentHistoryA.value.push(meterData.value.current_a);
-  currentHistoryB.value.push(meterData.value.current_b);
-  currentHistoryC.value.push(meterData.value.current_c);
+      const now = timeNow();
+      timeLabels.value.push(now);
+      voltageHistoryA.value.push(meterData.value.voltage_a);
+      voltageHistoryB.value.push(meterData.value.voltage_b);
+      voltageHistoryC.value.push(meterData.value.voltage_c);
+      currentHistoryA.value.push(meterData.value.current_a);
+      currentHistoryB.value.push(meterData.value.current_b);
+      currentHistoryC.value.push(meterData.value.current_c);
 
-  if (timeLabels.value.length > 60) {
-    timeLabels.value.shift();
-    voltageHistoryA.value.shift();
-    voltageHistoryB.value.shift();
-    voltageHistoryC.value.shift();
-    currentHistoryA.value.shift();
-    currentHistoryB.value.shift();
-    currentHistoryC.value.shift();
+      if (timeLabels.value.length > 60) {
+        timeLabels.value.shift();
+        voltageHistoryA.value.shift();
+        voltageHistoryB.value.shift();
+        voltageHistoryC.value.shift();
+        currentHistoryA.value.shift();
+        currentHistoryB.value.shift();
+        currentHistoryC.value.shift();
+      }
+
+      updateRtChart({
+        xAxis: { data: timeLabels.value },
+        series: [
+          { data: voltageHistoryA.value },
+          { data: voltageHistoryB.value },
+          { data: voltageHistoryC.value },
+          { data: currentHistoryA.value },
+          { data: currentHistoryB.value },
+          { data: currentHistoryC.value },
+        ],
+      });
+    }
+    if (resp?.stack_usage !== undefined) {
+      meterData.value.stack_usage = resp.stack_usage;
+    }
+    if (resp?.eeprom_writes !== undefined) {
+      meterData.value.eeprom_writes = resp.eeprom_writes;
+    }
+  } catch {
+    // API not available; keep current data, do not mutate randomly
   }
-
-  updateRtChart({
-    xAxis: { data: timeLabels.value },
-    series: [
-      { data: voltageHistoryA.value },
-      { data: voltageHistoryB.value },
-      { data: voltageHistoryC.value },
-      { data: currentHistoryA.value },
-      { data: currentHistoryB.value },
-      { data: currentHistoryC.value },
-    ],
-  });
 }
 
 onMounted(async () => {
   await fetchMeterData();
   initHistoryData();
   renderAllCharts();
-  pollTimer = setInterval(pollData, 3000);
+  watchThemeAndRerender(renderAllCharts);
+  pollTimer = setInterval(() => {
+    void pollData().catch((err) => console.error('[meter] pollData failed', err));
+  }, 3000);
 });
 
-watch(isDark, () => renderAllCharts());
 
 onUnmounted(() => {
   if (pollTimer) {
@@ -292,7 +313,6 @@ onUnmounted(() => {
 
 <template>
   <Page auto-content-height>
-    <div style="padding: 16px">
       <div style="margin-bottom: 16px; display: flex; align-items: center">
         <Button type="link" @click="router.back()">← 返回</Button>
         <span style="font-size: 16px; font-weight: 600; margin-left: 8px">
@@ -305,33 +325,33 @@ onUnmounted(() => {
 
       <Spin :spinning="loading">
         <Row :gutter="16" style="margin-bottom: 16px">
-          <Col :span="4">
-            <Card size="small" :bordered="false">
+          <Col :span="6">
+            <Card :bordered="false">
               <Statistic title="电压A (V)" :value="meterData.voltage_a" :precision="1" :value-style="{ color: '#5470c6' }" />
             </Card>
           </Col>
-          <Col :span="4">
-            <Card size="small" :bordered="false">
+          <Col :span="6">
+            <Card :bordered="false">
               <Statistic title="电压B (V)" :value="meterData.voltage_b" :precision="1" :value-style="{ color: '#91cc75' }" />
             </Card>
           </Col>
-          <Col :span="4">
-            <Card size="small" :bordered="false">
+          <Col :span="6">
+            <Card :bordered="false">
               <Statistic title="电压C (V)" :value="meterData.voltage_c" :precision="1" :value-style="{ color: '#fac858' }" />
             </Card>
           </Col>
-          <Col :span="4">
-            <Card size="small" :bordered="false">
+          <Col :span="6">
+            <Card :bordered="false">
               <Statistic title="频率 (Hz)" :value="meterData.frequency" :precision="2" />
             </Card>
           </Col>
-          <Col :span="4">
-            <Card size="small" :bordered="false">
+          <Col :span="6">
+            <Card :bordered="false">
               <Statistic title="堆栈使用" :value="meterData.stack_usage" suffix="%" :value-style="{ color: '#69b1ff' }" />
             </Card>
           </Col>
-          <Col :span="4">
-            <Card size="small" :bordered="false">
+          <Col :span="6">
+            <Card :bordered="false">
               <Statistic title="EEPROM写入" :value="meterData.eeprom_writes" />
             </Card>
           </Col>
@@ -340,7 +360,7 @@ onUnmounted(() => {
         <Row :gutter="16" style="margin-bottom: 16px">
           <Col :span="24">
             <Card title="实时电压/电流曲线" :bordered="false">
-              <EchartsUI ref="rtChartRef" height="360px" />
+              <EchartsUI ref="rtChartRef" height="300px" />
             </Card>
           </Col>
         </Row>
@@ -384,7 +404,7 @@ onUnmounted(() => {
           </Col>
           <Col :span="6">
             <Card title="稳定性分析" :bordered="false">
-              <EchartsUI ref="gaugeChartRef" height="260px" />
+              <EchartsUI ref="gaugeChartRef" height="300px" />
             </Card>
           </Col>
         </Row>
@@ -434,11 +454,10 @@ onUnmounted(() => {
           </Col>
           <Col :span="12">
             <Card title="读数事件曲线 (24h)" :bordered="false">
-              <EchartsUI ref="eventChartRef" height="240px" />
+              <EchartsUI ref="eventChartRef" height="300px" />
             </Card>
           </Col>
         </Row>
       </Spin>
-    </div>
   </Page>
 </template>

@@ -184,28 +184,30 @@ function handleTableChange(pag: any) {
       </Row>
 
       <!-- Filters -->
-      <Row :gutter="16" style="margin-bottom: 16px">
-        <Col :span="6">
-          <Select
-            v-model:value="filterStatus"
-            placeholder="维修状态"
-            allow-clear
-            :options="repairStatusOptions"
-            style="width: 100%"
-            @change="handleFilter"
-          />
-        </Col>
-        <Col :span="8">
-          <DatePicker.RangePicker
-            style="width: 100%"
-            :placeholder="['开始日期', '结束日期']"
-            @change="handleDateRangeChange"
-          />
-        </Col>
-        <Col :span="4">
-          <Button @click="resetFilter">重置</Button>
-        </Col>
-      </Row>
+      <Card :bordered="false" style="margin-bottom: 16px">
+        <Form layout="inline">
+          <Form.Item label="维修状态">
+            <Select
+              v-model:value="filterStatus"
+              placeholder="全部状态"
+              allow-clear
+              :options="repairStatusOptions"
+              style="width: 160px"
+              @change="handleFilter"
+            />
+          </Form.Item>
+          <Form.Item label="日期范围">
+            <DatePicker.RangePicker
+              :placeholder="['开始日期', '结束日期']"
+              @change="handleDateRangeChange"
+            />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" @click="handleFilter">查询</Button>
+            <Button style="margin-left: 8px" @click="resetFilter">重置</Button>
+          </Form.Item>
+        </Form>
+      </Card>
 
       <Table
         :columns="columns"

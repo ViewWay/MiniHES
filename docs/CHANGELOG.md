@@ -6,6 +6,56 @@
 
 ---
 
+## [0.7.0] - 2026-07-11
+
+### MongoDB 双存储集成
+
+- **新增 MongoDB 作为原始采集文档存储**：DLMS/COSEM 采集会话完整文档（24 sheets / 720 KV pairs / Profile buffers）存储在 MongoDB `meter_sessions` 集合，PG 保留为结构化索引层
+- **新增文件**：`app/core/mongo.py`（Motor 异步客户端）、`app/services/mongo_session_repo.py`（数据访问层 + buffer 解析）、`app/services/collector/session_writer.py`（PG-Mongo 双写路径）、`app/services/analysis_mongo_service.py`（联合查询）、`scripts/init_mongo.py`（集合+索引初始化）、`scripts/import_real_dcpp.py`（真实电表数据导入）、`scripts/sync_real_data.py`（PG-Mongo 数据同步）
+- **PG-Mongo 桥梁**：`col_session` 表的 `mongo_doc_id` 指向真实 MongoDB 文档
+- **配置**：新增 `MONGODB_URL` / `MONGODB_DATABASE` 环境变量（`.env.example` 已补充）
+- **Docker**：新增 `docker-compose.yml`（PostgreSQL + Redis + MongoDB 一键启动）
+
+### 分析 API 全部接入真实数据
+
+- **前 9 个 stub 路由改为真实查询**：daily（MongoDB Daily Billing + Load Profile）、compare（多表 Energy/Instantaneous）、consistency（PG col_session vs Mongo）、data-quality（PG col_data_quality + summary + trend）、reports（PG lab_test_report）
+- **10 个运维报表清除全部假数据**：移除 `analysis_service.py` 中所有 `random` 调用和 `demo` 造假降级（10 个函数的假数字全部清零）
+- **失败原因分布改为真实分类**：从 `TaskDevice.error_message` 按关键词分类统计（超时/协议/离线/信号/其他）
+- **每日分析重新设计**：选项目→选设备→选日期范围→查看多日采集趋势
+- **CSV 导出实现**：daily/export、data-quality/export、reports/{id}/export 全部返回真实 CSV
+
+### 任务调度引擎
+
+- **APScheduler 集成**：`app/services/scheduler.py`，每 60 秒扫描到期任务自动执行
+- **`execute_task` 真实化**：解析目标电表→从 MongoDB 读取真实 OBIS 值→写 col_meter_reading→更新 MeterSnapshot→写 DataQuality（upsert）→计算 next_execute_time
+- **零 random 调用**：task_service.py 中所有随机数生成已移除
+
+### EEPROM 与诊断修复
+
+- **MeterSnapshot 字段恢复**：补回 `eeprom_write_count`、`stack_usage`、`last_data_time`
+- **read-completeness 分布图修复**：从硬编码改为从真实 DataQuality 计算分布桶
+- **ondemand-history 趋势图修复**：从空数组改为按日期聚合真实 TaskLog
+
+### 系统监控真实化
+
+- **system/health**：scheduler 状态从 APScheduler 实际状态读取
+- **system/db-monitor**：真实探测 PG（表行数）、MongoDB（文档数）、Redis（ping）
+
+### 前端设计统一化（15 个页面）
+
+- **暗色模式**：4 页接入 `useChartTheme`
+- **大屏统一**：3 页统一 `<Page>` wrapper，去掉双重 padding
+- **统计卡片网格**：9 页统一 `:span="6"`（4 列）
+- **筛选栏**：4 页改为 `Form layout="inline"`
+- **空状态标签**：11 页统一为"无数据"
+
+### 新增测试
+
+- `test_analysis.py`：18 个分析端点测试
+- `test_meter.py`：5 个电表端点测试
+
+---
+
 ## [0.6.1] - 2026-07-04
 
 ### 文档对齐（消除文档与代码的 4 类严重矛盾 + 4 类中等问题）
@@ -21,6 +71,27 @@
 - **清理 docs/testdata/**：删除误装的 Python 虚拟环境（site-packages）、.ruff_cache、.omc、临时文件；保留数据脚本和 JSON 样本
 - **归档 docs/ui/**：54 个早期 HTML 原型移至 docs/archive/ui/ 作为历史快照
 - **补充 .gitignore**：新增规则防止 site-packages/.omc 等再次混入
+
+### 新增（前端架构文档）
+- **`docs/design/frontend-architecture.md`**：完整前端架构设计文档（约 500 行），覆盖：
+  - 技术栈 + 整体分层架构 + Monorepo 结构（vue-vben-admin 5.7.0）
+  - 启动流程（main.ts → bootstrap.ts）
+  - 7 个业务模块详解（dashboard/meter/task/analysis/screen/test/system），每模块含页面清单、路由、对接 API、关键交互、使用的 composable/组件
+  - 基础设施层（请求层/状态层/组件层/路由层/布局层/Mock 服务）
+  - 已知问题与技术债（P0 部署阻塞 × 1、P1 代码质量 × 4、P2 模板残留 × 3）
+  - 开发指引（新增页面/图表/轮询/主题适配规范）
+- README/CLAUDE 新增前端架构文档交叉引用
+
+### 后端 RBAC 接口级强制（TDD）
+- **`require_permission` 依赖**：新增菜单级权限校验依赖工厂（`backend/app/core/dependencies.py`），super 角色豁免，权限不足抛 `BusinessException(code=403)`
+- **权限查询优化**：`get_user_permission_codes` 从 N+1 查询改为单条 4 表 join；新增 `get_user_role_codes`（2 表 join）
+- **批量挂载**：15 个受保护 router 在 `api.py` 的 `include_router` 上挂载权限校验（devices/projects/tasks/alarms/analysis/system），5 个公开接口（health/auth/user/upload/menu）豁免
+- **RBAC 测试**：新增 `backend/tests/test_rbac.py`（7 个测试，覆盖 super 豁免/有权限放行/无权限拒绝/无 token 拒绝/公开接口放行），全量测试 83→90 个
+- **回归修复**：6 个老测试适配 RBAC（加 auth_headers / 翻转公开访问断言）
+- **pyproject.toml**：seed.py 的 ruff per-file-ignores 补 N806
+
+### 前端技术债修复
+- **meter store `fetchStatusHistory`**：从错误调用 `getMeterDetail`（依赖不一定存在的 `status_history` 字段）改为调用专用端点 `getMeterStatusHistory`
 
 ---
 

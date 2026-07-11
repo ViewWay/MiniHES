@@ -19,6 +19,10 @@ class Settings(BaseSettings):
 
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # MongoDB（原始采集文档存储）
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    MONGODB_DATABASE: str = "minihes"
+
     # DEPRECATED: InfluxDB 已弃用，时序数据改用 PostgreSQL 时序表
     # (col_meter_reading + col_reading_daily_summary)。
     # 配置项保留备未来高并发场景复用，当前无任何代码读写 InfluxDB。

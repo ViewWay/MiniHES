@@ -196,6 +196,7 @@ onMounted(() => {
           pageSize: pagination.pageSize,
           total,
           showSizeChanger: true,
+          showTotal: (t: number) => `共 ${t} 条`,
         }"
         row-key="id"
         @change="handleTableChange"

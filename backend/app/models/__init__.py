@@ -13,6 +13,7 @@ from .meter import (
     WireType,
 )
 from .meter_point import MeterPoint, MeterReading, ReadingDailySummary
+from .obis_template import DataPointTemplate, ObisTemplate, TaskObisOverride
 from .project import Project
 from .session import CollectionSession
 from .system import AuditLog, DataArchive
@@ -42,6 +43,9 @@ __all__ = [
     "MeterPoint",
     "MeterReading",
     "ReadingDailySummary",
+    "ObisTemplate",
+    "DataPointTemplate",
+    "TaskObisOverride",
     "CollectionSession",
     "Task",
     "TaskLog",

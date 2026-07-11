@@ -97,14 +97,23 @@ async def api_permission_tree(_user: CurrentUser = None, db: DbSession = ...):
 
 @router.get("/health")
 async def system_health():
+    # 查询真实的 scheduler 状态
+    scheduler_status = "stopped"
+    try:
+        from app.services.scheduler import _scheduler
+
+        if _scheduler is not None and _scheduler.running:
+            scheduler_status = "running"
+    except Exception:
+        pass
+
     return success(
         {
             "status": "healthy",
             "version": "1.0.0",
             "services": {
                 "api": {"status": "running"},
-                "dlms_engine": {"status": "running"},
-                "scheduler": {"status": "running"},
+                "scheduler": {"status": scheduler_status},
             },
         }
     )
@@ -140,12 +149,55 @@ async def api_export_audit_logs(
 
 
 @router.get("/db-monitor")
-async def db_monitor():
+async def db_monitor(db: DbSession = ...):
+    """真实数据库连接状态监控。"""
+
+    # PostgreSQL
+    pg_status = "running"
+    pg_info = {}
+    try:
+        from sqlalchemy import text
+
+        result = await db.execute(text("SELECT count(*) FROM dev_meter"))
+        pg_info["meters"] = result.scalar()
+        result = await db.execute(text("SELECT count(*) FROM col_meter_reading"))
+        pg_info["readings"] = result.scalar()
+    except Exception as e:
+        pg_status = "error"
+        pg_info = {"error": str(e)[:100]}
+
+    # MongoDB
+    mongo_status = "stopped"
+    mongo_info = {}
+    try:
+        from app.core.mongo import get_mongo_db
+
+        mongo_db = get_mongo_db()
+        count = await mongo_db["meter_sessions"].count_documents({})
+        mongo_status = "running"
+        mongo_info = {"documents": count}
+    except Exception:
+        mongo_status = "stopped"
+
+    # Redis
+    redis_status = "stopped"
+    try:
+        import redis.asyncio as aioredis
+
+        from app.core.config import settings
+
+        r = aioredis.from_url(settings.REDIS_URL)
+        await r.ping()
+        redis_status = "running"
+        await r.close()
+    except Exception:
+        redis_status = "stopped"
+
     return success(
         {
-            "postgresql": {"status": "running"},
-            "redis": {"status": "stopped"},
-            "influxdb": {"status": "stopped"},
+            "postgresql": {"status": pg_status, **pg_info},
+            "mongodb": {"status": mongo_status, **mongo_info},
+            "redis": {"status": redis_status},
         }
     )
 

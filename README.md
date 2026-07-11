@@ -6,6 +6,8 @@
 
 ## 技术栈
 
+> 前端架构详见 [`docs/design/frontend-architecture.md`](docs/design/frontend-architecture.md)，后端架构详见 [`docs/design/tech-review-and-architecture.md`](docs/design/tech-review-and-architecture.md)。
+
 | 层级 | 技术 |
 |------|------|
 | 前端 | vue-vben-admin 5.7.0 (Vue 3 + TypeScript + Ant Design Vue + Vite) |
@@ -72,7 +74,7 @@ MiniHES/
 │
 ├── docs/                      # 项目文档
 │   ├── tasks/                 # PRD 需求文档
-│   ├── design/                # 架构设计文档 + 数据库表结构
+│   ├── design/                # 架构设计文档（前端架构 + 后端架构 + 数据库表结构）
 │   ├── planning/              # 开发排期 + 阶段概览
 │   ├── guides/                # 开发指南（测试策略等）
 │   ├── archive/               # 历史归档（早期 UI 原型等）

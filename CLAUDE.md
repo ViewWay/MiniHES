@@ -217,14 +217,11 @@ docs/
 │   └── prd-cloud-metering-system.md
 │
 ├── design/                # 设计文档
-│   └── tech-review-and-architecture.md
+│   ├── tech-review-and-architecture.md   # 后端架构（全栈技术审查 + 分层设计）
+│   ├── frontend-architecture.md          # 前端架构（分层 + 7 个业务模块详解）
+│   └── database-schema.md / .sql         # 数据库表结构 + DDL
 │
-├── api/                   # API 文档（按模块）
-│   ├── auth.md
-│   ├── meters.md
-│   ├── tasks.md
-│   ├── analysis.md
-│   ├── alarms.md
+├── api/                   # API 文档（注：实际 API 文档见 FastAPI /docs Swagger UI）
 │   └── ...
 │
 ├── guides/                # 开发指南

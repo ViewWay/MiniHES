@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import {
-  Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Table, Tag, message,
+  Button, Card, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, message,
 } from 'ant-design-vue';
 import type { TableColumnType } from 'ant-design-vue';
 import { getTestList, createTestTask } from '#/api/modules/test';
@@ -155,48 +155,57 @@ onMounted(() => {
       </template>
 
       <!-- Filters -->
-      <Row :gutter="16" style="margin-bottom: 16px">
-        <Col :span="6">
-          <Select
-            v-model:value="filterType"
-            placeholder="测试类型"
-            allow-clear
-            :options="testTypeOptions"
-            style="width: 100%"
-            @change="handleFilter"
-          />
-        </Col>
-        <Col :span="6">
-          <Select
-            v-model:value="filterStatus"
-            placeholder="状态"
-            allow-clear
-            :options="statusOptions"
-            style="width: 100%"
-            @change="handleFilter"
-          />
-        </Col>
-        <Col :span="6">
-          <Select
-            v-model:value="filterProject"
-            placeholder="所属项目"
-            allow-clear
-            style="width: 100%"
-            @change="handleFilter"
-          >
-            <Select.Option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</Select.Option>
-          </Select>
-        </Col>
-        <Col :span="6">
-          <Button @click="resetFilter">重置</Button>
-        </Col>
-      </Row>
+      <Card :bordered="false" style="margin-bottom: 16px">
+        <Form layout="inline">
+          <Form.Item label="测试类型">
+            <Select
+              v-model:value="filterType"
+              placeholder="全部类型"
+              allow-clear
+              :options="testTypeOptions"
+              style="width: 160px"
+              @change="handleFilter"
+            />
+          </Form.Item>
+          <Form.Item label="状态">
+            <Select
+              v-model:value="filterStatus"
+              placeholder="全部状态"
+              allow-clear
+              :options="statusOptions"
+              style="width: 160px"
+              @change="handleFilter"
+            />
+          </Form.Item>
+          <Form.Item label="所属项目">
+            <Select
+              v-model:value="filterProject"
+              placeholder="全部项目"
+              allow-clear
+              style="width: 160px"
+              @change="handleFilter"
+            >
+              <Select.Option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" @click="handleFilter">查询</Button>
+            <Button style="margin-left: 8px" @click="resetFilter">重置</Button>
+          </Form.Item>
+        </Form>
+      </Card>
 
       <Table
         :columns="columns"
         :data-source="tableData"
         :loading="loading"
-        :pagination="{ current: pagination.current, pageSize: pagination.pageSize, total }"
+        :pagination="{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total,
+          showSizeChanger: true,
+          showTotal: (t: number) => `共 ${t} 条`,
+        }"
         row-key="id"
         @change="handleTableChange"
         :scroll="{ x: 1000 }"

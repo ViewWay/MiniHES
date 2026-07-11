@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import type { EchartsUIType } from '@vben/plugins/echarts';
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { Page } from '@vben/common-ui';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
 
 import {
@@ -24,7 +25,7 @@ import { useChartTheme } from '#/composables/useChartTheme';
 import { THEME_COLORS } from '#/constants';
 
 const router = useRouter();
-const { isDark, chartColors, themedAxis, themedTooltip, themedLegend } = useChartTheme();
+const { isDark, chartColors, themedAxis, themedTooltip, themedLegend, watchThemeAndRerender } = useChartTheme();
 
 const loading = ref(false);
 const projects = ref<any[]>([]);
@@ -93,14 +94,14 @@ onMounted(async () => {
   }
 
   renderAllCharts();
+  watchThemeAndRerender(renderAllCharts);
 });
 
-watch(isDark, () => renderAllCharts());
 
 function buildStackOptions(): any {
   const c = chartColors.value;
   const categories = ['协议栈', '采集引擎', '数据解析', '任务队列', '通信缓冲'];
-  const used = [72, 58, 45, 63, 38];
+  const used = [0, 0, 0, 0, 0];
   const remaining = used.map((v) => 100 - v);
 
   return {
@@ -158,7 +159,7 @@ function buildAlarmTrendOptions(): any {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     days.push(`${d.getMonth() + 1}/${d.getDate()}`);
-    alarmData.push(Math.floor(Math.random() * 8));
+    alarmData.push(0);
   }
 
   return {
@@ -180,36 +181,36 @@ function buildAlarmTrendOptions(): any {
 </script>
 
 <template>
-  <div style="padding: 16px">
+  <Page auto-content-height>
     <Spin :spinning="loading">
       <Row :gutter="16" style="margin-bottom: 16px">
-        <Col :span="4">
-          <Card :bordered="false" size="small">
+        <Col :span="6">
+          <Card :bordered="false">
             <Statistic title="项目总数" :value="projects.length" :value-style="{ color: THEME_COLORS.PROCESSING }" />
           </Card>
         </Col>
-        <Col :span="4">
-          <Card :bordered="false" size="small">
+        <Col :span="6">
+          <Card :bordered="false">
             <Statistic title="设备总数" :value="totalMeters" :value-style="{ color: THEME_COLORS.PROCESSING }" />
           </Card>
         </Col>
-        <Col :span="4">
-          <Card :bordered="false" size="small">
+        <Col :span="6">
+          <Card :bordered="false">
             <Statistic title="在线设备" :value="onlineMeters" :value-style="{ color: THEME_COLORS.SUCCESS }" />
           </Card>
         </Col>
-        <Col :span="4">
-          <Card :bordered="false" size="small">
+        <Col :span="6">
+          <Card :bordered="false">
             <Statistic title="离线设备" :value="offlineMeters" :value-style="{ color: THEME_COLORS.ERROR }" />
           </Card>
         </Col>
-        <Col :span="4">
-          <Card :bordered="false" size="small">
+        <Col :span="6">
+          <Card :bordered="false">
             <Statistic title="活跃告警" :value="alertCount" :value-style="{ color: THEME_COLORS.WARNING }" />
           </Card>
         </Col>
-        <Col :span="4">
-          <Card :bordered="false" size="small">
+        <Col :span="6">
+          <Card :bordered="false">
             <Statistic
               title="在线率"
               :value="onlineRate"
@@ -255,13 +256,13 @@ function buildAlarmTrendOptions(): any {
 
         <Col :span="8">
           <Card title="设备在线率" :bordered="false" style="margin-bottom: 16px">
-            <EchartsUI ref="onlineRateChartRef" height="200px" />
+            <EchartsUI ref="onlineRateChartRef" height="300px" />
           </Card>
           <Card title="堆栈监控" :bordered="false" style="margin-bottom: 16px">
-            <EchartsUI ref="stackChartRef" height="220px" />
+            <EchartsUI ref="stackChartRef" height="300px" />
           </Card>
           <Card title="告警趋势" :bordered="false" style="margin-bottom: 16px">
-            <EchartsUI ref="alarmTrendChartRef" height="200px" />
+            <EchartsUI ref="alarmTrendChartRef" height="300px" />
           </Card>
         </Col>
       </Row>
@@ -271,7 +272,7 @@ function buildAlarmTrendOptions(): any {
           <Card title="事件统计" :bordered="false">
             <Row :gutter="[16, 16]">
               <Col :span="6" v-for="e in eventStats" :key="e.type">
-                <Card size="small" :bordered="false">
+                <Card :bordered="false">
                   <Statistic :title="e.type" :value="e.count" :value-style="{ color: e.color }" />
                 </Card>
               </Col>
@@ -280,5 +281,5 @@ function buildAlarmTrendOptions(): any {
         </Col>
       </Row>
     </Spin>
-  </div>
+  </Page>
 </template>

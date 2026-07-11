@@ -422,10 +422,19 @@ async def seed():
             else:  # three_phase_4w or three_phase_3w
                 template = THREE_PHASE_OBIS
             for module, name, obis, cls_id, attr_id, dtype, unit in template:
-                sm_points.append(MeterPoint(
-                    meter_id=m.id, obis_code=obis, class_id=cls_id, attribute_id=attr_id,
-                    point_name=name, module=module, point_type="register", data_type=dtype, unit=unit,
-                ))
+                sm_points.append(
+                    MeterPoint(
+                        meter_id=m.id,
+                        obis_code=obis,
+                        class_id=cls_id,
+                        attribute_id=attr_id,
+                        point_name=name,
+                        module=module,
+                        point_type="register",
+                        data_type=dtype,
+                        unit=unit,
+                    )
+                )
         session.add_all(sm_points)
         await session.flush()
 
@@ -797,46 +806,141 @@ async def seed():
         now = datetime.now(timezone.utc)
 
         # KFM comm
-        session.add_all([
-            MeterComm(meter_id=kfm_meters[0].id, protocol="DLMS", connection_type="tcp", host="192.168.234.101", port=4059, is_enabled=True),
-            MeterComm(meter_id=kfm_meters[1].id, protocol="DLMS", connection_type="tcp", host="192.168.234.105", port=4059, is_enabled=True),
-            MeterComm(meter_id=kfm_meters[2].id, protocol="DLMS", connection_type="tcp", host="192.168.234.108", port=4059, is_enabled=False),
-        ])
+        session.add_all(
+            [
+                MeterComm(
+                    meter_id=kfm_meters[0].id,
+                    protocol="DLMS",
+                    connection_type="tcp",
+                    host="192.168.234.101",
+                    port=4059,
+                    is_enabled=True,
+                ),
+                MeterComm(
+                    meter_id=kfm_meters[1].id,
+                    protocol="DLMS",
+                    connection_type="tcp",
+                    host="192.168.234.105",
+                    port=4059,
+                    is_enabled=True,
+                ),
+                MeterComm(
+                    meter_id=kfm_meters[2].id,
+                    protocol="DLMS",
+                    connection_type="tcp",
+                    host="192.168.234.108",
+                    port=4059,
+                    is_enabled=False,
+                ),
+            ]
+        )
         # SM comm — all meters
-        comm_hosts = {1: "192.168.234.1", 2: "192.168.234.2", 3: "192.168.234.3", 4: "192.168.234.4",
-                      5: "192.168.234.5", 6: "192.168.234.6", 7: "192.168.234.7", 8: "192.168.234.8",
-                      9: "192.168.234.9", 10: "192.168.234.10", 11: "192.168.234.11", 12: "192.168.234.12"}
+        comm_hosts = {
+            1: "192.168.234.1",
+            2: "192.168.234.2",
+            3: "192.168.234.3",
+            4: "192.168.234.4",
+            5: "192.168.234.5",
+            6: "192.168.234.6",
+            7: "192.168.234.7",
+            8: "192.168.234.8",
+            9: "192.168.234.9",
+            10: "192.168.234.10",
+            11: "192.168.234.11",
+            12: "192.168.234.12",
+        }
         for mid, host in comm_hosts.items():
-            session.add(MeterComm(
-                meter_id=mid, protocol="DLMS", connection_type="tcp",
-                host=host, port=4059, is_enabled=(mid not in (7, 12)),
-            ))
+            session.add(
+                MeterComm(
+                    meter_id=mid,
+                    protocol="DLMS",
+                    connection_type="tcp",
+                    host=host,
+                    port=4059,
+                    is_enabled=(mid not in (7, 12)),
+                )
+            )
         await session.flush()
 
         # Snapshots for ALL meters
         for m in meters_data + kfm_meters:
             is_online = m.current_status in ("online", "in_use")
-            session.add(MeterSnapshot(
-                meter_id=m.id, online_status=is_online,
-                signal_strength=random.randint(-95, -55) if is_online else None,
-                firmware_version=m.firmware_version, error_code="",
-                stack_usage=random.randint(1024, 4096) if is_online else None,
-                eeprom_write_count=random.randint(500, 5000) if is_online else None,
-                last_comm_time=now - timedelta(minutes=random.randint(1, 30)) if is_online else None,
-                last_data_time=now - timedelta(minutes=random.randint(1, 30)) if is_online else None,
-            ))
+            session.add(
+                MeterSnapshot(
+                    meter_id=m.id,
+                    online_status=is_online,
+                    signal_strength=random.randint(-95, -55) if is_online else None,
+                    firmware_version=m.firmware_version,
+                    error_code="",
+                    stack_usage=random.randint(1024, 4096) if is_online else None,
+                    eeprom_write_count=random.randint(500, 5000) if is_online else None,
+                    last_comm_time=now - timedelta(minutes=random.randint(1, 30)) if is_online else None,
+                    last_data_time=now - timedelta(minutes=random.randint(1, 30)) if is_online else None,
+                )
+            )
         await session.flush()
 
         # Status histories
-        session.add_all([
-            MeterStatusHistory(meter_id=kfm_meters[0].id, old_status="in_stock", new_status="online", reason="设备上线", changed_by=1, created_at=now - timedelta(days=10)),
-            MeterStatusHistory(meter_id=kfm_meters[1].id, old_status="in_stock", new_status="in_stock", reason="入库登记", changed_by=1, created_at=now - timedelta(days=15)),
-            MeterStatusHistory(meter_id=kfm_meters[2].id, old_status="online", new_status="offline", reason="通信超时", changed_by=2, created_at=now - timedelta(days=2)),
-            MeterStatusHistory(meter_id=1, old_status="in_stock", new_status="in_use", reason="分配到测试项目", changed_by=1, created_at=now - timedelta(days=30)),
-            MeterStatusHistory(meter_id=5, old_status="in_use", new_status="returned", reason="测试完成归还", changed_by=3, created_at=now - timedelta(days=3)),
-            MeterStatusHistory(meter_id=7, old_status="in_use", new_status="offline", reason="通信中断", changed_by=2, created_at=now - timedelta(days=1)),
-            MeterStatusHistory(meter_id=12, old_status="in_use", new_status="repairing", reason="显示模块故障", changed_by=2, created_at=now - timedelta(days=5)),
-        ])
+        session.add_all(
+            [
+                MeterStatusHistory(
+                    meter_id=kfm_meters[0].id,
+                    old_status="in_stock",
+                    new_status="online",
+                    reason="设备上线",
+                    changed_by=1,
+                    created_at=now - timedelta(days=10),
+                ),
+                MeterStatusHistory(
+                    meter_id=kfm_meters[1].id,
+                    old_status="in_stock",
+                    new_status="in_stock",
+                    reason="入库登记",
+                    changed_by=1,
+                    created_at=now - timedelta(days=15),
+                ),
+                MeterStatusHistory(
+                    meter_id=kfm_meters[2].id,
+                    old_status="online",
+                    new_status="offline",
+                    reason="通信超时",
+                    changed_by=2,
+                    created_at=now - timedelta(days=2),
+                ),
+                MeterStatusHistory(
+                    meter_id=1,
+                    old_status="in_stock",
+                    new_status="in_use",
+                    reason="分配到测试项目",
+                    changed_by=1,
+                    created_at=now - timedelta(days=30),
+                ),
+                MeterStatusHistory(
+                    meter_id=5,
+                    old_status="in_use",
+                    new_status="returned",
+                    reason="测试完成归还",
+                    changed_by=3,
+                    created_at=now - timedelta(days=3),
+                ),
+                MeterStatusHistory(
+                    meter_id=7,
+                    old_status="in_use",
+                    new_status="offline",
+                    reason="通信中断",
+                    changed_by=2,
+                    created_at=now - timedelta(days=1),
+                ),
+                MeterStatusHistory(
+                    meter_id=12,
+                    old_status="in_use",
+                    new_status="repairing",
+                    reason="显示模块故障",
+                    changed_by=2,
+                    created_at=now - timedelta(days=5),
+                ),
+            ]
+        )
         await session.flush()
 
         # ========== CollectionSession（PG-MongoDB 桥梁）==========
@@ -914,14 +1018,24 @@ async def seed():
             t = now - timedelta(days=day_offset, hours=random.randint(7, 10))
             sessions.append(
                 CollectionSession(
-                    meter_id=kfm_meters[0].id, project_id=1,
-                    mongo_db="Puma-01_DCPP_DailyCheck", mongo_collection="KFM1020110000001",
+                    meter_id=kfm_meters[0].id,
+                    project_id=1,
+                    mongo_db="Puma-01_DCPP_DailyCheck",
+                    mongo_collection="KFM1020110000001",
                     mongo_doc_id=f"session_day{day_offset}",
-                    source="auto", started_at=t, finished_at=t + timedelta(minutes=random.randint(2, 4)),
-                    duration_ms=random.randint(120000, 240000), status="completed",
-                    total_read=796, total_success=random.randint(790, 796), total_failed=random.randint(0, 6),
-                    sheet_count=24, connection_type="TCP", communication="4G",
-                    meter_ip="192.168.234.101", ping_status=True,
+                    source="auto",
+                    started_at=t,
+                    finished_at=t + timedelta(minutes=random.randint(2, 4)),
+                    duration_ms=random.randint(120000, 240000),
+                    status="completed",
+                    total_read=796,
+                    total_success=random.randint(790, 796),
+                    total_failed=random.randint(0, 6),
+                    sheet_count=24,
+                    connection_type="TCP",
+                    communication="4G",
+                    meter_ip="192.168.234.101",
+                    ping_status=True,
                 )
             )
         # KFM #005 sessions (recently back online)
@@ -929,14 +1043,24 @@ async def seed():
             t = now - timedelta(days=day_offset, hours=random.randint(8, 10))
             sessions.append(
                 CollectionSession(
-                    meter_id=kfm_meters[1].id, project_id=1,
-                    mongo_db="Puma-01_DCPP_DailyCheck", mongo_collection="KFM1020110000005",
-                    mongo_doc_id=f"kfm005_day{day_offset}", source="auto",
-                    started_at=t, finished_at=t + timedelta(minutes=random.randint(2, 3)),
-                    duration_ms=random.randint(120000, 180000), status="completed",
-                    total_read=random.randint(780, 796), total_success=random.randint(775, 790), total_failed=random.randint(0, 10),
-                    sheet_count=24, connection_type="TCP", communication="4G",
-                    meter_ip="192.168.234.105", ping_status=True,
+                    meter_id=kfm_meters[1].id,
+                    project_id=1,
+                    mongo_db="Puma-01_DCPP_DailyCheck",
+                    mongo_collection="KFM1020110000005",
+                    mongo_doc_id=f"kfm005_day{day_offset}",
+                    source="auto",
+                    started_at=t,
+                    finished_at=t + timedelta(minutes=random.randint(2, 3)),
+                    duration_ms=random.randint(120000, 180000),
+                    status="completed",
+                    total_read=random.randint(780, 796),
+                    total_success=random.randint(775, 790),
+                    total_failed=random.randint(0, 10),
+                    sheet_count=24,
+                    connection_type="TCP",
+                    communication="4G",
+                    meter_ip="192.168.234.105",
+                    ping_status=True,
                 )
             )
         # SM meter sessions
@@ -946,33 +1070,69 @@ async def seed():
                 m = meters_data[mid - 1]
                 sessions.append(
                     CollectionSession(
-                        meter_id=mid, project_id=m.project_id,
-                        mongo_db="", mongo_collection=m.serial_number,
-                        mongo_doc_id=f"sm{mid}_day{day_offset}", source="auto",
-                        started_at=t, finished_at=t + timedelta(seconds=random.randint(10, 45)),
-                        duration_ms=random.randint(10000, 45000), status="completed" if mid != 7 else "failed",
-                        total_read=random.randint(10, 25), total_success=random.randint(8, 25), total_failed=random.randint(0, 3),
-                        sheet_count=1, connection_type="TCP",
-                        meter_ip=f"192.168.234.{mid}", ping_status=(mid != 7),
+                        meter_id=mid,
+                        project_id=m.project_id,
+                        mongo_db="",
+                        mongo_collection=m.serial_number,
+                        mongo_doc_id=f"sm{mid}_day{day_offset}",
+                        source="auto",
+                        started_at=t,
+                        finished_at=t + timedelta(seconds=random.randint(10, 45)),
+                        duration_ms=random.randint(10000, 45000),
+                        status="completed" if mid != 7 else "failed",
+                        total_read=random.randint(10, 25),
+                        total_success=random.randint(8, 25),
+                        total_failed=random.randint(0, 3),
+                        sheet_count=1,
+                        connection_type="TCP",
+                        meter_ip=f"192.168.234.{mid}",
+                        ping_status=(mid != 7),
                     )
                 )
         # Historical sessions for offline/repairing meters
-        sessions.append(CollectionSession(
-            meter_id=12, project_id=1, mongo_db="", mongo_collection="SM-2024-0012",
-            mongo_doc_id="sm12_old1", source="auto",
-            started_at=now - timedelta(days=10, hours=8), finished_at=now - timedelta(days=10, hours=8, minutes=1),
-            duration_ms=60000, status="completed", total_read=11, total_success=11, total_failed=0,
-            sheet_count=1, connection_type="TCP", meter_ip="192.168.234.12", ping_status=True,
-        ))
-        sessions.append(CollectionSession(
-            meter_id=kfm_meters[2].id, project_id=1,
-            mongo_db="Puma-01_DCPP_DailyCheck", mongo_collection="KFM1020110000008",
-            mongo_doc_id="kfm008_old", source="auto",
-            started_at=now - timedelta(days=5, hours=9), finished_at=now - timedelta(days=5, hours=9, minutes=3),
-            duration_ms=180000, status="completed", total_read=790, total_success=788, total_failed=2,
-            sheet_count=24, connection_type="TCP", communication="4G",
-            meter_ip="192.168.234.108", ping_status=True,
-        ))
+        sessions.append(
+            CollectionSession(
+                meter_id=12,
+                project_id=1,
+                mongo_db="",
+                mongo_collection="SM-2024-0012",
+                mongo_doc_id="sm12_old1",
+                source="auto",
+                started_at=now - timedelta(days=10, hours=8),
+                finished_at=now - timedelta(days=10, hours=8, minutes=1),
+                duration_ms=60000,
+                status="completed",
+                total_read=11,
+                total_success=11,
+                total_failed=0,
+                sheet_count=1,
+                connection_type="TCP",
+                meter_ip="192.168.234.12",
+                ping_status=True,
+            )
+        )
+        sessions.append(
+            CollectionSession(
+                meter_id=kfm_meters[2].id,
+                project_id=1,
+                mongo_db="Puma-01_DCPP_DailyCheck",
+                mongo_collection="KFM1020110000008",
+                mongo_doc_id="kfm008_old",
+                source="auto",
+                started_at=now - timedelta(days=5, hours=9),
+                finished_at=now - timedelta(days=5, hours=9, minutes=3),
+                duration_ms=180000,
+                status="completed",
+                total_read=790,
+                total_success=788,
+                total_failed=2,
+                sheet_count=24,
+                connection_type="TCP",
+                communication="4G",
+                meter_ip="192.168.234.108",
+                ping_status=True,
+            )
+        )
         session.add_all(sessions)
         await session.flush()
 
@@ -1049,38 +1209,72 @@ async def seed():
                 t = now - timedelta(days=day_offset, hours=random.randint(7, 10))
                 base_kwh_sm += random.randint(3, 15)
                 if energy_pt:
-                    session.add(MeterReading(
-                        meter_id=mid, point_id=energy_pt.id, task_id=1,
-                        reading_value=float(base_kwh_sm), reading_time=t,
-                        quality="good" if random.random() > 0.1 else "suspect", source="auto",
-                    ))
+                    session.add(
+                        MeterReading(
+                            meter_id=mid,
+                            point_id=energy_pt.id,
+                            task_id=1,
+                            reading_value=float(base_kwh_sm),
+                            reading_time=t,
+                            quality="good" if random.random() > 0.1 else "suspect",
+                            source="auto",
+                        )
+                    )
                 if voltage_pt:
                     base_v = 220 if meters_data[mid - 1].meter_type_id == 1 else 230
-                    session.add(MeterReading(
-                        meter_id=mid, point_id=voltage_pt.id, task_id=1,
-                        reading_value=round(random.uniform(base_v - 12, base_v + 12), 2), reading_time=t,
-                        quality="good", source="auto",
-                    ))
+                    session.add(
+                        MeterReading(
+                            meter_id=mid,
+                            point_id=voltage_pt.id,
+                            task_id=1,
+                            reading_value=round(random.uniform(base_v - 12, base_v + 12), 2),
+                            reading_time=t,
+                            quality="good",
+                            source="auto",
+                        )
+                    )
         # KFM #005 readings
-        kfm005_energy = next(p for p in kfm_points if p.meter_id == kfm_meters[1].id and p.module == "Energy" and p.point_name == "Active energy import")
+        kfm005_energy = next(
+            p
+            for p in kfm_points
+            if p.meter_id == kfm_meters[1].id and p.module == "Energy" and p.point_name == "Active energy import"
+        )
         kfm005_base = 30000
         for day_offset in range(7):
             t = now - timedelta(days=day_offset, hours=random.randint(7, 10))
             kfm005_base += random.randint(3, 12)
-            session.add(MeterReading(
-                meter_id=kfm_meters[1].id, point_id=kfm005_energy.id, task_id=1,
-                reading_value=float(kfm005_base), reading_time=t, quality="good", source="auto",
-            ))
+            session.add(
+                MeterReading(
+                    meter_id=kfm_meters[1].id,
+                    point_id=kfm005_energy.id,
+                    task_id=1,
+                    reading_value=float(kfm005_base),
+                    reading_time=t,
+                    quality="good",
+                    source="auto",
+                )
+            )
         # KFM #008 readings (before going offline 2 days ago)
-        kfm008_energy = next(p for p in kfm_points if p.meter_id == kfm_meters[2].id and p.module == "Energy" and p.point_name == "Active energy import")
+        kfm008_energy = next(
+            p
+            for p in kfm_points
+            if p.meter_id == kfm_meters[2].id and p.module == "Energy" and p.point_name == "Active energy import"
+        )
         kfm008_base = 25000
         for day_offset in range(3, 8):  # readings from 3-7 days ago
             t = now - timedelta(days=day_offset, hours=random.randint(7, 10))
             kfm008_base += random.randint(4, 10)
-            session.add(MeterReading(
-                meter_id=kfm_meters[2].id, point_id=kfm008_energy.id, task_id=1,
-                reading_value=float(kfm008_base), reading_time=t, quality="good", source="auto",
-            ))
+            session.add(
+                MeterReading(
+                    meter_id=kfm_meters[2].id,
+                    point_id=kfm008_energy.id,
+                    task_id=1,
+                    reading_value=float(kfm008_base),
+                    reading_time=t,
+                    quality="good",
+                    source="auto",
+                )
+            )
         await session.flush()
 
         # ========== ReadingDailySummary ==========
@@ -1099,12 +1293,20 @@ async def seed():
                 if pid is None:
                     continue
                 v = round(random.uniform(100, 500), 2)
-                session.add(ReadingDailySummary(
-                    meter_id=mid, point_id=pid, stat_date=d,
-                    min_value=v - random.uniform(10, 30), max_value=v + random.uniform(10, 30),
-                    avg_value=v, first_value=v - 5, last_value=v + 5,
-                    reading_count=random.randint(20, 48), delta=round(random.uniform(5, 20), 2),
-                ))
+                session.add(
+                    ReadingDailySummary(
+                        meter_id=mid,
+                        point_id=pid,
+                        stat_date=d,
+                        min_value=v - random.uniform(10, 30),
+                        max_value=v + random.uniform(10, 30),
+                        avg_value=v,
+                        first_value=v - 5,
+                        last_value=v + 5,
+                        reading_count=random.randint(20, 48),
+                        delta=round(random.uniform(5, 20), 2),
+                    )
+                )
         await session.flush()
 
         # ========== DataQuality ==========
@@ -1114,27 +1316,57 @@ async def seed():
             for mid in all_meters:
                 total = random.randint(50, 100)
                 success = total - random.randint(0, 5)
-                session.add(DataQuality(
-                    meter_id=mid, task_id=1, stat_date=d,
-                    total_points=total, success_points=success, failed_points=total - success,
-                    quality_score=round(random.uniform(90, 100), 2), abnormal_count=random.randint(0, 3),
-                    first_collect_time=datetime.now(timezone.utc) - timedelta(days=day_offset, hours=8),
-                    last_collect_time=datetime.now(timezone.utc) - timedelta(days=day_offset, hours=7),
-                ))
+                session.add(
+                    DataQuality(
+                        meter_id=mid,
+                        task_id=1,
+                        stat_date=d,
+                        total_points=total,
+                        success_points=success,
+                        failed_points=total - success,
+                        quality_score=round(random.uniform(90, 100), 2),
+                        abnormal_count=random.randint(0, 3),
+                        first_collect_time=datetime.now(timezone.utc) - timedelta(days=day_offset, hours=8),
+                        last_collect_time=datetime.now(timezone.utc) - timedelta(days=day_offset, hours=7),
+                    )
+                )
         await session.flush()
 
         # ========== MeterBorrow + MeterRepair ==========
         session.add_all(
             [
                 MeterBorrow(
-                    meter_id=kfm_meters[1].id, borrower_id=2, borrow_reason="协议一致性测试",
-                    approval_status="approved_lab", dept_approver_id=1, lab_approver_id=1,
+                    meter_id=kfm_meters[1].id,
+                    borrower_id=2,
+                    borrow_reason="协议一致性测试",
+                    approval_status="approved_lab",
+                    dept_approver_id=1,
+                    lab_approver_id=1,
                 ),
-                MeterBorrow(meter_id=12, borrower_id=3, borrow_reason="模块更换后验证", approval_status="pending_department"),
-                MeterBorrow(meter_id=3, borrower_id=2, borrow_reason="单相表精度验证", approval_status="approved_department", dept_approver_id=1),
-                MeterBorrow(meter_id=8, borrower_id=3, borrow_reason="三相三线表型式评价", approval_status="returned", dept_approver_id=1, lab_approver_id=1),
-                MeterRepair(meter_id=12, description="显示模块故障，更换LCD", cost=150.00, status="in_progress", repaired_by=2),
-                MeterRepair(meter_id=5, description="红外通信口氧化清理", cost=30.00, status="completed", repaired_by=2),
+                MeterBorrow(
+                    meter_id=12, borrower_id=3, borrow_reason="模块更换后验证", approval_status="pending_department"
+                ),
+                MeterBorrow(
+                    meter_id=3,
+                    borrower_id=2,
+                    borrow_reason="单相表精度验证",
+                    approval_status="approved_department",
+                    dept_approver_id=1,
+                ),
+                MeterBorrow(
+                    meter_id=8,
+                    borrower_id=3,
+                    borrow_reason="三相三线表型式评价",
+                    approval_status="returned",
+                    dept_approver_id=1,
+                    lab_approver_id=1,
+                ),
+                MeterRepair(
+                    meter_id=12, description="显示模块故障，更换LCD", cost=150.00, status="in_progress", repaired_by=2
+                ),
+                MeterRepair(
+                    meter_id=5, description="红外通信口氧化清理", cost=30.00, status="completed", repaired_by=2
+                ),
                 MeterRepair(meter_id=7, description="通信模块固件升级", cost=0, status="completed", repaired_by=2),
             ]
         )
@@ -1237,6 +1469,11 @@ async def seed():
                 ),
             ]
         )
+
+        # --- OBIS 模板（3 套系统模板：p2p_signal/metering_full/dcu_archive）---
+        from app.db.seed_obis_templates import seed_obis_templates
+
+        await seed_obis_templates(session)
 
         await session.commit()
 

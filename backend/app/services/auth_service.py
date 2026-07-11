@@ -59,23 +59,28 @@ def revoke_refresh_token(username: str) -> None:
 
 
 async def get_user_permission_codes(db: AsyncSession, user_id: int) -> list[str]:
-    result = await db.execute(select(Role).join(UserRole).where(UserRole.user_id == user_id))
-    roles = result.scalars().all()
-    if not roles:
-        return []
+    """查用户权限码列表（单条 4 表 join，无 N+1）。
 
-    perm_codes: set[str] = set()
-    for role in roles:
-        rp_result = await db.execute(select(RolePermission.permission_id).where(RolePermission.role_id == role.id))
-        for (perm_id,) in rp_result.all():
-            p_result = await db.execute(select(Permission).where(Permission.id == perm_id))
-            perm = p_result.scalar_one_or_none()
-            if perm:
-                perm_codes.add(perm.code)
-
-    return list(perm_codes)
+    Permission → RolePermission → Role → UserRole，按 user_id 过滤。
+    """
+    result = await db.execute(
+        select(Permission.code)
+        .join(RolePermission, RolePermission.permission_id == Permission.id)
+        .join(Role, Role.id == RolePermission.role_id)
+        .join(UserRole, UserRole.role_id == Role.id)
+        .where(UserRole.user_id == user_id)
+    )
+    return list(result.scalars().all())
 
 
 async def _get_user_roles(db: AsyncSession, user_id: int) -> list[str]:
-    result = await db.execute(select(Role).join(UserRole).where(UserRole.user_id == user_id))
-    return [r.code for r in result.scalars().all()]
+    """查用户角色码列表（向后兼容别名）。"""
+    return await get_user_role_codes(db, user_id)
+
+
+async def get_user_role_codes(db: AsyncSession, user_id: int) -> list[str]:
+    """查用户角色码列表（单条 2 表 join）。供 RBAC super 豁免判断用。"""
+    result = await db.execute(
+        select(Role.code).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == user_id)
+    )
+    return list(result.scalars().all())

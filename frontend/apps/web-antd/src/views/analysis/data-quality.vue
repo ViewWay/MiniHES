@@ -25,8 +25,11 @@ import {
 
 import { getDataQuality, exportDataQuality } from '#/api/modules/analysis';
 import { getProjectList } from '#/api/modules/project';
+import { useChartTheme } from '#/composables/useChartTheme';
 
 const RangePicker = DatePicker.RangePicker;
+
+const { themedAxis, themedTooltip, watchThemeAndRerender } = useChartTheme();
 
 const loading = ref(false);
 const exporting = ref(false);
@@ -53,6 +56,9 @@ const summaryStats = ref({
   abnormal_devices: 0,
   success_rate: 0,
 });
+
+// Last fetched trend data, kept so theme-toggle rerenders the current chart
+const lastTrend = ref<any[]>([]);
 
 const columns = [
   { title: '设备名称', dataIndex: 'meter_name', width: 140 },
@@ -85,8 +91,8 @@ async function fetchProjects() {
     projectOptions.value = (res.items || res || []).map(
       (item: any) => ({ label: item.name, value: item.id }),
     );
-  } catch {
-    // ignore
+  } catch (err) {
+    console.error('[data-quality] fetchProjects failed', err);
   }
 }
 
@@ -110,7 +116,8 @@ async function fetchData() {
     if (res.summary) {
       summaryStats.value = res.summary;
     }
-    renderChart(res.trend || generateDemoTrend());
+    lastTrend.value = res.trend || [];
+    renderChart(lastTrend.value);
   } finally {
     loading.value = false;
   }
@@ -121,36 +128,31 @@ function renderChart(trend: any[]) {
   const scoreData = trend.map((d: any) => d.avg_score);
 
   renderQualityChart({
-    title: {
-      text: '近7日质量评分趋势',
-      left: 'center',
-      textStyle: { fontSize: 14 },
-    },
-    tooltip: {
+    tooltip: themedTooltip({
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       formatter: (params: any) => {
         const p = params[0];
         return `${p.axisValue}<br/>平均质量评分: <b>${p.value}</b>`;
       },
-    },
+    }),
     grid: {
-      top: 50,
+      top: 30,
       left: '3%',
       right: '4%',
       bottom: 30,
       containLabel: true,
     },
-    xAxis: {
+    xAxis: themedAxis('x', {
       type: 'category',
       data: xData,
-    },
-    yAxis: {
+    }),
+    yAxis: themedAxis('y', {
       type: 'value',
       name: '质量评分',
       min: 0,
       max: 100,
-    },
+    }),
     series: [
       {
         type: 'bar',
@@ -176,18 +178,7 @@ function renderChart(trend: any[]) {
   });
 }
 
-function generateDemoTrend() {
-  const days: any[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    days.push({
-      date: d.toISOString().slice(0, 10),
-      avg_score: Math.round(75 + Math.random() * 20),
-    });
-  }
-  return days;
-}
+watchThemeAndRerender(() => renderChart(lastTrend.value));
 
 function handleSearch() {
   pagination.value.current = 1;

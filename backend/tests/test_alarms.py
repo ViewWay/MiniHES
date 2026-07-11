@@ -1,8 +1,8 @@
 from starlette.testclient import TestClient
 
 
-def test_alarm_stats(client: TestClient):
-    r = client.get("/api/v1/alarms/stats")
+def test_alarm_stats(client: TestClient, auth_headers):
+    r = client.get("/api/v1/alarms/stats", headers=auth_headers)
     assert r.status_code == 200
     data = r.json()["data"]
     assert "total" in data

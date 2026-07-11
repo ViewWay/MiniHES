@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { EchartsUIType } from '@vben/plugins/echarts';
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -23,7 +23,7 @@ import { getMeterList } from '#/api/modules/meter';
 import { getProjectDetail } from '#/api/modules/project';
 import { useChartTheme } from '#/composables/useChartTheme';
 
-const { isDark, chartColors, themedAxis, themedTooltip, themedLegend } = useChartTheme();
+const { chartColors, themedAxis, themedTooltip, themedLegend, watchThemeAndRerender } = useChartTheme();
 const route = useRoute();
 const router = useRouter();
 const projectId = ref(Number(route.query.id) || 0);
@@ -93,16 +93,6 @@ function generateHourLabels(count: number) {
   return labels;
 }
 
-function generateMockSeries(
-  count: number,
-  base: number,
-  variance: number,
-): number[] {
-  return Array.from({ length: count }, () =>
-    Number((base + (Math.random() - 0.5) * 2 * variance).toFixed(2)),
-  );
-}
-
 async function fetchData() {
   loading.value = true;
   try {
@@ -145,7 +135,7 @@ function renderCharts() {
     name: m.meter_name || m.serial_number || `Meter ${m.id}`,
     type: 'line' as const,
     smooth: true,
-    data: generateMockSeries(24, 2.5, 1.0),
+    data: [],
   }));
 
   renderEnergyChart({
@@ -223,9 +213,9 @@ function renderCharts() {
     xAxis: themedAxis('x', { type: 'category', data: hourLabels }),
     yAxis: themedAxis('y', { type: 'value', name: 'V', min: 200, max: 240 }),
     series: [
-      { name: '电压A', type: 'line', smooth: true, data: generateMockSeries(24, 220, 3), itemStyle: { color: '#5470c6' } },
-      { name: '电压B', type: 'line', smooth: true, data: generateMockSeries(24, 219, 3), itemStyle: { color: '#91cc75' } },
-      { name: '电压C', type: 'line', smooth: true, data: generateMockSeries(24, 221, 3), itemStyle: { color: '#fac858' } },
+      { name: '电压A', type: 'line', smooth: true, data: [], itemStyle: { color: '#5470c6' } },
+      { name: '电压B', type: 'line', smooth: true, data: [], itemStyle: { color: '#91cc75' } },
+      { name: '电压C', type: 'line', smooth: true, data: [], itemStyle: { color: '#fac858' } },
     ],
   });
 }
@@ -233,14 +223,13 @@ function renderCharts() {
 onMounted(async () => {
   await fetchData();
   renderCharts();
+  watchThemeAndRerender(renderCharts);
 });
 
-watch(isDark, () => renderCharts());
 </script>
 
 <template>
   <Page auto-content-height>
-    <div style="padding: 16px">
       <div style="margin-bottom: 16px; display: flex; align-items: center">
         <Button type="link" @click="router.push('/screen/overview')">← 返回概览</Button>
         <span style="font-size: 16px; font-weight: 600; margin-left: 8px">
@@ -250,33 +239,33 @@ watch(isDark, () => renderCharts());
 
       <Spin :spinning="loading">
         <Row :gutter="16" style="margin-bottom: 16px">
-          <Col :span="4">
-            <Card size="small" :bordered="false">
+          <Col :span="6">
+            <Card :bordered="false">
               <Statistic title="设备总数" :value="meterCount" />
             </Card>
           </Col>
-          <Col :span="4">
-            <Card size="small" :bordered="false">
+          <Col :span="6">
+            <Card :bordered="false">
               <Statistic title="在线设备" :value="onlineCount" :value-style="{ color: '#52c41a' }" />
             </Card>
           </Col>
-          <Col :span="4">
-            <Card size="small" :bordered="false">
+          <Col :span="6">
+            <Card :bordered="false">
               <Statistic title="离线设备" :value="offlineCount" :value-style="{ color: '#ff4d4f' }" />
             </Card>
           </Col>
-          <Col :span="4">
-            <Card size="small" :bordered="false">
+          <Col :span="6">
+            <Card :bordered="false">
               <Statistic title="在线率" :value="onlineRate" suffix="%" :value-style="{ color: '#69b1ff' }" />
             </Card>
           </Col>
-          <Col :span="4">
-            <Card size="small" :bordered="false">
+          <Col :span="6">
+            <Card :bordered="false">
               <Statistic title="堆栈告警" :value="stackAlertCount" :value-style="{ color: '#faad14' }" />
             </Card>
           </Col>
-          <Col :span="4">
-            <Card size="small" :bordered="false">
+          <Col :span="6">
+            <Card :bordered="false">
               <Statistic title="活跃事件" :value="eventStats.reduce((s, e) => s + e.count, 0)" :value-style="{ color: '#ff7a45' }" />
             </Card>
           </Col>
@@ -285,12 +274,12 @@ watch(isDark, () => renderCharts());
         <Row :gutter="16" style="margin-bottom: 16px">
           <Col :span="16">
             <Card title="能耗曲线" :bordered="false">
-              <EchartsUI ref="energyChartRef" height="320px" />
+              <EchartsUI ref="energyChartRef" height="300px" />
             </Card>
           </Col>
           <Col :span="8">
             <Card title="通信状态" :bordered="false" style="margin-bottom: 16px">
-              <EchartsUI ref="commChartRef" height="320px" />
+              <EchartsUI ref="commChartRef" height="300px" />
             </Card>
           </Col>
         </Row>
@@ -310,7 +299,7 @@ watch(isDark, () => renderCharts());
 
         <Row :gutter="16" style="margin-bottom: 16px">
           <Col :span="6" v-for="e in eventStats" :key="e.type">
-            <Card size="small" :bordered="false">
+            <Card :bordered="false">
               <Statistic :title="e.type" :value="e.count" :value-style="{ color: e.color }" />
             </Card>
           </Col>
@@ -347,6 +336,5 @@ watch(isDark, () => renderCharts());
           </Table>
         </Card>
       </Spin>
-    </div>
   </Page>
 </template>

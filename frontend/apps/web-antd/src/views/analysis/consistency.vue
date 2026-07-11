@@ -26,6 +26,9 @@ import {
   triggerConsistencyCheck,
 } from '#/api/modules/analysis';
 import { getProjectList } from '#/api/modules/project';
+import { useChartTheme } from '#/composables/useChartTheme';
+
+const { themedTooltip, themedLegend, watchThemeAndRerender } = useChartTheme();
 
 const loading = ref(false);
 const checking = ref(false);
@@ -130,19 +133,14 @@ function renderCharts() {
   ).length;
 
   renderPieChart({
-    title: {
-      text: '一致性分布',
-      left: 'center',
-      textStyle: { fontSize: 14 },
-    },
-    tooltip: {
+    tooltip: themedTooltip({
       trigger: 'item',
       formatter: '{b}: {c} ({d}%)',
-    },
-    legend: {
+    }),
+    legend: themedLegend({
       bottom: 0,
       data: ['一致', '不一致', '数据缺失'],
-    },
+    }),
     series: [
       {
         type: 'pie',
@@ -172,6 +170,14 @@ function handlePageChange(page: number, size: number) {
   pageSize.value = size;
   fetchData();
 }
+
+function handleReset() {
+  selectedProject.value = undefined;
+  currentPage.value = 1;
+  fetchData();
+}
+
+watchThemeAndRerender(renderCharts);
 
 onMounted(() => {
   fetchProjects();
@@ -208,7 +214,7 @@ watch(selectedProject, () => {
             <Button type="primary" @click="fetchData" :loading="loading">
               查询
             </Button>
-            <Button @click="fetchData">刷新</Button>
+            <Button @click="handleReset">重置</Button>
             <Button type="primary" danger @click="handleCheck" :loading="checking">
               执行检查
             </Button>

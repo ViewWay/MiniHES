@@ -25,8 +25,12 @@ import dayjs from 'dayjs';
 
 import { getCompareAnalysis } from '#/api/modules/analysis';
 import { getMeterList } from '#/api/modules/meter';
+import { useChartTheme } from '#/composables/useChartTheme';
 
 const { RangePicker } = DatePicker;
+
+const { themedAxis, themedTooltip, themedLegend, watchThemeAndRerender } =
+  useChartTheme();
 
 const loading = ref(false);
 const compareResult = ref<any>(null);
@@ -119,125 +123,90 @@ function renderCharts() {
   if (!data) return;
 
   // Render energy comparison line chart
-  const seriesData = data.series || generateDemoSeries();
+  const seriesData = data.series || [];
   const xData =
     data.x_axis ||
     Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
 
-  const colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272'];
-
   renderComparisonChart({
-    title: {
-      text: '电能数据对比',
-      left: 'center',
-    },
-    tooltip: {
+    tooltip: themedTooltip({
       trigger: 'axis',
       axisPointer: { type: 'cross' },
-    },
-    legend: {
+    }),
+    legend: themedLegend({
       data: seriesData.map((s: any) => s.name),
       bottom: 0,
-    },
+    }),
     grid: {
-      top: 50,
+      top: 30,
       left: '3%',
       right: '4%',
       bottom: 60,
       containLabel: true,
     },
-    xAxis: {
+    xAxis: themedAxis('x', {
       type: 'category',
       boundaryGap: false,
       data: xData,
-    },
-    yAxis: {
+    }),
+    yAxis: themedAxis('y', {
       type: 'value',
       name: '电能 (kWh)',
       axisLabel: { formatter: '{value}' },
-    },
-    series: seriesData.map((s: any, i: number) => ({
+    }),
+    series: seriesData.map((s: any) => ({
       name: s.name,
       type: 'line',
       smooth: true,
       data: s.data,
-      itemStyle: { color: colors[i % colors.length] },
       emphasis: { focus: 'series' },
     })),
   });
 
   // Render deviation bar chart
-  const metricsData = data.metrics || generateDemoMetrics();
+  const metricsData = data.metrics || [];
 
   renderDeviationChart({
-    title: {
-      text: '数据偏差率对比',
-      left: 'center',
-    },
-    tooltip: {
+    tooltip: themedTooltip({
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-    },
-    legend: {
+    }),
+    legend: themedLegend({
       bottom: 0,
       data: ['偏差率', '完整率'],
-    },
+    }),
     grid: {
-      top: 50,
+      top: 30,
       left: '3%',
       right: '4%',
       bottom: 40,
       containLabel: true,
     },
-    xAxis: {
+    xAxis: themedAxis('x', {
       type: 'category',
       data: metricsData.map((m: any) => m.meter_name),
-    },
-    yAxis: { type: 'value', name: '%' },
+    }),
+    yAxis: themedAxis('y', { type: 'value', name: '%' }),
     series: [
       {
         name: '偏差率',
         type: 'bar',
         data: metricsData.map((m: any) => m.deviation_rate ?? 0),
-        itemStyle: { color: '#ee6666' },
       },
       {
         name: '完整率',
         type: 'bar',
         data: metricsData.map((m: any) => m.completeness ?? 100),
-        itemStyle: { color: '#91cc75' },
       },
     ],
   });
 }
 
-// Demo data generators for when API returns minimal data
-function generateDemoSeries() {
-  const meterIds = searchForm.value.meter_ids;
-  return meterIds.map((id, idx) => ({
-    name: `设备 ${id}`,
-    data: Array.from({ length: 24 }, () =>
-      (Math.random() * 5 + idx * 2).toFixed(2),
-    ),
-  }));
-}
-
-function generateDemoMetrics() {
-  const meterIds = searchForm.value.meter_ids;
-  return meterIds.map((id) => ({
-    meter_name: `设备 ${id}`,
-    total_energy: (Math.random() * 100).toFixed(1),
-    daily_avg: (Math.random() * 10).toFixed(1),
-    max_demand: (Math.random() * 5).toFixed(2),
-    deviation_rate: (Math.random() * 3).toFixed(2),
-    completeness: Math.floor(Math.random() * 10 + 90),
-    anomaly_flags: Math.random() > 0.7 ? '时钟偏差' : '无',
-  }));
-}
+watchThemeAndRerender(renderCharts);
 
 const tableData = computed(() => {
   if (!compareResult.value) return [];
-  return compareResult.value.metrics || generateDemoMetrics();
+  return compareResult.value.metrics || [];
 });
 
 const summaryStats = computed(() => {
@@ -294,9 +263,11 @@ const summaryStats = computed(() => {
           />
         </Form.Item>
         <Form.Item>
-          <Button type="primary" @click="handleCompare" :loading="loading">
-            开始对比
-          </Button>
+          <Space>
+            <Button type="primary" @click="handleCompare" :loading="loading">
+              查询
+            </Button>
+          </Space>
         </Form.Item>
       </Form>
     </Card>
@@ -347,7 +318,7 @@ const summaryStats = computed(() => {
 
       <!-- Energy comparison line chart -->
       <Card :bordered="false" title="电能数据对比曲线" style="margin-bottom: 16px">
-        <EchartsUI ref="comparisonChartRef" height="400px" />
+        <EchartsUI ref="comparisonChartRef" height="300px" />
       </Card>
 
       <!-- Deviation bar chart -->

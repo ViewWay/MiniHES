@@ -26,7 +26,32 @@ async def list_projects(db: AsyncSession, keyword: str | None = None) -> dict:
         stmt = stmt.where(Project.name.ilike(f"%{keyword}%"))
     stmt = stmt.order_by(Project.id)
     result = await db.execute(stmt)
-    items = [_project_to_dict(p) for p in result.scalars().all()]
+    projects = result.scalars().all()
+
+    # 批量查询各项目的设备数和在线数
+    from sqlalchemy import func
+
+    from app.models.meter import Meter
+
+    count_stmt = (
+        select(
+            Meter.project_id,
+            func.count(Meter.id).label("total"),
+            func.count(Meter.id).filter(Meter.current_status.in_(["in_use", "online"])).label("online"),
+        )
+        .where(Meter.project_id.isnot(None))
+        .group_by(Meter.project_id)
+    )
+    count_result = await db.execute(count_stmt)
+    counts = {r[0]: {"total": r[1], "online": r[2]} for r in count_result}
+
+    items = []
+    for p in projects:
+        d = _project_to_dict(p)
+        c = counts.get(p.id, {"total": 0, "online": 0})
+        d["device_count"] = c["total"]
+        d["online_count"] = c["online"]
+        items.append(d)
     return {"items": items, "total": len(items)}
 
 

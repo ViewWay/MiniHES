@@ -23,12 +23,12 @@
 - [x] 数据库迁移体系（8 个 Alembic migration）
 - [x] JWT 认证 + bcrypt 密码哈希
 - [x] RBAC 数据模型（User/Role/Permission 五表）
+- [x] RBAC 接口级强制（`require_permission` 依赖 + 15 router 批量挂载 + super 豁免）
 - [x] 大屏亮/暗主题适配
 - [x] CI/CD（GitHub Actions: ruff + pytest + vue-tsc）
-- [x] 后端测试（83 个，CI 通过）
+- [x] 后端测试（90 个，CI 通过）
 
 ### 🚧 部分完成 / 已知待办
-- [ ] RBAC 接口级强制（模型层已就绪，但无 `require_permission` 装饰器，任何有效 JWT 可访问所有接口）
 - [ ] 分析模块闭环（`analysis.py` 9 个路由当前返回硬编码 mock，日报/导出"待实现"）
 - [ ] DLMS `cosem/` 对象模型层（ACSE/APDU/OBIS 字节级实现已就绪，cosem 目录仅空 docstring）
 - [ ] 采集调度引擎（`scheduler.py`/`collector.py` 执行引擎未见，任务 CRUD 已完成）
