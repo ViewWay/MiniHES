@@ -54,22 +54,8 @@ async def daily_analysis(
     except BusinessException:
         raise
     except Exception as e:
-        logger.warning("日线分析查询失败: %s", e)
-        return success(
-            {
-                "meter_id": meter_id,
-                "warning": f"采集数据暂不可用: {e}",
-                "daily_records": [],
-                "energy_trend": {"labels": [], "increases": [], "cumulative": []},
-                "summary": {
-                    "days_collected": 0,
-                    "avg_daily_increase": 0,
-                    "total_increase": 0,
-                    "latest_energy": 0,
-                    "demo": True,
-                },
-            }
-        )
+        logger.error("日线分析查询失败: %s", e)
+        raise BusinessException(code=500, message=f"查询失败: {e}")
 
 
 @router.get("/daily/meters")
@@ -90,11 +76,12 @@ async def export_daily_analysis(
     meter_id: int = Query(default=1),
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
+    format: str = Query(default="csv", description="导出格式: csv 或 pdf"),
     db: DbSession = ...,
     mongo: MongoDb = ...,
     _user: CurrentUser = ...,
 ):
-    """日线分析 CSV 导出。"""
+    """日线分析导出（支持 CSV 和 PDF 格式）。"""
     import csv as csv_mod
     import io
 
@@ -104,6 +91,19 @@ async def export_daily_analysis(
         if result is None:
             raise BusinessException(code=404, message=f"电表 {meter_id} 不存在")
 
+        if format.lower() == "pdf":
+            from app.services.pdf_export_service import generate_daily_analysis_pdf
+
+            pdf_bytes = generate_daily_analysis_pdf(result)
+            return StreamingResponse(
+                io.BytesIO(pdf_bytes),
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename=daily_{meter_id}.pdf",
+                },
+            )
+
+        # 默认 CSV 格式
         output = io.StringIO()
         writer = csv_mod.writer(output)
         writer.writerow(["电表", result.get("meter_name", "")])
@@ -161,22 +161,11 @@ async def compare_analysis(
         service = _make_service(db, mongo)
         result = await service.compare_meters(meter_ids, start_date, end_date)
         return success(result)
+    except BusinessException:
+        raise
     except Exception as e:
-        logger.warning("对比分析查询失败: %s", e)
-        return success(
-            {
-                "summary": {
-                    "today_total": 0,
-                    "yesterday_total": 0,
-                    "deviation_rate": 0,
-                    "anomaly_count": 0,
-                },
-                "series": [],
-                "x_axis": [],
-                "metrics": [],
-                "warning": f"采集数据暂不可用: {e}",
-            }
-        )
+        logger.error("对比分析查询失败: %s", e)
+        raise BusinessException(code=500, message=f"查询失败: {e}")
 
 
 @router.get("/consistency")
@@ -192,8 +181,8 @@ async def get_consistency(
         result = await service.get_consistency(project_id)
         return success(result)
     except Exception as e:
-        logger.warning("一致性检查失败: %s", e)
-        return success({"items": [], "total": 0, "warning": str(e)})
+        logger.error("一致性检查失败: %s", e)
+        raise BusinessException(code=500, message=f"查询失败: {e}")
 
 
 @router.post("/consistency/check")
@@ -208,8 +197,8 @@ async def trigger_consistency_check(
         result = await service.trigger_consistency_check()
         return success(result)
     except Exception as e:
-        logger.warning("一致性检查触发失败: %s", e)
-        return success({"success": False, "message": f"检查失败: {e}"})
+        logger.error("一致性检查失败: %s", e)
+        raise BusinessException(code=500, message=f"检查失败: {e}")
 
 
 @router.get("/data-quality")

@@ -302,6 +302,11 @@ async def execute_task(db: AsyncSession, task_id: int) -> dict:
             # 执行采集（模拟 DLMS 读取）
             readings = await _collect_meter_data(db, t, meter)
 
+            # 评估告警规则（阈值 + 异常检测）
+            from app.services.alarm_engine import evaluate_readings
+
+            await evaluate_readings(db, meter.id, readings)
+
             # 构建采集文档并写入 MongoDB（PG-Mongo 双写）
             await _save_to_mongo(db, t, meter, readings)
 
@@ -345,7 +350,7 @@ async def execute_task(db: AsyncSession, task_id: int) -> dict:
     end_time = datetime.now(timezone.utc)
     task_log.end_time = end_time
     task_log.duration_ms = int((end_time - start_time).total_seconds() * 1000)
-    task_log.status = "completed" if failed_count == 0 else "completed"
+    task_log.status = "completed" if failed_count == 0 else "failed"
     task_log.total_devices = len(target_meters)
     task_log.success_devices = success_count
     task_log.failed_devices = failed_count
@@ -537,17 +542,21 @@ async def _save_to_mongo(db: AsyncSession, task: Task, meter: Meter, readings: l
             "source_file": f"task_{task.id}",
             "connection_type": "HDLC",
             "status": "success",
-            "total_points": len(readings),
-            "success_points": len(readings),
+            # 复制旧文档时保留其原始 total_points，不用 readings 数
+            "total_points": latest.get("total_points", len(readings)),
+            "success_points": latest.get("success_points", len(readings)),
             "failed_points": 0,
             "sheets": latest.get("sheets", {}),
             "key_value_pairs": latest.get("key_value_pairs", {}),
-            "summary": {
-                "total_read": len(readings),
-                "total_success": len(readings),
-                "total_failed": 0,
-                "sheet_count": len(latest.get("sheets", {})),
-            },
+            "summary": latest.get(
+                "summary",
+                {
+                    "total_read": len(readings),
+                    "total_success": len(readings),
+                    "total_failed": 0,
+                    "sheet_count": len(latest.get("sheets", {})),
+                },
+            ),
             "schema_version": 1,
         }
 
@@ -633,6 +642,7 @@ async def _write_data_quality(
     task_id: int,
     meters: list[Meter],
     success_count: int,
+    points_per_meter: int = 4,
 ):
     """写入数据质量统计（upsert：同一天同电表更新而非插入）。"""
     from datetime import date as date_type
@@ -640,21 +650,20 @@ async def _write_data_quality(
     from sqlalchemy.dialects.postgresql import insert as pg_insert
 
     today = date_type.today()
-    total_points = len(meters) * 4  # 每表 4 个测量点
-    success_points = success_count * 4
+    total_points = len(meters) * points_per_meter
+    success_points = success_count * points_per_meter
 
     score = round(success_points / total_points * 100, 2) if total_points > 0 else 0
     now = datetime.now(timezone.utc)
 
     for meter in meters:
-        # 使用 PostgreSQL upsert（ON CONFLICT DO UPDATE）
         stmt = pg_insert(DataQuality).values(
             meter_id=meter.id,
             task_id=task_id,
             stat_date=today,
-            total_points=4,
-            success_points=4 if success_count > 0 else 0,
-            failed_points=0 if success_count > 0 else 4,
+            total_points=points_per_meter,
+            success_points=points_per_meter if success_count > 0 else 0,
+            failed_points=0 if success_count > 0 else points_per_meter,
             quality_score=score,
             abnormal_count=0,
             first_collect_time=now,

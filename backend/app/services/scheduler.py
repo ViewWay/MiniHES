@@ -38,8 +38,18 @@ def init_scheduler():
         max_instances=1,
         coalesce=True,
     )
+    # 通信告警扫描：每 15 分钟检测一次离线设备
+    _scheduler.add_job(
+        _scan_communication_alarms,
+        "interval",
+        minutes=15,
+        id="comm_alarm_scanner",
+        name="扫描通信超时告警",
+        max_instances=1,
+        coalesce=True,
+    )
     _scheduler.start()
-    logger.info("任务调度器已启动，扫描间隔 %ds", _SCAN_INTERVAL_SECONDS)
+    logger.info("任务调度器已启动，扫描间隔 %ds，通信告警间隔 15min", _SCAN_INTERVAL_SECONDS)
     return _scheduler
 
 
@@ -104,3 +114,22 @@ async def _scan_and_execute():
 
     except Exception as e:
         logger.error("任务扫描异常: %s", e)
+
+
+async def _scan_communication_alarms():
+    """扫描通信超时告警（离线设备检测）。
+
+    每 15 分钟执行一次，检查所有在用电表的最后通信时间，
+    对超过 offline_hours 阈值的设备生成 communication 类型告警。
+    """
+    from app.core.database import AsyncSessionLocal
+    from app.services.alarm_engine import check_communication_alarms
+
+    try:
+        async with AsyncSessionLocal() as db:
+            alarms = await check_communication_alarms(db)
+            if alarms:
+                await db.commit()
+                logger.info("通信告警扫描完成，生成 %d 条告警", len(alarms))
+    except Exception as e:
+        logger.error("通信告警扫描异常: %s", e)

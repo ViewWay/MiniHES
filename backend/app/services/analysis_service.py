@@ -651,8 +651,8 @@ async def get_alarm_trend(
 
     return {
         "summary": {
-            "total_alarms": total if not demo else 142580,
-            "weekly_avg": round(total / 16) if not demo else 8911,
+            "total_alarms": total if not demo else 0,
+            "weekly_avg": round(total / 16) if not demo else 0,
             "demo": demo,
         },
         "charts": {
@@ -717,7 +717,7 @@ async def get_device_health(
         elif snap and not snap.online_status:
             bucket["alert"] += 1
 
-    model_labels = sorted(model_map.keys()) or ["KFM-S100", "KFM-S200", "KFM-T300"]
+    model_labels = sorted(model_map.keys()) or []
 
     # Paginate
     offset = (page - 1) * page_size
@@ -827,7 +827,7 @@ async def get_signal_aging(
 
     return {
         "summary": {
-            "total_devices": total if not demo else 186,
+            "total_devices": total if not demo else 0,
             "good": signal_buckets["good"],
             "warning": signal_buckets["warning"],
             "critical": signal_buckets["critical"],

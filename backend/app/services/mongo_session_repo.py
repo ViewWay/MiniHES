@@ -363,3 +363,213 @@ class MongoSessionRepo:
                     }
                 )
         return events
+
+    # ─── 新增：三相/负荷/计费数据查询 ───
+
+    async def get_phase_data(self, meter_id: int) -> dict:
+        """提取三相瞬时量（电压/电流/功率/功率因数）。"""
+        doc = await self.get_latest_by_meter(meter_id, projection={"key_value_pairs": 1, "_id": 0})
+        if not doc:
+            return {}
+        kvp = doc.get("key_value_pairs", {})
+
+        def _get(*keys):
+            for k in keys:
+                v = kvp.get(k)
+                if v is not None and v != "ObjectUndefined":
+                    return v
+            return None
+
+        v_l1 = _get("Instantaneous voltage L1.value", "Instantaneous Data.Instantaneous Voltage L1.Value")
+        v_l2 = _get("Instantaneous voltage L2.value", "Instantaneous Data.Instantaneous Voltage L2.Value")
+        v_l3 = _get("Instantaneous voltage L3.value", "Instantaneous Data.Instantaneous Voltage L3.Value")
+        i_l1 = _get("Instantaneous current L1.value", "Instantaneous Data.Instantaneous Current L1.Value")
+        i_l2 = _get("Instantaneous current L2.value", "Instantaneous Data.Instantaneous Current L2.Value")
+        i_l3 = _get("Instantaneous current L3.value", "Instantaneous Data.Instantaneous Current L3.Value")
+        p_l1 = _get("Instantaneous active import power L1.value")
+        p_l2 = _get("Instantaneous active import power L2.value")
+        p_l3 = _get("Instantaneous active import power L3.value")
+        p_total = _get(
+            "Instantaneous active import power.value", "Instantaneous Data.Instantaneous active power (+P) Total"
+        )
+        q_l1 = _get("Instantaneous reactive import power L1.value")
+        q_l2 = _get("Instantaneous reactive import power L2.value")
+        q_l3 = _get("Instantaneous reactive import power L3.value")
+        q_total = _get("Instantaneous reactive import power.value")
+        s_total = _get("Instantaneous apparent import power.value")
+
+        voltage = {"l1": v_l1, "l2": v_l2, "l3": v_l3}
+        current = {"l1": i_l1, "l2": i_l2, "l3": i_l3}
+        active_power = {"l1": p_l1, "l2": p_l2, "l3": p_l3, "total": p_total}
+        reactive_power = {"l1": q_l1, "l2": q_l2, "l3": q_l3, "total": q_total}
+        apparent_power = {"total": s_total}
+
+        v_vals = [v for v in [v_l1, v_l2, v_l3] if v is not None]
+        i_vals = [i for i in [i_l1, i_l2, i_l3] if i is not None]
+        v_unbalance = None
+        i_unbalance = None
+        if len(v_vals) == 3 and sum(v_vals) > 0:
+            v_avg = sum(v_vals) / 3
+            v_unbalance = round(max(abs(v - v_avg) for v in v_vals) / v_avg * 100, 2)
+        if len(i_vals) == 3 and sum(i_vals) > 0:
+            i_avg = sum(i_vals) / 3
+            i_unbalance = round(max(abs(i - i_avg) for i in i_vals) / i_avg * 100, 2)
+
+        return {
+            "voltage": voltage,
+            "current": current,
+            "active_power": active_power,
+            "reactive_power": reactive_power,
+            "apparent_power": apparent_power,
+            "voltage_unbalance": v_unbalance,
+            "current_unbalance": i_unbalance,
+        }
+
+    async def get_load_profile_96(self, meter_id: int) -> dict:
+        """解析 Load Profile buffer 为 96 点负荷曲线。"""
+        doc = await self.get_latest_by_meter(meter_id, projection={"key_value_pairs": 1, "_id": 0})
+        if not doc:
+            return {"labels": [], "values": [], "stats": {}}
+        kvp = doc.get("key_value_pairs", {})
+        buffer = kvp.get("Load profile with period 1.buffer") or kvp.get("Load Profile.Energy Profile.Buffer") or {}
+        if not isinstance(buffer, dict):
+            return {"labels": [], "values": [], "stats": {}}
+
+        labels = []
+        values = []
+        prev_energy = None
+        for idx in sorted(buffer.keys(), key=lambda x: int(x)):
+            entry = buffer[idx]
+            if not isinstance(entry, list) or len(entry) < 3:
+                continue
+            energy = entry[2]
+            delta = energy - prev_energy if prev_energy is not None else 0
+            i = int(idx)
+            labels.append(f"{i * 15 // 60:02d}:{i * 15 % 60:02d}")
+            values.append(round(float(delta), 3))
+            prev_energy = energy
+
+        nonzero = [v for v in values if v > 0]
+        peak = max(values) if values else 0
+        valley = min(nonzero) if nonzero else 0
+        stats = {
+            "peak": peak,
+            "valley": valley,
+            "average": round(sum(values) / len(values), 3) if values else 0,
+            "total": round(sum(values), 3),
+            "point_count": len(values),
+            "peak_valley_diff": round(peak - valley, 3),
+            "peak_valley_ratio": round(peak / valley, 2) if valley > 0 else None,
+        }
+        return {"labels": labels, "values": values, "stats": stats}
+
+    async def get_billing_data(self, meter_id: int) -> dict:
+        """解析 Daily/Monthly Billing + 费率分布。"""
+        doc = await self.get_latest_by_meter(meter_id, projection={"key_value_pairs": 1, "_id": 0})
+        if not doc:
+            return {"daily": {"labels": [], "values": []}, "monthly": {"labels": [], "values": []}, "rates": {}}
+        kvp = doc.get("key_value_pairs", {})
+
+        def _parse_buffer(key, alt_key):
+            buf = kvp.get(key) or kvp.get(alt_key) or {}
+            labels, values = [], []
+            if isinstance(buf, dict):
+                entries = []
+                for idx, entry in buf.items():
+                    if isinstance(entry, list) and len(entry) >= 3:
+                        entries.append((int(idx), entry))
+                entries.sort(key=lambda x: x[0])
+                prev = None
+                for idx, entry in entries:
+                    energy = entry[2]
+                    delta = energy - prev if prev is not None else 0
+                    ts = str(entry[0])[:10] if entry[0] else f"#{idx}"
+                    labels.append(ts)
+                    values.append(round(float(delta), 3))
+                    prev = energy
+            return {"labels": labels, "values": values}
+
+        def _get(*keys):
+            for k in keys:
+                v = kvp.get(k)
+                if v is not None and v != "ObjectUndefined":
+                    return v
+            return 0
+
+        daily = _parse_buffer("Daily Billing Profile.buffer", "Daily Billing.E-meter Daily Billing.Buffer")
+        monthly = _parse_buffer("Monthly Billing Profile.buffer", "Month Billing.E-meter Month Billing.Buffer")
+        rates = {
+            "rate1": _get("Active energy import rate 1.value", "Energy.Cumulative A Positive rate1.Value"),
+            "rate2": _get("Active energy import rate 2.value", "Energy.Cumulative A Positive rate2.Value"),
+            "export": _get("Active energy export.value", "Energy.Cumulative A Negative.Value"),
+            "import_total": _get("Active energy import.value", "Energy.Cumulative A Positive.Value"),
+        }
+        return {"daily": daily, "monthly": monthly, "rates": rates}
+
+    async def get_diagnostic_data(self, meter_id: int) -> dict:
+        """解析 EEPROM 写入统计和堆栈内存使用诊断数据。"""
+        doc = await self.get_latest_by_meter(
+            meter_id, projection={"eeprom_write_times": 1, "stack_information": 1, "key_value_pairs": 1, "_id": 0}
+        )
+        if not doc:
+            return {"eeprom": {}, "stack": {}}
+
+        # EEPROM 解析
+        eeprom_raw = doc.get("eeprom_write_times") or doc.get("key_value_pairs", {}).get("eeprom_write_times")
+        eeprom = {"timestamp": "", "total_writes": 0, "zones": []}
+        if isinstance(eeprom_raw, list) and len(eeprom_raw) >= 4:
+            eeprom["timestamp"] = str(eeprom_raw[0])
+            write_array = eeprom_raw[3] if isinstance(eeprom_raw[3], list) else []
+            eeprom["total_writes"] = sum(write_array) if write_array else 0
+            eeprom["zones"] = [{"zone": i, "writes": w} for i, w in enumerate(write_array)]
+            # 总写入区域数
+            eeprom["active_zones"] = sum(1 for w in write_array if w > 0)
+
+        # Stack 解析
+        stack_raw = doc.get("stack_information") or doc.get("key_value_pairs", {}).get("stack_information")
+        stack = {"timestamp": "", "modules": [], "heap": {}}
+        if isinstance(stack_raw, list) and len(stack_raw) >= 4:
+            stack["timestamp"] = str(stack_raw[0])
+            modules_raw = stack_raw[2] if isinstance(stack_raw[2], list) else []
+            total_alloc = 0
+            total_used = 0
+            for m in modules_raw:
+                if isinstance(m, list) and len(m) >= 5:
+                    name = m[0] if isinstance(m[0], str) else f"task_{len(stack['modules'])}"
+                    size = m[1] if isinstance(m[1], (int, float)) else 0
+                    used = m[3] if isinstance(m[3], (int, float)) else 0
+                    peak = m[4] if isinstance(m[4], (int, float)) else 0
+                    usage_pct = round(used / size * 100, 1) if size > 0 else 0
+                    stack["modules"].append(
+                        {
+                            "name": name,
+                            "total_size": size,
+                            "used": used,
+                            "peak": peak,
+                            "usage_pct": usage_pct,
+                        }
+                    )
+                    total_alloc += size
+                    total_used += used
+
+            heap_raw = stack_raw[3] if isinstance(stack_raw[3], list) else []
+            stack["heap"] = {
+                "values": heap_raw,
+                "total_allocated": total_alloc,
+                "total_used": total_used,
+                "overall_usage_pct": round(total_used / total_alloc * 100, 1) if total_alloc > 0 else 0,
+            }
+
+        # EEPROM 磨损状态评估
+        total_writes = eeprom.get("total_writes", 0)
+        if total_writes > 100000:
+            eeprom["status"] = "老化"
+            eeprom["status_color"] = "#ff4d4f"
+        elif total_writes > 50000:
+            eeprom["status"] = "磨损"
+            eeprom["status_color"] = "#faad14"
+        else:
+            eeprom["status"] = "正常"
+            eeprom["status_color"] = "#52c41a"
+
+        return {"eeprom": eeprom, "stack": stack}

@@ -52,11 +52,7 @@ async def expand_history():
     for doc in real_docs:
         meter_id = doc.get("meter_id", 0)
         kvp = doc.get("key_value_pairs", {})
-        energy_val = (
-            kvp.get("Active energy import.value")
-            or kvp.get("Energy.Cumulative A Positive.Value")
-            or 200000
-        )
+        energy_val = kvp.get("Active energy import.value") or kvp.get("Energy.Cumulative A Positive.Value") or 200000
 
         for day_offset in range(DAYS_TO_GENERATE, 0, -1):
             collected_at = base_time - timedelta(days=day_offset)

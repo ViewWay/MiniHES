@@ -62,6 +62,12 @@ register_exception_handlers(app)
 
 app.include_router(api_router, prefix="/api")
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+# WebSocket 端点（无 API 前缀，前端直接连 /ws?token=...）
+from app.api.v1.endpoints.ws import router as ws_router  # noqa: E402
+
+app.include_router(ws_router)
+
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 

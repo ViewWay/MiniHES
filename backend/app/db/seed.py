@@ -527,16 +527,39 @@ async def seed():
         )
         await session.flush()
 
-        # --- Alarm Rules ---
+        # --- Alarm Rules（含 condition_config，供 alarm_engine 评估）---
         session.add_all(
             [
-                AlarmRule(rule_name="通信超时告警", rule_type="communication", severity="critical", is_enabled=True),
+                AlarmRule(
+                    rule_name="通信超时告警",
+                    rule_type="communication",
+                    severity="critical",
+                    is_enabled=True,
+                    condition_config={"offline_hours": 24},
+                ),
                 AlarmRule(
                     rule_name="电压越限告警",
                     rule_type="threshold",
                     point_code="1.0.12.7.0.255",
                     severity="warning",
                     is_enabled=True,
+                    condition_config={"operator": "gt", "value": 240.0},
+                ),
+                AlarmRule(
+                    rule_name="电流过载告警",
+                    rule_type="threshold",
+                    point_code="1.0.31.7.0.255",
+                    severity="critical",
+                    is_enabled=True,
+                    condition_config={"operator": "gt", "value": 60.0},
+                ),
+                AlarmRule(
+                    rule_name="电压异常波动检测",
+                    rule_type="anomaly",
+                    point_code="1.0.12.7.0.255",
+                    severity="info",
+                    is_enabled=True,
+                    condition_config={"change_pct": 20.0},
                 ),
             ]
         )

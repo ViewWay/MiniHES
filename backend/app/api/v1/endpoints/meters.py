@@ -1,6 +1,7 @@
 import io
 from datetime import datetime
 
+import fastapi
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
@@ -207,3 +208,20 @@ async def upload_meter_attachment(db: DbSession, meter_id: int, body: Attachment
 async def delete_attachment(db: DbSession, meter_id: int, attachment_id: int, _user: CurrentUser):
     await upload_service.delete_attachment(db, attachment_id)
     return success({"deleted": True})
+
+
+@router.post("/import-excel")
+async def import_meters_excel(
+    db: DbSession,
+    user: CurrentUser,
+    project_id: int | None = Query(default=None, description="关联项目 ID"),
+    file: bytes = fastapi.File(..., description="Excel 文件"),
+):
+    """从 Excel 文件批量导入电表数据。
+
+    支持的 sheet：Meter（电表清单）、P2PObis/MeteringObis/DCUObis（OBIS 码统计）。
+    """
+    from app.services.excel_import_service import import_meters_from_excel
+
+    result = await import_meters_from_excel(db, file, project_id=project_id)
+    return success(result)

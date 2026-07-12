@@ -93,9 +93,7 @@ async def init_mongo():
 
     # 验证
     count = await col.count_documents({})
-    logger.info(
-        "初始化完成: %s.%s, 当前文档数: %d", settings.MONGODB_DATABASE, COLLECTION, count
-    )
+    logger.info("初始化完成: %s.%s, 当前文档数: %d", settings.MONGODB_DATABASE, COLLECTION, count)
 
 
 async def main():

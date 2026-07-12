@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     projects,
     reference,
     roles,
+    screens,
     system,
     task_logs,
     tasks,
@@ -47,6 +48,7 @@ api_router.include_router(task_logs.router, dependencies=[Depends(require_permis
 api_router.include_router(alarms.router, dependencies=[Depends(require_permission("alarms"))])
 api_router.include_router(alarm_rules.router, dependencies=[Depends(require_permission("alarms"))])
 api_router.include_router(analysis.router, dependencies=[Depends(require_permission("analysis"))])
+api_router.include_router(screens.router, dependencies=[Depends(require_permission("analysis"))])
 api_router.include_router(tests.router, dependencies=[Depends(require_permission("system"))])
 api_router.include_router(defects.router, dependencies=[Depends(require_permission("system"))])
 api_router.include_router(system.router, dependencies=[Depends(require_permission("system"))])

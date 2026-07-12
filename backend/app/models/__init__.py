@@ -1,6 +1,7 @@
 from app.core.database import Base, TimestampMixin
 
 from .alarm import Alarm, AlarmRule
+from .auth import RefreshToken
 from .meter import (
     Meter,
     MeterAttachment,
@@ -53,6 +54,7 @@ __all__ = [
     "DataQuality",
     "AlarmRule",
     "Alarm",
+    "RefreshToken",
     "TestTask",
     "TestReport",
     "Defect",

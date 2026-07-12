@@ -40,15 +40,14 @@ async def sync_snapshots():
         proj = doc.get("project_name", "unknown")
         mongo_by_project.setdefault(proj, []).append(doc)
 
-    logger.info("MongoDB 中有 %d 个项目 %d 个电表采集文档",
-                len(mongo_by_project), sum(len(v) for v in mongo_by_project.values()))
+    logger.info(
+        "MongoDB 中有 %d 个项目 %d 个电表采集文档",
+        len(mongo_by_project),
+        sum(len(v) for v in mongo_by_project.values()),
+    )
 
     # 获取 PG 中所有在用设备，按 ID 排序
-    result = await db.execute(
-        select(Meter)
-        .where(Meter.current_status.in_(["in_use", "online"]))
-        .order_by(Meter.id)
-    )
+    result = await db.execute(select(Meter).where(Meter.current_status.in_(["in_use", "online"])).order_by(Meter.id))
     pg_meters = result.scalars().all()
     logger.info("PG 中有 %d 台在用设备", len(pg_meters))
 
@@ -72,9 +71,7 @@ async def sync_snapshots():
         stack_usage = len(stack_info) if isinstance(stack_info, list) else None
         collected_at = doc.get("collected_at")
 
-        snap_result = await db.execute(
-            select(MeterSnapshot).where(MeterSnapshot.meter_id == meter.id)
-        )
+        snap_result = await db.execute(select(MeterSnapshot).where(MeterSnapshot.meter_id == meter.id))
         snap = snap_result.scalars().first()
 
         if snap:
@@ -120,8 +117,6 @@ async def sync_snapshots():
 async def sync_sessions(meter_doc_map: dict):
     """更新 PG col_session 中的 mongo_doc_id 指向真实 MongoDB 文档。"""
     db = AsyncSessionLocal()
-    mongo_db = get_mongo_db()
-    col = mongo_db["meter_sessions"]
 
     result = await db.execute(select(CollectionSession))
     sessions = result.scalars().all()

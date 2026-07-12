@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # SMTP 邮件服务
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+
     COLLECTOR_MAX_WORKERS: int = 10
     COLLECTOR_DEFAULT_TIMEOUT: int = 30
     COLLECTOR_RETRY_TIMES: int = 3

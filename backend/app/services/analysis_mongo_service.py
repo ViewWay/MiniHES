@@ -83,26 +83,25 @@ class AnalysisMongoService:
             total_points = doc.get("total_points", 0) or 0
             success_points = doc.get("success_points", 0) or 0
 
-            energy_val = (
-                kvp.get("Energy.Cumulative A Positive.Value")
-                if kvp.get("Energy.Cumulative A Positive.Value") is not None
-                else kvp.get("Active energy import.value")
+            # 兼容提取 helper
+            def _kvp_get(*keys):
+                for k in keys:
+                    v = kvp.get(k)
+                    if v is not None and v != "ObjectUndefined":
+                        return v
+                return None
+
+            energy_val = _kvp_get("Energy.Cumulative A Positive.Value", "Active energy import.value")
+            voltage_l1 = _kvp_get("Instantaneous Data.Instantaneous Voltage L1.Value", "Instantaneous voltage L1.value")
+            voltage_l2 = _kvp_get("Instantaneous voltage L2.value")
+            voltage_l3 = _kvp_get("Instantaneous voltage L3.value")
+            current_l1 = _kvp_get("Instantaneous Data.Instantaneous Current L1.Value", "Instantaneous current L1.value")
+            current_l2 = _kvp_get("Instantaneous current L2.value")
+            current_l3 = _kvp_get("Instantaneous current L3.value")
+            power_val = _kvp_get(
+                "Instantaneous Data.Instantaneous active power (+P) Total", "Instantaneous active import power.value"
             )
-            voltage_val = (
-                kvp.get("Instantaneous Data.Instantaneous Voltage L1.Value")
-                if kvp.get("Instantaneous Data.Instantaneous Voltage L1.Value") is not None
-                else kvp.get("Instantaneous voltage L1.value")
-            )
-            current_val = (
-                kvp.get("Instantaneous Data.Instantaneous Current L1.Value")
-                if kvp.get("Instantaneous Data.Instantaneous Current L1.Value") is not None
-                else kvp.get("Instantaneous current L1.value")
-            )
-            power_val = (
-                kvp.get("Instantaneous Data.Instantaneous active power (+P) Total")
-                if kvp.get("Instantaneous Data.Instantaneous active power (+P) Total") is not None
-                else kvp.get("Instantaneous active import power.value")
-            )
+            reactive_val = _kvp_get("Instantaneous reactive import power.value")
 
             completeness = round(success_points / total_points * 100, 1) if total_points > 0 else 0
 
@@ -115,9 +114,14 @@ class AnalysisMongoService:
                         else str(collected_at)
                     ),
                     "total_energy": float(energy_val) if energy_val is not None else 0,
-                    "voltage_l1": float(voltage_val) if voltage_val is not None else None,
-                    "current_l1": float(current_val) if current_val is not None else None,
+                    "voltage_l1": float(voltage_l1) if voltage_l1 is not None else None,
+                    "voltage_l2": float(voltage_l2) if voltage_l2 is not None else None,
+                    "voltage_l3": float(voltage_l3) if voltage_l3 is not None else None,
+                    "current_l1": float(current_l1) if current_l1 is not None else None,
+                    "current_l2": float(current_l2) if current_l2 is not None else None,
+                    "current_l3": float(current_l3) if current_l3 is not None else None,
                     "power_total": float(power_val) if power_val is not None else None,
+                    "reactive_power": float(reactive_val) if reactive_val is not None else None,
                     "total_points": total_points,
                     "success_points": success_points,
                     "completeness": completeness,
@@ -150,16 +154,24 @@ class AnalysisMongoService:
 
         # 获取最新一条的详细信息
         latest_energy = {}
-        latest_instantaneous = {}
         latest_clock = {}
         latest_events = []
         latest_profiles = []
         if not demo:
             latest_energy = await self.mongo.get_energy(meter_id)
-            latest_instantaneous = await self.mongo.get_instantaneous(meter_id)
             latest_clock = await self.mongo.get_clock_status(meter_id)
             latest_events = await self.mongo.get_events(meter_id)
             latest_profiles = await self.mongo.get_profile_completeness(meter_id)
+
+        phase_data = {}
+        load_profile = {"labels": [], "values": [], "stats": {}}
+        billing = {"daily": {"labels": [], "values": []}, "monthly": {"labels": [], "values": []}, "rates": {}}
+        diagnostic = {"eeprom": {}, "stack": {}}
+        if not demo:
+            phase_data = await self.mongo.get_phase_data(meter_id)
+            load_profile = await self.mongo.get_load_profile_96(meter_id)
+            billing = await self.mongo.get_billing_data(meter_id)
+            diagnostic = await self.mongo.get_diagnostic_data(meter_id)
 
         return {
             "meter_id": meter_id,
@@ -180,10 +192,14 @@ class AnalysisMongoService:
                 "latest_energy": float(latest_energy.get("cumulative_positive", 0)) if latest_energy else 0,
                 "demo": demo,
             },
+            "phase_data": phase_data,
+            "load_profile": load_profile,
+            "billing": billing,
+            "diagnostic": diagnostic,
+            "events": latest_events if not demo else [],
             "latest": {
-                "instantaneous": latest_instantaneous,
                 "clock": latest_clock,
-                "events_count": len(latest_events),
+                "events_count": len(latest_events) if not demo else 0,
                 "profiles": [
                     {
                         "name": p["name"],
@@ -191,7 +207,7 @@ class AnalysisMongoService:
                         "expected": p["expected"],
                         "actual": p["actual"],
                     }
-                    for p in latest_profiles
+                    for p in (latest_profiles if not demo else [])
                 ],
             },
         }

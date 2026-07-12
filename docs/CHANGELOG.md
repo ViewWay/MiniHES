@@ -6,6 +6,67 @@
 
 ---
 
+## [0.8.0] - 2026-07-12
+
+### WebSocket 实时推送
+
+- **新增 `/ws` WebSocket 端点**：前端 `useWebSocket.ts` 现在可以正常连接
+- **新增** `app/core/ws_manager.py`（ConnectionManager 单例，维护 topic→连接映射）
+- **新增** `app/api/v1/endpoints/ws.py`（JWT 查询参数认证 + subscribe/unsubscribe 协议）
+- 支持 4 个 topic：`task:progress`、`alarm:new`、`meter:snapshot`、`data:instant`
+- 消息格式 `{topic, type, data}` 与前端 `useWebSocket.ts` 完全匹配
+
+### 告警自动生成引擎
+
+- **新增 `app/services/alarm_engine.py`**：规则评估引擎，支持 3 种 rule_type
+  - `threshold`：值越限检测（gt/lt/gte/lte/eq 操作符）
+  - `anomaly`：统计异常检测（标准差/变化率）
+  - `communication`：离线设备检测（定时扫描）
+- **集成到 `task_service`**：每次采集后自动评估读数，生成告警
+- **集成到 `scheduler`**：每 15 分钟扫描通信超时告警
+- **告警 WebSocket 推送**：新告警自动通过 `alarm:new` topic 推送
+- **种子数据补全**：4 条 AlarmRule 含完整 `condition_config`（电压越限/电流过载/通信超时/异常波动）
+- 去重窗口：同一规则+电表 1 小时内只告警一次
+
+### 认证安全加固
+
+- **Refresh Token 持久化**：新增 `sys_refresh_token` 表（Alembic 迁移 `c4e2a1f9b3d7`），SHA256 哈希存储
+  - 表不存在时自动降级为内存模式（向后兼容）
+- **新增密码重置流程**：`POST /auth/forgot-password` + `POST /auth/reset-password`
+  - JWT 重置令牌（30 分钟过期），防邮箱枚举攻击
+- **新增邮件服务**：`app/services/email_service.py`（aiosmtplib，SMTP 配置）
+- 配置：新增 `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD`/`SMTP_FROM`
+
+### Excel 导入 + PDF 导出
+
+- **新增 Excel 导入**：`POST /meters/import-excel`（openpyxl），解析 Meter/Configuration/OBIS sheets
+- **新增 PDF 导出**：`GET /analysis/daily/export?format=pdf`（reportlab），支持 CSV 和 PDF 两种格式
+- **新增** `app/services/excel_import_service.py`、`app/services/pdf_export_service.py`
+- 依赖：新增 `openpyxl>=3.1.0`、`reportlab>=4.0.0`、`aiosmtplib>=3.0.0`
+
+### 大屏 API + Redis 功能化
+
+- **新增 3 个大屏端点**：`/screens/overview`、`/screens/project/{id}`、`/screens/meter/{id}`
+- **新增** `app/services/screen_service.py`（设备/告警/采集/任务聚合统计）
+- **Redis 缓存**：大屏数据 Redis 缓存 30s（`app/core/redis.py` 单例 + `cached()` 装饰器）
+- Redis 不可用时自动降级为直查 PG
+
+### MongoDB 数据迁移
+
+- **新增** `scripts/migrate_legacy_mongo.py`：旧拓扑（3 库 24 集合）→ 新拓扑（单库单集合），支持 `--dry-run`
+- **更新** `generate_testdata_mongo.py`：改为写入 `minihes.meter_sessions`
+- **幂等迁移**：按 `_id` 去重，重复运行安全
+
+### MongoDB 测试覆盖（38 个新测试）
+
+- `test_mongo_session_repo.py`（13 个）：buffer 解析逻辑（Daily Billing / Load Profile / Instantaneous）
+- `test_session_writer.py`（12 个）：`_derive_status`/`_map_status`/`_parse_timestamp` 纯函数
+- `test_alarm_engine.py`（9 个）：阈值评估逻辑
+- `test_analysis_fallback.py`（4 个）：降级行为
+- `test_mongo_integration.py`（4 个，需 `MONGODB_TEST_URL`）：真实 Mongo 集成测试
+
+---
+
 ## [0.7.0] - 2026-07-11
 
 ### MongoDB 双存储集成

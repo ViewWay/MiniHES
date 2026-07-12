@@ -215,8 +215,8 @@ def main():
                 json.dump(rec, f, ensure_ascii=False)
 
             result = subprocess.run(
-                ["mongoimport", "--db", name, "--collection", meter_no,
-                 "--file", tmp_file, "--drop", "--quiet"],
+                ["mongoimport", "--db", "minihes", "--collection", "meter_sessions",
+                 "--file", tmp_file, "--quiet"],
                 capture_output=True, text=True
             )
             if result.returncode == 0:

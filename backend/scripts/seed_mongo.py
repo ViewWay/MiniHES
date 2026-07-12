@@ -27,12 +27,7 @@ from app.services.mongo_session_repo import MongoSessionRepo
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-TEMPLATE_PATH = (
-    Path(__file__).resolve().parent.parent.parent
-    / "docs"
-    / "testdata"
-    / "template_meter.json"
-)
+TEMPLATE_PATH = Path(__file__).resolve().parent.parent.parent / "docs" / "testdata" / "template_meter.json"
 
 
 def load_template() -> dict:
@@ -79,9 +74,7 @@ async def seed_mongo():
 
     async with AsyncSessionLocal() as db:
         # 获取所有在用设备
-        result = await db.execute(
-            select(Meter).where(Meter.current_status == "in_use").limit(50)
-        )
+        result = await db.execute(select(Meter).where(Meter.current_status == "in_use").limit(50))
         meters = result.scalars().all()
 
         if not meters:
@@ -103,9 +96,7 @@ async def seed_mongo():
             for days_ago in range(3):
                 collected_at = now - timedelta(days=days_ago, hours=random.randint(0, 6))
 
-                doc = _generate_variant(
-                    template, meter, project_name, collected_at, days_ago
-                )
+                doc = _generate_variant(template, meter, project_name, collected_at, days_ago)
 
                 try:
                     await repo.insert_session(doc)
@@ -114,9 +105,7 @@ async def seed_mongo():
                     logger.warning("写入 meter_id=%d 失败: %s", meter.id, e)
 
             # 更新 PG MeterSnapshot
-            snap_result = await db.execute(
-                select(MeterSnapshot).where(MeterSnapshot.meter_id == meter.id)
-            )
+            snap_result = await db.execute(select(MeterSnapshot).where(MeterSnapshot.meter_id == meter.id))
             snap = snap_result.scalars().first()
             if snap:
                 snap.online_status = True
@@ -142,9 +131,7 @@ async def seed_mongo():
     logger.info("MongoDB seed 完成: 共写入 %d 个采集文档", count)
 
 
-def _generate_variant(
-    template: dict, meter: Meter, project_name: str, collected_at: datetime, days_ago: int
-) -> dict:
+def _generate_variant(template: dict, meter: Meter, project_name: str, collected_at: datetime, days_ago: int) -> dict:
     """基于模板生成变体文档。"""
     kvp = dict(template.get("key_value_pairs", {}))
     sheets = dict(template.get("sheets", {}))
