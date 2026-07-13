@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GIS Integration - Tamper Pattern Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',Arial,sans-serif; background:#f5f5f5; color:#333; }
+.layout { display:flex; height:100vh; }
+.sidebar { width:160px; background:#fff; border-right:1px solid #e8e8e8; padding-top:16px; flex-shrink:0; }
+.nav-item { padding:12px 20px; font-size:14px; color:#666; cursor:pointer; border-left:3px solid transparent; }
+.nav-item:hover { color:#26b5a0; background:#f9fffe; }
+.nav-item.active { color:#26b5a0; border-left-color:#26b5a0; font-weight:600; }
+.nav-group-title { padding:10px 20px 4px; font-size:11px; color:#aaa; text-transform:uppercase; letter-spacing:.5px; }
+.nav-item.sub { padding-left:32px; font-size:13px; }
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.top-bar { background:#fff; padding:14px 24px; border-bottom:1px solid #e8e8e8; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.top-bar h2 { font-size:16px; font-weight:600; color:#333; }
+.breadcrumb { font-size:12px; color:#999; } .breadcrumb span { color:#26b5a0; }
+.btn { padding:6px 16px; border:none; border-radius:4px; font-size:13px; cursor:pointer; transition:opacity .2s; }
+.btn:hover { opacity:.85; }
+.btn-primary { background:#26b5a0; color:#fff; }
+.btn-outline { background:#fff; color:#26b5a0; border:1px solid #26b5a0; }
+.content-area { flex:1; display:flex; overflow:hidden; position:relative; }
+.area-panel { width:240px; background:#fff; border-right:1px solid #e8e8e8; display:flex; flex-direction:column; flex-shrink:0; z-index:5; }
+.area-search { padding:10px 12px; border-bottom:1px solid #e8e8e8; }
+.area-search input { width:100%; padding:6px 10px 6px 30px; border:1px solid #d9d9d9; border-radius:4px; font-size:13px; outline:none; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 8px center no-repeat; }
+.area-search input:focus { border-color:#26b5a0; }
+.area-tree { flex:1; overflow-y:auto; padding:8px 0; font-size:13px; }
+.map-wrap { flex:1; position:relative; }
+#map { width:100%; height:100%; }
+.stats-overlay { position:absolute; top:12px; left:12px; right:12px; z-index:1000; display:flex; gap:8px; pointer-events:none; }
+.stat-card { flex:1; background:rgba(255,255,255,.92); backdrop-filter:blur(6px); border-radius:6px; padding:8px 12px; box-shadow:0 2px 8px rgba(0,0,0,.12); pointer-events:auto; min-width:0; }
+.stat-card .stat-label { font-size:10px; color:#888; margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.stat-card .stat-value { font-size:16px; font-weight:700; }
+.stat-card .stat-value.red { color:#f56c6c; } .stat-card .stat-value.orange { color:#e6a23c; } .stat-card .stat-value.yellow { color:#c9b200; } .stat-card .stat-value.teal { color:#26b5a0; } .stat-card .stat-value.blue { color:#409eff; } .stat-card .stat-value.purple { color:#7b68ee; }
+.map-legend { position:absolute; bottom:24px; right:12px; z-index:1000; background:rgba(255,255,255,.94); backdrop-filter:blur(6px); border-radius:6px; padding:12px 16px; box-shadow:0 2px 8px rgba(0,0,0,.12); font-size:12px; }
+.legend-title { font-weight:600; color:#555; margin-bottom:6px; }
+.legend-item { display:flex; align-items:center; gap:8px; margin-bottom:5px; color:#555; }
+.legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+.legend-icon { width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.detail-panel { width:340px; background:#fff; border-left:1px solid #e8e8e8; display:none; flex-direction:column; flex-shrink:0; z-index:5; }
+.detail-panel.open { display:flex; }
+.panel-header { padding:14px 18px; border-bottom:1px solid #e8e8e8; display:flex; justify-content:space-between; align-items:center; }
+.panel-title { font-size:14px; font-weight:600; color:#333; }
+.panel-close { cursor:pointer; color:#999; font-size:16px; } .panel-close:hover { color:#f56c6c; }
+.panel-body { flex:1; overflow-y:auto; padding:16px 18px; }
+.tree-node { display:flex; align-items:center; padding:4px 8px; cursor:pointer; white-space:nowrap; }
+.tree-node:hover { background:#f0faf8; } .tree-node.selected { background:#e6f7f4; } .tree-node.hidden { display:none; }
+.tree-toggle { width:16px; text-align:center; color:#999; font-size:10px; flex-shrink:0; margin-right:2px; user-select:none; }
+.tree-icon { width:18px; height:18px; margin-right:6px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; }
+.tree-label { font-size:13px; color:#333; }
+.icon-dept { color:#26b5a0; } .icon-city { color:#5b9bd5; } .icon-sub { color:#e6a23c; } .icon-feeder { color:#7b68ee; } .icon-tr { color:#26b5a0; font-weight:700; }
+.tree-children { padding-left:18px; } .tree-children.collapsed { display:none; }
+.info-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f5f5f5; font-size:13px; }
+.info-label { color:#999; } .info-value { color:#333; font-weight:500; }
+.section-title { font-size:13px; font-weight:600; color:#555; margin:14px 0 8px; padding-bottom:4px; border-bottom:1px solid #e8e8e8; }
+.severity-badge { display:inline-block; padding:2px 10px; border-radius:3px; font-size:12px; font-weight:600; }
+.severity-badge.critical { background:#fde2e2; color:#f56c6c; }
+.severity-badge.high { background:#f3e8fd; color:#7b68ee; }
+.severity-badge.medium { background:#fdf0d5; color:#e6a23c; }
+.severity-badge.low { background:#e6f7f4; color:#26b5a0; }
+.stat-mini { display:flex; gap:8px; margin:8px 0; }
+.stat-mini-item { flex:1; background:#fafafa; border-radius:4px; padding:8px 6px; text-align:center; }
+.stat-mini-item .sm-val { font-size:15px; font-weight:700; }
+.stat-mini-item .sm-lbl { font-size:10px; color:#999; margin-top:2px; }
+.event-breakdown { width:100%; border-collapse:collapse; margin:8px 0; font-size:12px; }
+.event-breakdown th { background:#f7f7f7; padding:7px 10px; text-align:left; font-weight:600; color:#555; border-bottom:1px solid #e8e8e8; }
+.event-breakdown td { padding:7px 10px; border-bottom:1px solid #f0f0f0; }
+.event-breakdown tr:hover td { background:#f9fffe; }
+.pct-bar-bg { width:100%; height:6px; background:#f0f0f0; border-radius:3px; overflow:hidden; }
+.pct-bar { height:100%; border-radius:3px; }
+.pct-bar.red { background:#f56c6c; } .pct-bar.purple { background:#7b68ee; } .pct-bar.orange { background:#e6a23c; } .pct-bar.yellow { background:#c9b200; }
+.mini-chart { display:flex; align-items:flex-end; gap:2px; height:50px; margin:8px 0 4px; }
+.mini-bar { flex:1; border-radius:2px 2px 0 0; min-width:4px; }
+.mini-bar.high-bar { background:#f56c6c; } .mini-bar.med-bar { background:#e6a23c; } .mini-bar.low-bar { background:#c9b200; } .mini-bar.zero { background:#f0f0f0; }
+.chart-labels { display:flex; justify-content:space-between; font-size:10px; color:#bbb; }
+.wo-card { background:#fafafa; border:1px solid #e8e8e8; border-radius:6px; padding:12px 14px; margin:8px 0; }
+.wo-row { display:flex; justify-content:space-between; padding:4px 0; font-size:13px; }
+.wo-label { color:#999; } .wo-val { font-weight:600; }
+.wo-val.dispatched { color:#409eff; } .wo-val.unhandled { color:#e6a23c; } .wo-val.processing { color:#7b68ee; } .wo-val.completed { color:#26b5a0; } .wo-val.undispatched { color:#999; }
+.btn-service { display:block; width:100%; padding:10px; margin-top:12px; background:#26b5a0; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; text-align:center; }
+.btn-service:hover { background:#1fa08c; }
+.risk-tag { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:3px; font-size:11px; font-weight:600; }
+.risk-tag.theft { background:#fde2e2; color:#f56c6c; }
+.risk-tag.suspect { background:#f3e8fd; color:#7b68ee; }
+.risk-tag.normal { background:#e6f7f4; color:#26b5a0; }
+.consumption-chart { display:flex; align-items:flex-end; gap:1px; height:40px; margin:6px 0; }
+.consumption-bar { flex:1; border-radius:1px 1px 0 0; min-width:2px; }
+.consumption-bar.norm { background:#26b5a0; } .consumption-bar.drop { background:#f56c6c; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <div class="nav-item">Dashboard</div>
+    <div class="nav-item">Collection Statistics</div>
+    <div class="nav-item">On Demand</div>
+    <div class="nav-item">Firmware Mgmt</div>
+    <div class="nav-group-title">GIS Integration</div>
+    <div class="nav-item sub">Missing Read Cluster</div>
+    <div class="nav-item sub">Reverse Power Flow</div>
+    <div class="nav-item sub">PQ Hotspot Map</div>
+    <div class="nav-item sub active">Tamper Pattern Map</div>
+    <div class="nav-item sub">Meter Location</div>
+    <div class="nav-item sub">Coverage Map</div>
+    <div class="nav-item">Reports</div>
+    <div class="nav-item">Config</div>
+    <div class="nav-item">Logs</div>
+  </div>
+  <div class="main">
+    <div class="top-bar">
+      <div>
+        <div class="breadcrumb">GIS Integration → <span>Tamper Pattern Map</span></div>
+        <h2>Tamper / Theft Pattern Map</h2>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <select id="tamperFilter" style="padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;">
+          <option value="">All Tamper Types</option>
+          <option value="neutral-missing">Neutral Missing</option>
+          <option value="cover-open">Terminal Cover Open</option>
+          <option value="magnetic">Magnetic Influence</option>
+          <option value="consumption-drop">Consumption Drop</option>
+        </select>
+        <select id="riskFilter" style="padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;">
+          <option value="">All Risk Levels</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <button class="btn btn-primary" onclick="applyFilter()">Apply</button>
+        <button class="btn btn-outline" onclick="location.reload()">↻ Refresh</button>
+      </div>
+    </div>
+    <div class="content-area">
+      <div class="area-panel">
+        <div class="area-search"><input type="text" id="treeSearch" placeholder="Department" oninput="filterTree(this.value)"></div>
+        <div class="area-tree" id="areaTree"></div>
+      </div>
+      <div class="map-wrap">
+        <div class="stats-overlay">
+          <div class="stat-card"><div class="stat-label">Tamper Events (30d)</div><div class="stat-value red">634</div></div>
+          <div class="stat-card"><div class="stat-label">Neutral Missing</div><div class="stat-value red">185</div></div>
+          <div class="stat-card"><div class="stat-label">Cover Open</div><div class="stat-value orange">148</div></div>
+          <div class="stat-card"><div class="stat-label">Magnetic</div><div class="stat-value purple">112</div></div>
+          <div class="stat-card"><div class="stat-label">Consumption Drop</div><div class="stat-value yellow">189</div></div>
+          <div class="stat-card"><div class="stat-label">High-Risk Pockets</div><div class="stat-value red">11</div></div>
+          <div class="stat-card"><div class="stat-label">Inspections Dispatched</div><div class="stat-value blue">7</div></div>
+          <div class="stat-card"><div class="stat-label">Confirmed Theft</div><div class="stat-value red">4</div></div>
+        </div>
+        <div class="map-legend">
+          <div class="legend-title">Risk Level</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f56c6c;"></div> Critical (organized pattern)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#7b68ee;"></div> High (multi-type tamper)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e6a23c;"></div> Medium (repeated events)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#26b5a0;"></div> Low (isolated event)</div>
+          <div class="legend-title" style="margin-top:8px;">Tamper Type</div>
+          <div class="legend-item"><div class="legend-icon">⊘</div> Neutral Missing</div>
+          <div class="legend-item"><div class="legend-icon">⊡</div> Terminal Cover Open</div>
+          <div class="legend-item"><div class="legend-icon">⊛</div> Magnetic Influence</div>
+          <div class="legend-item"><div class="legend-icon">↓</div> Consumption Drop</div>
+          <div class="legend-title" style="margin-top:8px;">Pattern</div>
+          <div class="legend-item"><svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="none" stroke="#f56c6c" stroke-width="2" stroke-dasharray="3,2"/></svg> Organized theft cluster</div>
+        </div>
+        <div id="map"></div>
+      </div>
+      <div id="detailPanel" class="detail-panel">
+        <div class="panel-header">
+          <span class="panel-title">Device Details</span>
+          <span class="panel-close" onclick="closePanel()">✕</span>
+        </div>
+        <div id="panelContent" class="panel-body"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
+<script>
+// ========== Area Tree ==========
+const treeData = [
+  { id:'kaifa', label:'KAIFA', icon:'🏢', iconClass:'icon-dept', children:[
+    { id:'chengdu', label:'ChengDu', icon:'🌆', iconClass:'icon-city', children:[
+      { id:'cd-sub', label:'CD-Substation', icon:'🏭', iconClass:'icon-sub', children:[
+        { id:'cd-feeder', label:'CD-Feeder', icon:'⚡', iconClass:'icon-feeder', children:[
+          { id:'cd-tr-1', label:'CD-TR-1', icon:'🔌', iconClass:'icon-tr' },
+          { id:'cd-tr-2', label:'CD-TR-2', icon:'🔌', iconClass:'icon-tr' },
+          { id:'cd-tr-3', label:'CD-TR-3', icon:'🔌', iconClass:'icon-tr' },
+        ]},
+      ]},
+      { id:'exhibition', label:'Exhibition', icon:'🌆', iconClass:'icon-city' },
+    ]},
+    { id:'m-dept', label:'M_Department', icon:'🏢', iconClass:'icon-dept', children:[
+      { id:'m-sub1', label:'M-Substation', icon:'🏭', iconClass:'icon-sub' },
+    ]},
+    { id:'showregion', label:'ShowRegion', icon:'🌆', iconClass:'icon-city' },
+    { id:'testo', label:'TestO', icon:'🏢', iconClass:'icon-dept', children:[
+      { id:'test-sub', label:'Test-Sub', icon:'🏭', iconClass:'icon-sub' },
+    ]},
+    { id:'w-dept', label:'W_Department', icon:'🏢', iconClass:'icon-dept', children:[
+      { id:'w-sub1', label:'W-Substation', icon:'🏭', iconClass:'icon-sub' },
+    ]},
+  ]}
+];
+function buildTree(nodes, container, depth) {
+  nodes.forEach(n => {
+    const hasKids = n.children && n.children.length > 0;
+    const el = document.createElement('div');
+    el.className = 'tree-node'; el.setAttribute('data-id', n.id); el.setAttribute('data-label', n.label.toLowerCase());
+    el.style.paddingLeft = (8 + depth * 18) + 'px';
+    el.innerHTML = `<span class="tree-toggle">${hasKids?'▶':''}</span><span class="tree-icon ${n.iconClass}">${n.icon}</span><span class="tree-label">${n.label}</span>`;
+    container.appendChild(el);
+    let childBox = null;
+    if (hasKids) { childBox = document.createElement('div'); childBox.className = 'tree-children collapsed'; container.appendChild(childBox); buildTree(n.children, childBox, depth+1); }
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.tree-node.selected').forEach(e => e.classList.remove('selected'));
+      el.classList.add('selected');
+      if (childBox) { const c = childBox.classList.toggle('collapsed'); el.querySelector('.tree-toggle').textContent = c?'▶':'▼'; }
+      onTreeSelect(n.id);
+    });
+  });
+}
+function filterTree(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('.tree-node').forEach(el => el.classList.toggle('hidden', q && !el.getAttribute('data-label').includes(q)));
+  if (q) document.querySelectorAll('.tree-children').forEach(el => el.classList.remove('collapsed'));
+}
+function onTreeSelect(id) {
+  const c = { 'chengdu':[30.572,104.066,12],'cd-sub':[30.58,104.07,14],'cd-feeder':[30.575,104.065,15],'cd-tr-1':[30.578,104.062,16],'cd-tr-2':[30.573,104.068,16],'cd-tr-3':[30.569,104.058,16],'exhibition':[30.585,104.055,14] };
+  if (c[id]) map.setView([c[id][0],c[id][1]], c[id][2]);
+}
+
+// ========== Device Data ==========
+const devices = [
+  { id:'MTR-CD-301', lat:30.5792, lng:104.0612, risk:'critical', area:'CD-TR-1', addr:'Block A, Jinjiang', type:'Three Phase', comm:'RF Mesh',
+    totalEvents:28, neutral:10, cover:8, magnetic:6, consDrop:4, lastEvent:'Apr 21, 2026 03:15', lastType:'neutral-missing',
+    trend:[2,4,3,5,6,4,3,1], consumption:[120,118,115,112,45,38,42,35,110,108,40,32,105,102,38,30,100,98,95,42,35,30,28,25,90,88,85,82,80,78],
+    theftRisk:'theft', estLoss:'2,450 kWh',
+    wo:{ status:'processing', dispatch:'Dispatched', orderNo:'WO-2026-00350', updated:'Apr 21, 2026 08:00', assignee:'Zhang Wei' } },
+  { id:'MTR-CD-302', lat:30.5778, lng:104.0632, risk:'critical', area:'CD-TR-1', addr:'Tower 3, Jinjiang', type:'Three Phase', comm:'RF Mesh',
+    totalEvents:24, neutral:8, cover:6, magnetic:7, consDrop:3, lastEvent:'Apr 21, 2026 02:40', lastType:'magnetic',
+    trend:[1,3,4,4,5,3,3,1], consumption:[130,128,125,122,50,42,45,38,120,115,42,35,112,108,40,32,105,100,98,45,38,32,30,28,95,92,88,85,82,80],
+    theftRisk:'theft', estLoss:'1,980 kWh',
+    wo:{ status:'unhandled', dispatch:'Dispatched', orderNo:'WO-2026-00355', updated:'Apr 21, 2026 07:00', assignee:'Li Ming' } },
+  { id:'MTR-CD-303', lat:30.5762, lng:104.0605, risk:'high', area:'CD-TR-1', addr:'Villa 12, Jinjiang', type:'Single Phase', comm:'GPRS',
+    totalEvents:15, neutral:6, cover:5, magnetic:2, consDrop:2, lastEvent:'Apr 20, 2026 22:10', lastType:'cover-open',
+    trend:[1,2,2,3,3,2,1,1], consumption:[85,82,80,78,30,28,75,72,70,68,28,25,65,62,60,58,55,52,50,48,45,42,40,38,35,32,30,28,25,22],
+    theftRisk:'suspect', estLoss:'820 kWh',
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—' } },
+  { id:'MTR-CD-304', lat:30.5742, lng:104.0678, risk:'critical', area:'CD-TR-2', addr:'Bldg 8, Wuhou', type:'Three Phase', comm:'RF Mesh',
+    totalEvents:32, neutral:12, cover:8, magnetic:8, consDrop:4, lastEvent:'Apr 21, 2026 04:30', lastType:'neutral-missing',
+    trend:[3,5,4,6,7,4,2,1], consumption:[150,148,145,140,55,48,42,38,135,130,45,40,125,120,42,35,115,110,105,48,40,35,30,28,100,95,90,85,82,80],
+    theftRisk:'theft', estLoss:'3,120 kWh',
+    wo:{ status:'processing', dispatch:'Dispatched', orderNo:'WO-2026-00345', updated:'Apr 21, 2026 09:30', assignee:'Wang Fang' } },
+  { id:'MTR-CD-305', lat:30.5725, lng:104.0695, risk:'medium', area:'CD-TR-2', addr:'Block C, Wuhou', type:'Single Phase', comm:'GPRS',
+    totalEvents:8, neutral:2, cover:3, magnetic:1, consDrop:2, lastEvent:'Apr 19, 2026 18:45', lastType:'cover-open',
+    trend:[0,1,1,2,2,1,1,0], consumption:[60,58,56,55,52,50,48,46,44,42,40,38,36,35,34,32,30,28,26,25,24,22,20,18,16,15,14,12,10,8],
+    theftRisk:'suspect', estLoss:'340 kWh',
+    wo:{ status:'completed', dispatch:'Dispatched', orderNo:'WO-2026-00330', updated:'Apr 19, 2026 14:00', assignee:'Chen Jie' } },
+  { id:'MTR-CD-306', lat:30.5750, lng:104.0658, risk:'low', area:'CD-TR-2', addr:'Tower 7, Wuhou', type:'Single Phase', comm:'RF Mesh',
+    totalEvents:2, neutral:0, cover:1, magnetic:0, consDrop:1, lastEvent:'Apr 16, 2026 10:00', lastType:'consumption-drop',
+    trend:[0,0,0,1,0,0,1,0], consumption:[45,44,43,42,41,40,39,38,37,36,35,34,33,32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16],
+    theftRisk:'normal', estLoss:'—',
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—' } },
+  { id:'MTR-CD-307', lat:30.5700, lng:104.0575, risk:'critical', area:'CD-TR-3', addr:'Unit 5, Qingyang', type:'Three Phase', comm:'PLC',
+    totalEvents:35, neutral:14, cover:9, magnetic:8, consDrop:4, lastEvent:'Apr 21, 2026 05:00', lastType:'magnetic',
+    trend:[3,6,5,7,6,4,3,1], consumption:[160,155,150,145,60,52,48,42,140,135,50,45,130,125,48,40,120,115,110,52,45,38,35,30,105,100,95,90,85,80],
+    theftRisk:'theft', estLoss:'3,680 kWh',
+    wo:{ status:'unhandled', dispatch:'Dispatched', orderNo:'WO-2026-00360', updated:'Apr 21, 2026 07:30', assignee:'Zhao Peng' } },
+  { id:'MTR-CD-308', lat:30.5685, lng:104.0588, risk:'high', area:'CD-TR-3', addr:'Block 2, Qingyang', type:'Single Phase', comm:'PLC',
+    totalEvents:18, neutral:5, cover:6, magnetic:4, consDrop:3, lastEvent:'Apr 20, 2026 23:50', lastType:'cover-open',
+    trend:[1,3,2,4,3,2,2,1], consumption:[70,68,65,62,25,22,60,58,55,52,22,20,50,48,45,42,40,38,35,22,20,18,15,12,32,30,28,25,22,20],
+    theftRisk:'suspect', estLoss:'950 kWh',
+    wo:{ status:'processing', dispatch:'Dispatched', orderNo:'WO-2026-00348', updated:'Apr 21, 2026 10:00', assignee:'Sun Lei' } },
+  { id:'MTR-CD-309', lat:30.5715, lng:104.0555, risk:'medium', area:'CD-TR-3', addr:'Villa 3, Qingyang', type:'Single Phase', comm:'GPRS',
+    totalEvents:6, neutral:1, cover:2, magnetic:1, consDrop:2, lastEvent:'Apr 18, 2026 14:20', lastType:'consumption-drop',
+    trend:[0,1,1,1,1,1,1,0], consumption:[50,48,46,44,42,40,38,36,34,32,30,28,26,24,22,20,18,16,14,12,10,8,6,5,4,3,2,2,1,1],
+    theftRisk:'normal', estLoss:'—',
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—' } },
+  { id:'MTR-CD-310', lat:30.5808, lng:104.0702, risk:'high', area:'CD-TR-1', addr:'Bldg 15, Jinjiang', type:'Three Phase', comm:'RF Mesh',
+    totalEvents:20, neutral:7, cover:5, magnetic:5, consDrop:3, lastEvent:'Apr 21, 2026 01:20', lastType:'neutral-missing',
+    trend:[2,3,3,4,3,2,2,1], consumption:[110,108,105,100,40,35,95,92,88,85,35,30,80,78,75,32,28,70,68,35,30,28,25,22,65,62,60,58,55,52],
+    theftRisk:'suspect', estLoss:'1,250 kWh',
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—' } },
+  { id:'MTR-CD-311', lat:30.5825, lng:104.0572, risk:'low', area:'Exhibition', addr:'Hall B, Exhibition', type:'Single Phase', comm:'GPRS',
+    totalEvents:3, neutral:1, cover:1, magnetic:0, consDrop:1, lastEvent:'Apr 15, 2026 09:00', lastType:'cover-open',
+    trend:[0,0,1,0,1,0,1,0], consumption:[40,39,38,37,36,35,34,33,32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11],
+    theftRisk:'normal', estLoss:'—',
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—' } },
+  { id:'MTR-CD-312', lat:30.5835, lng:104.0542, risk:'high', area:'Exhibition', addr:'Hall D, Exhibition', type:'Three Phase', comm:'RF Mesh',
+    totalEvents:22, neutral:8, cover:6, magnetic:5, consDrop:3, lastEvent:'Apr 21, 2026 06:15', lastType:'magnetic',
+    trend:[2,3,3,4,4,3,2,1], consumption:[140,135,130,125,50,45,120,115,110,105,45,40,100,95,90,42,38,85,80,45,40,35,32,28,75,70,65,60,55,50],
+    theftRisk:'suspect', estLoss:'1,580 kWh',
+    wo:{ status:'processing', dispatch:'Dispatched', orderNo:'WO-2026-00352', updated:'Apr 21, 2026 08:30', assignee:'Wang Fang' } },
+];
+
+// ========== Marker SVGs ==========
+function getMarkerSvg(d) {
+  const colors = { critical:'#f56c6c', high:'#7b68ee', medium:'#e6a23c', low:'#26b5a0' };
+  const typeIcons = { 'neutral-missing':'⊘', 'cover-open':'⊡', 'magnetic':'⊛', 'consumption-drop':'↓' };
+  const color = colors[d.risk];
+  const icon = typeIcons[d.lastType] || '?';
+  const clusterRing = (d.risk==='critical') ? `<circle cx="14" cy="14" r="13" fill="none" stroke="${color}" stroke-width="2" stroke-dasharray="4,2"/>` : '';
+  return `<svg width="28" height="28" viewBox="0 0 28 28">${clusterRing}<circle cx="14" cy="14" r="10" fill="${color}" stroke="#fff" stroke-width="2"/><text x="14" y="18" text-anchor="middle" font-size="12" fill="#fff">${icon}</text></svg>`;
+}
+
+// ========== Map ==========
+let map, heatLayer, markerLayer, markers = [];
+function initMap() {
+  map = L.map('map', { zoomControl:false }).setView([30.572, 104.066], 13);
+  L.control.zoom({ position:'bottomleft' }).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution:'&copy; OpenStreetMap, &copy; CARTO', maxZoom:19, subdomains:'abcd'
+  }).addTo(map);
+  const heatPts = devices.map(d => [d.lat, d.lng, d.risk==='critical'?1.0:d.risk==='high'?0.7:d.risk==='medium'?0.4:0.2]);
+  heatLayer = L.heatLayer(heatPts, { radius:35, blur:25, maxZoom:15, max:1.0,
+    gradient:{0.15:'#26b5a0',0.35:'#c9b200',0.55:'#e6a23c',0.75:'#7b68ee',0.9:'#f56c6c',1.0:'#d32f2f'} }).addTo(map);
+  markerLayer = L.layerGroup();
+  devices.forEach(d => {
+    const icon = L.divIcon({ className:'', html:getMarkerSvg(d), iconSize:[28,28], iconAnchor:[14,14] });
+    const m = L.marker([d.lat,d.lng],{icon}).on('click',()=>showDevice(d));
+    m.bindTooltip(`${d.id}<br><span style="font-size:11px;">${d.risk} risk · ${d.totalEvents} events</span>`,{direction:'top',offset:[0,-14]});
+    markers.push({marker:m,data:d});
+    markerLayer.addLayer(m);
+  });
+  map.on('zoomend', updateLayers);
+  updateLayers();
+}
+function updateLayers() {
+  if (map.getZoom() >= 15) { map.removeLayer(heatLayer); map.addLayer(markerLayer); }
+  else { map.removeLayer(markerLayer); map.addLayer(heatLayer); }
+}
+
+// ========== Show Device ==========
+function showDevice(d) {
+  document.getElementById('detailPanel').classList.add('open');
+  setTimeout(() => map.invalidateSize(), 50);
+
+  const riskLabels = { critical:'Critical', high:'High', medium:'Medium', low:'Low' };
+  const typeLabels = { 'neutral-missing':'⊘ Neutral Missing', 'cover-open':'⊡ Terminal Cover Open', 'magnetic':'⊛ Magnetic Influence', 'consumption-drop':'↓ Consumption Drop' };
+  const riskTagCls = d.theftRisk==='theft'?'theft':d.theftRisk==='suspect'?'suspect':'normal';
+  const riskTagLabel = d.theftRisk==='theft'?'⚠ Confirmed Theft Pattern':d.theftRisk==='suspect'?'⚠ Suspected Theft':'✓ Normal';
+
+  // Trend bars
+  const maxT = Math.max(...d.trend, 1);
+  let trendBars = '';
+  d.trend.forEach((v,i) => {
+    const h = Math.max(v/maxT*48, 2);
+    const cls = v >= 5 ? 'high-bar' : v >= 3 ? 'med-bar' : v > 0 ? 'low-bar' : 'zero';
+    trendBars += `<div class="mini-bar ${cls}" style="height:${h}px;" title="Week ${Math.floor(i/2)+1}: ${v}"></div>`;
+  });
+
+  // Consumption chart (30 days)
+  const maxC = Math.max(...d.consumption, 1);
+  let consBars = '';
+  d.consumption.forEach((v,i) => {
+    const h = Math.max(v/maxC*38, 1);
+    const avg = d.consumption.reduce((a,b)=>a+b,0)/d.consumption.length;
+    const cls = v < avg * 0.5 ? 'drop' : 'norm';
+    consBars += `<div class="consumption-bar ${cls}" style="height:${h}px;" title="Day ${i+1}: ${v} kWh"></div>`;
+  });
+
+  const wo = d.wo;
+  const woStatusLabel = { undispatched:'Undispatched', unhandled:'Unhandled', processing:'Processing', completed:'Completed' };
+
+  document.getElementById('panelContent').innerHTML = `
+    <div style="margin-bottom:12px;">
+      <div class="info-row"><span class="info-label">Device ID</span><span class="info-value" style="font-weight:700;">${d.id}</span></div>
+      <div class="info-row"><span class="info-label">Risk Level</span><span class="severity-badge ${d.risk}">${riskLabels[d.risk]}</span></div>
+      <div class="info-row"><span class="info-label">Theft Assessment</span><span class="risk-tag ${riskTagCls}">${riskTagLabel}</span></div>
+      <div class="info-row"><span class="info-label">Area</span><span class="info-value">${d.area}</span></div>
+      <div class="info-row"><span class="info-label">Address</span><span class="info-value">${d.addr}</span></div>
+      <div class="info-row"><span class="info-label">Meter Type</span><span class="info-value">${d.type}</span></div>
+      <div class="info-row"><span class="info-label">Comm Module</span><span class="info-value">${d.comm}</span></div>
+      <div class="info-row"><span class="info-label">Last Event</span><span class="info-value">${d.lastEvent}</span></div>
+      <div class="info-row"><span class="info-label">Last Type</span><span class="info-value">${typeLabels[d.lastType]}</span></div>
+      ${d.estLoss !== '—' ? `<div class="info-row"><span class="info-label">Est. Energy Loss</span><span class="info-value" style="color:#f56c6c;font-weight:700;">${d.estLoss}</span></div>` : ''}
+    </div>
+
+    <div class="section-title">Tamper Event Summary (30 Days)</div>
+    <div class="stat-mini">
+      <div class="stat-mini-item"><div class="sm-val" style="color:#f56c6c;">${d.totalEvents}</div><div class="sm-lbl">Total Events</div></div>
+      <div class="stat-mini-item"><div class="sm-val" style="color:#7b68ee;">${d.neutral + d.magnetic}</div><div class="sm-lbl">Electrical</div></div>
+      <div class="stat-mini-item"><div class="sm-val" style="color:#e6a23c;">${d.cover + d.consDrop}</div><div class="sm-lbl">Physical/Usage</div></div>
+    </div>
+
+    <div class="section-title">Event Type Breakdown</div>
+    <table class="event-breakdown">
+      <thead><tr><th>Type</th><th>Count</th><th>Share</th><th style="width:70px"></th></tr></thead>
+      <tbody>
+        ${evtRow('Neutral Missing', d.neutral, d.totalEvents, 'red')}
+        ${evtRow('Cover Open', d.cover, d.totalEvents, 'orange')}
+        ${evtRow('Magnetic', d.magnetic, d.totalEvents, 'purple')}
+        ${evtRow('Consumption Drop', d.consDrop, d.totalEvents, 'yellow')}
+      </tbody>
+    </table>
+
+    <div class="section-title">Event Trend (Last 4 Weeks)</div>
+    <div class="mini-chart">${trendBars}</div>
+    <div class="chart-labels"><span>W1</span><span></span><span>W2</span><span></span><span>W3</span><span></span><span>W4</span><span></span></div>
+
+    <div class="section-title">Consumption Pattern (30 Days, kWh)</div>
+    <div class="consumption-chart">${consBars}</div>
+    <div class="chart-labels"><span>Day 1</span><span>Day 15</span><span>Day 30</span></div>
+    <div style="font-size:11px;color:#999;margin-top:4px;"><span style="display:inline-block;width:10px;height:10px;background:#f56c6c;border-radius:2px;margin-right:4px;vertical-align:middle;"></span>Abnormal drop <span style="display:inline-block;width:10px;height:10px;background:#26b5a0;border-radius:2px;margin:0 4px;vertical-align:middle;"></span>Normal</div>
+
+    <div class="section-title">Work Order Status</div>
+    <div class="wo-card">
+      <div class="wo-row"><span class="wo-label">Dispatch</span><span class="wo-val ${wo.status}">${wo.dispatch}</span></div>
+      <div class="wo-row"><span class="wo-label">Progress</span><span class="wo-val ${wo.status}">${woStatusLabel[wo.status]}</span></div>
+      <div class="wo-row"><span class="wo-label">Order No.</span><span class="wo-val" style="color:#409eff;">${wo.orderNo}</span></div>
+      <div class="wo-row"><span class="wo-label">Assignee</span><span class="wo-val">${wo.assignee}</span></div>
+      <div class="wo-row"><span class="wo-label">Updated</span><span class="wo-val">${wo.updated}</span></div>
+    </div>
+
+    <button class="btn-service" onclick="alert('Inspection order created for ${d.id}!')">+ Service Order</button>
+  `;
+  map.setView([d.lat, d.lng], Math.max(map.getZoom(), 16));
+}
+
+function evtRow(name, count, total, cls) {
+  const pct = total > 0 ? (count/total*100).toFixed(1) : 0;
+  return `<tr><td style="font-weight:500;">${name}</td><td>${count}</td><td>${pct}%</td><td><div class="pct-bar-bg"><div class="pct-bar ${cls}" style="width:${pct}%"></div></div></td></tr>`;
+}
+
+function closePanel() {
+  document.getElementById('detailPanel').classList.remove('open');
+  setTimeout(() => map.invalidateSize(), 50);
+}
+
+function applyFilter() {
+  const tamper = document.getElementById('tamperFilter').value;
+  const risk = document.getElementById('riskFilter').value;
+  markerLayer.clearLayers();
+  const filtered = [];
+  markers.forEach(m => {
+    const d = m.data;
+    if (risk && d.risk !== risk) return;
+    if (tamper && d.lastType !== tamper) return;
+    markerLayer.addLayer(m.marker);
+    filtered.push(d);
+  });
+  map.removeLayer(heatLayer);
+  const pts = filtered.map(d => [d.lat,d.lng,d.risk==='critical'?1.0:d.risk==='high'?0.7:d.risk==='medium'?0.4:0.2]);
+  heatLayer = L.heatLayer(pts, { radius:35,blur:25,maxZoom:15,max:1.0,
+    gradient:{0.15:'#26b5a0',0.35:'#c9b200',0.55:'#e6a23c',0.75:'#7b68ee',0.9:'#f56c6c',1.0:'#d32f2f'} });
+  updateLayers();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  buildTree(treeData, document.getElementById('areaTree'), 0);
+  initMap();
+});
+</script>

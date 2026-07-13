@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interval Consumption Trend — Reporting</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;color:#333}
+  .topbar{display:flex;align-items:center;height:40px;background:#fff;border-bottom:1px solid #e0e0e0;padding:0 20px;font-size:12px}
+  .topbar .logo{font-weight:700;font-size:16px;color:#26b5a0;margin-right:24px;letter-spacing:1px}
+  .topbar .nav-link{padding:0 14px;line-height:40px;color:#555;cursor:pointer;position:relative}
+  .topbar .nav-link:hover{color:#26b5a0}.topbar .nav-link.active{color:#26b5a0;font-weight:600}
+  .topbar .nav-link.active::after{content:'';position:absolute;bottom:0;left:14px;right:14px;height:2px;background:#26b5a0}
+  .topbar .spacer{flex:1}.topbar .meta{color:#999;font-size:12px}
+  .topbar .online-badge{display:inline-block;padding:2px 8px;border-radius:10px;background:#e6f7f4;color:#26b5a0;font-size:11px;margin-left:12px}
+  .layout{display:flex;height:calc(100vh - 40px)}
+  .sidebar{width:200px;background:#fff;border-right:1px solid #e8e8e8;padding-top:12px;overflow-y:auto;flex-shrink:0}
+  .sidebar .section-title{padding:8px 16px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px}
+  .sidebar .nav-item{padding:9px 20px;font-size:13px;color:#666;cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+  .sidebar .nav-item:hover{color:#26b5a0;background:#f9fffe}
+  .sidebar .nav-item.active{color:#26b5a0;border-left-color:#26b5a0;font-weight:600;background:#f0faf8}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .content{flex:1;padding:12px 16px;overflow-y:auto}
+  .filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .filter-bar label{font-size:12px;color:#555}
+  .filter-bar select,.filter-bar input{padding:4px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:12px;outline:none}
+  .filter-bar select:focus,.filter-bar input:focus{border-color:#26b5a0}
+  .btn{padding:4px 12px;border:none;border-radius:4px;font-size:12px;cursor:pointer}.btn:hover{opacity:.85}
+  .btn-primary{background:#26b5a0;color:#fff}.btn-outline{background:#fff;color:#26b5a0;border:1px solid #26b5a0}
+  .btn-export{background:#fff;color:#555;border:1px solid #d9d9d9}.btn-export:hover{border-color:#26b5a0;color:#26b5a0}
+  .btn-tab{padding:4px 12px;border:1px solid #d9d9d9;border-radius:4px;font-size:12px;cursor:pointer;background:#fff;color:#666;transition:all .15s}
+  .btn-tab.active{background:#26b5a0;color:#fff;border-color:#26b5a0}
+  .kpi-row{display:flex;gap:10px;margin-bottom:10px}
+  .kpi-card{flex:1;background:#fff;border-radius:6px;padding:8px 14px;box-shadow:0 1px 3px rgba(0,0,0,.06);position:relative;overflow:hidden}
+  .kpi-card .kpi-label{font-size:11px;color:#999;margin-bottom:2px}
+  .kpi-card .kpi-value{font-size:20px;font-weight:700}
+  .kpi-card .kpi-sub{font-size:11px;color:#999;margin-top:2px}
+  .kpi-card .kpi-trend{font-size:11px;margin-top:1px}
+  .kpi-card .kpi-trend.up{color:#f56c6c}.kpi-card .kpi-trend.down{color:#26b5a0}
+  .kpi-card .kpi-bar{position:absolute;bottom:0;left:0;right:0;height:3px}
+  .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .chart-card{background:#fff;border-radius:6px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .chart-card.full{grid-column:1/-1}
+  .chart-card canvas{max-height:160px}.chart-card.full canvas{max-height:140px}
+  .chart-card.tall canvas{max-height:200px}
+  .chart-title{font-size:12px;font-weight:600;color:#333;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+  .chart-title .chart-sub{font-size:11px;font-weight:400;color:#999}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  th{background:#f7f7f7;text-align:left;padding:6px 10px;font-size:11px;font-weight:600;color:#555;border-bottom:1px solid #e8e8e8;white-space:nowrap}
+  td{padding:5px 10px;font-size:12px;border-bottom:1px solid #f0f0f0;color:#444}
+  tr:hover td{background:#f9fffe}
+  .section-label{font-size:12px;font-weight:600;color:#333;margin:8px 0 6px}
+  .badge{display:inline-block;padding:1px 8px;border-radius:3px;font-size:11px;font-weight:600}
+  .badge-peak{background:#fde2e2;color:#f56c6c}
+  .badge-offpeak{background:#e6f7f4;color:#26b5a0}
+  .badge-high{background:#fde2e2;color:#f56c6c}
+  .badge-medium{background:#fff3e0;color:#e6a23c}
+  .badge-low{background:#e6f7f4;color:#26b5a0}
+  .badge-growth{background:#fde2e2;color:#f56c6c}
+  .badge-stable{background:#e0e8ff;color:#409eff}
+  .badge-decline{background:#e6f7f4;color:#26b5a0}
+  .bar-wrap{display:inline-flex;align-items:center;gap:5px;min-width:100px}
+  .bar-track{flex:1;height:6px;background:#eee;border-radius:3px;overflow:hidden;min-width:50px}
+  .bar-fill{height:100%;border-radius:3px}
+  /* Area panel */
+  .area-panel{width:220px;background:#fff;border-right:1px solid #e8e8e8;display:flex;flex-direction:row;overflow:hidden;flex-shrink:0}
+  .area-icon-strip{width:36px;background:#fafafa;border-right:1px solid #f0f0f0;display:flex;flex-direction:column;align-items:center;padding-top:6px;gap:2px;flex-shrink:0}
+  .area-icon-strip .icon-btn{width:30px;height:30px;border:none;background:transparent;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;position:relative}
+  .area-icon-strip .icon-btn:hover{background:#e6f7f4}
+  .area-icon-strip .icon-btn.active{background:#e6f7f4}
+  .area-icon-strip .icon-btn.active::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:3px;background:#26b5a0;border-radius:0 2px 2px 0}
+  .area-icon-strip .icon-btn svg{width:18px;height:18px}
+  .area-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .area-content .area-search{padding:8px 10px;border-bottom:1px solid #f0f0f0}
+  .area-content .area-search input{width:100%;padding:5px 8px;border:1px solid #d9d9d9;border-radius:4px;font-size:11px;outline:none}
+  .area-content .area-search input:focus{border-color:#26b5a0}
+  .area-content .area-search input::placeholder{color:#bbb}
+  .area-tab-body{flex:1;overflow-y:auto}
+  .area-tab-body .tab-pane{display:none;height:100%}.area-tab-body .tab-pane.active{display:block}
+  .area-tree{padding:4px 0;font-size:13px;user-select:none;height:100%;overflow-y:auto}
+  .area-tree ul{list-style:none;margin:0;padding:0}
+  .area-tree .tree-row{display:flex;align-items:center;gap:4px;padding:4px 8px;cursor:pointer;border-radius:3px;margin:1px 4px;transition:background .12s;white-space:nowrap}
+  .area-tree .tree-row:hover{background:#f0faf8}.area-tree .tree-row.selected{background:#26b5a0;color:#fff}
+  .area-tree .tree-toggle{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#999;flex-shrink:0;transition:transform .15s}
+  .area-tree .tree-toggle.expanded{transform:rotate(90deg)}.area-tree .tree-toggle.leaf{visibility:hidden}
+  .area-tree .tree-icon{width:14px;height:14px;flex-shrink:0}
+  .area-tree .tree-label{font-size:11px;overflow:hidden;text-overflow:ellipsis}
+  .area-tree .children{padding-left:14px}.area-tree .children.collapsed{display:none}
+  .group-list{padding:6px 0}
+  .group-item{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;font-size:11px;color:#555;margin:1px 4px;border-radius:3px}
+  .group-item:hover{background:#f0faf8;color:#26b5a0}.group-item.selected{background:#26b5a0;color:#fff}
+  .fav-list{padding:6px 0}
+  .fav-item{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;font-size:11px;color:#555;margin:1px 4px;border-radius:3px}
+  .fav-item:hover{background:#fff8e6}.fav-item .fav-star{color:#e6a23c;font-size:12px}
+  .area-toolbar{display:flex;align-items:center;gap:4px;padding:6px 8px;border-top:1px solid #f0f0f0;background:#fafafa}
+  .area-toolbar button{width:26px;height:26px;border:1px solid #d9d9d9;border-radius:4px;background:#fff;cursor:pointer;font-size:14px;color:#666;display:inline-flex;align-items:center;justify-content:center}
+  .area-toolbar button:hover{border-color:#26b5a0;color:#26b5a0}
+  /* Drawer */
+  .drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:100}
+  .drawer-overlay.open{display:block}
+  .drawer{position:fixed;right:0;top:40px;bottom:0;width:700px;background:#fff;box-shadow:-4px 0 16px rgba(0,0,0,.12);z-index:101;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s}
+  .drawer.open{transform:translateX(0)}
+  .drawer-header{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #e8e8e8;gap:10px}
+  .drawer-title{font-size:14px;font-weight:600;flex:1}
+  .drawer-close{width:28px;height:28px;border:none;background:transparent;cursor:pointer;font-size:18px;color:#999;border-radius:4px}
+  .drawer-close:hover{background:#f5f5f5;color:#333}
+  .drawer-body{flex:1;overflow-y:auto;padding:12px 16px}
+  .drawer-kpi-row{display:flex;gap:8px;margin-bottom:12px}
+  .drawer-kpi{flex:1;background:#f9fffe;border:1px solid #e6f7f4;border-radius:6px;padding:8px 12px;text-align:center}
+  .drawer-kpi .dk-val{font-size:16px;font-weight:700}
+  .drawer-kpi .dk-lbl{font-size:10px;color:#999;margin-top:2px}
+  .drawer-section{font-size:12px;font-weight:600;color:#333;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid #f0f0f0}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">⊙ HES</span>
+  <span class="nav-link">Dashboard</span>
+  <span class="nav-link">Device ▾</span>
+  <span class="nav-link">Operation ▾</span>
+  <span class="nav-link">Collection ▾</span>
+  <span class="nav-link">Installation ▾</span>
+  <span class="nav-link active">Readings ▾</span>
+  <span class="nav-link">Network ▾</span>
+  <span class="nav-link">Exception ▾</span>
+  <span class="nav-link">Master Data ▾</span>
+  <span class="nav-link">VEE ▾</span>
+  <span class="nav-link">Report ▾</span>
+  <span class="spacer"></span>
+  <span class="meta">22/04/2026 10:22:05</span>
+  <span class="online-badge">Online: 118</span>
+</div>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="section-title">Readings</div>
+    <div class="nav-item">Reading Profile</div>
+    <div class="nav-item">Billing Read</div>
+    <div class="nav-item">On-Demand Read</div>
+    <div class="section-title">Consumption Analytics</div>
+    <div class="nav-item active">Interval Consumption Trend</div>
+    <div class="nav-item">Peak / Off-Peak Analysis</div>
+    <div class="nav-item">Load Factor Report</div>
+    <div class="nav-item">Seasonal Pattern</div>
+    <div class="nav-item">Consumption Comparison</div>
+    <div class="section-title">Reports</div>
+    <div class="nav-item">Consumption Trend Report</div>
+    <div class="nav-item">Data Completeness</div>
+  </div>
+
+  <!-- Area Panel -->
+  <div class="area-panel">
+    <div class="area-icon-strip">
+      <button class="icon-btn active" title="Region" onclick="switchAreaTab('region',this)">
+        <svg viewBox="0 0 20 20"><rect x="7" y="2" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="1.5" y="13" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="12.5" y="13" width="6" height="4" rx="1" fill="#26b5a0"/><line x1="10" y1="6" x2="10" y2="9" stroke="#26b5a0" stroke-width="1.4"/><line x1="4.5" y1="9" x2="15.5" y2="9" stroke="#26b5a0" stroke-width="1.4"/><line x1="4.5" y1="9" x2="4.5" y2="13" stroke="#26b5a0" stroke-width="1.4"/><line x1="15.5" y1="9" x2="15.5" y2="13" stroke="#26b5a0" stroke-width="1.4"/></svg>
+      </button>
+      <button class="icon-btn" title="Group" onclick="switchAreaTab('group',this)">
+        <svg viewBox="0 0 20 20"><path d="M3 3h5v5H3V3zm9 0h5v5h-5V3zM3 12h5v5H3v-5zm9 0h5v5h-5v-5z" fill="#8b5cf6" opacity=".85"/></svg>
+      </button>
+      <button class="icon-btn" title="Favorites" onclick="switchAreaTab('favorites',this)">
+        <svg viewBox="0 0 20 20"><path d="M10 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L10 14.3l-4.8 2.6.9-5.4L2.2 7.7l5.4-.8z" fill="#e6a23c"/></svg>
+      </button>
+    </div>
+    <div class="area-content">
+      <div class="area-search"><input type="text" id="areaSearchInput" placeholder="Department" oninput="filterAreaTree(this.value)"></div>
+      <div class="area-tab-body">
+        <div id="areaTabRegion" class="tab-pane active"><div class="area-tree" id="areaTree"></div></div>
+        <div id="areaTabGroup" class="tab-pane"><div class="group-list" id="groupList"></div></div>
+        <div id="areaTabFavorites" class="tab-pane"><div class="fav-list" id="favList"></div></div>
+      </div>
+      <div class="area-toolbar">
+        <button title="Refresh" onclick="refreshAreaTree()">↻</button>
+        <button title="Expand All" onclick="expandAllNodes()">＋</button>
+        <button title="Collapse All" onclick="collapseAllNodes()">－</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="content">
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <label>Granularity:</label>
+        <button class="btn-tab" onclick="setGranularity('daily',this)">Daily</button>
+        <button class="btn-tab active" onclick="setGranularity('weekly',this)">Weekly</button>
+        <button class="btn-tab" onclick="setGranularity('monthly',this)">Monthly</button>
+        <span style="width:1px;height:20px;background:#e0e0e0;margin:0 4px"></span>
+        <label>Period:</label>
+        <input type="date" value="2026-01-01">
+        <span style="font-size:11px;color:#bbb">—</span>
+        <input type="date" value="2026-04-22">
+        <select id="filterModel"><option value="">All Models</option><option>KAIFA-1PH</option><option>KAIFA-3PH</option><option>KAIFA-CT</option></select>
+        <select id="filterArea"><option value="">All Areas</option><option>Sharjah-E</option><option>Sharjah-W</option><option>Al Dhaid</option><option>Kalba</option><option>Khorfakkan</option><option>Dibba</option></select>
+        <select id="filterCompare"><option value="">No Comparison</option><option>vs Previous Period</option><option>vs Same Period Last Year</option></select>
+        <button class="btn btn-primary">Apply</button>
+        <button class="btn btn-outline">Reset</button>
+        <button class="btn btn-export">⬇ Export</button>
+      </div>
+
+      <!-- KPI Row -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Total Consumption (Apr)</div>
+          <div class="kpi-value" style="color:#333;">48.6 <span style="font-size:13px;font-weight:400">GWh</span></div>
+          <div class="kpi-sub">All meters — electricity</div>
+          <div class="kpi-trend up">▲ +6.2% vs Mar 2026</div>
+          <div class="kpi-bar" style="background:#409eff;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg Daily Consumption</div>
+          <div class="kpi-value" style="color:#26b5a0;">2.21 <span style="font-size:13px;font-weight:400">GWh</span></div>
+          <div class="kpi-sub">Per day this month</div>
+          <div class="kpi-trend up">▲ +5.8% vs Mar 2026</div>
+          <div class="kpi-bar" style="background:#26b5a0;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Peak Demand</div>
+          <div class="kpi-value" style="color:#f56c6c;">3.84 <span style="font-size:13px;font-weight:400">GWh</span></div>
+          <div class="kpi-sub">Apr 18 — 14:00–15:00</div>
+          <div class="kpi-trend up">▲ +8.1% vs Mar peak</div>
+          <div class="kpi-bar" style="background:#f56c6c;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Peak / Off-Peak Ratio</div>
+          <div class="kpi-value" style="color:#e6a23c;">1.74</div>
+          <div class="kpi-sub">Peak 63.5% / Off-peak 36.5%</div>
+          <div class="kpi-bar" style="background:#e6a23c;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Load Factor</div>
+          <div class="kpi-value" style="color:#8b5cf6;">57.5<span style="font-size:13px;font-weight:400">%</span></div>
+          <div class="kpi-sub">Avg / Peak ratio</div>
+          <div class="kpi-trend down">▼ -1.2% vs Mar 2026</div>
+          <div class="kpi-bar" style="background:#8b5cf6;"></div>
+        </div>
+      </div>
+
+      <!-- Main Trend Chart -->
+      <div class="chart-grid">
+        <div class="chart-card full tall">
+          <div class="chart-title">
+            Weekly Consumption Trend — Jan to Apr 2026
+            <span class="chart-sub">vs Same Period Last Year</span>
+          </div>
+          <canvas id="chartMainTrend" height="140"></canvas>
+        </div>
+      </div>
+
+      <!-- Row 2 -->
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Avg Daily Load Profile (15-min intervals)</div>
+          <canvas id="chartLoadProfile" height="140"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Peak vs Off-Peak by Week</div>
+          <canvas id="chartPeakOffpeak" height="140"></canvas>
+        </div>
+      </div>
+
+      <!-- Row 3 -->
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Consumption by Area — Apr 2026</div>
+          <canvas id="chartByArea" height="140"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Consumption by Model — Apr 2026</div>
+          <canvas id="chartByModel" height="140"></canvas>
+        </div>
+      </div>
+
+      <!-- Area Summary Table -->
+      <div class="section-label">Area Consumption Summary — Apr 2026</div>
+      <table id="areaTable"></table>
+
+    </div>
+  </div>
+</div>
+
+<!-- Drawer -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="detailDrawer">
+  <div class="drawer-header">
+    <span class="drawer-title" id="drawerTitle">Area Detail</span>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script>
+// ══ AREA TREE ══
+const areaTreeData=[{id:'sewa',label:'SEWA',icon:'org',children:[
+  {id:'sharjah-e',label:'Sharjah-E',icon:'area',children:[
+    {id:'dcu-group',label:'DCU',icon:'dcu-folder',children:[{id:'dcu-tr1',label:'DCU-TR1',icon:'dcu'},{id:'dcu-tr2',label:'DCU-TR2',icon:'dcu'},{id:'dcu-tr3',label:'DCU-TR3',icon:'dcu'},{id:'dcu-tr4',label:'DCU-TR4',icon:'dcu'}]},
+    {id:'p2p',label:'P2P',icon:'area'}]},
+  {id:'sharjah-w',label:'Sharjah-W',icon:'area',children:[{id:'dcu-group-w',label:'DCU',icon:'dcu-folder',children:[{id:'dcu-w1',label:'DCU-W1',icon:'dcu'},{id:'dcu-w2',label:'DCU-W2',icon:'dcu'}]}]},
+  {id:'al-dhaid',label:'Al Dhaid',icon:'area'},{id:'kalba',label:'Kalba',icon:'area'},{id:'khorfakkan',label:'Khorfakkan',icon:'area'},{id:'dibba',label:'Dibba Al Hisn',icon:'area'},
+]}];
+const iconSvgs={
+  org:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="5" y="1" width="6" height="4" rx="1" fill="#26b5a0"/><rect x="1" y="9" width="5" height="4" rx="1" fill="#26b5a0"/><rect x="10" y="9" width="5" height="4" rx="1" fill="#26b5a0"/><line x1="8" y1="5" x2="8" y2="7" stroke="#26b5a0" stroke-width="1.2"/><line x1="3.5" y1="7" x2="12.5" y2="7" stroke="#26b5a0" stroke-width="1.2"/><line x1="3.5" y1="7" x2="3.5" y2="9" stroke="#26b5a0" stroke-width="1.2"/><line x1="12.5" y1="7" x2="12.5" y2="9" stroke="#26b5a0" stroke-width="1.2"/></svg>`,
+  area:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#e6f7f4" stroke="#26b5a0" stroke-width=".8"/><path d="M4 7l2.5 3L11 6" stroke="#26b5a0" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  'dcu-folder':`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#e6f7f4" stroke="#26b5a0" stroke-width=".8"/><rect x="5" y="6" width="6" height="4" rx="1" fill="#26b5a0" opacity=".3"/></svg>`,
+  dcu:`<svg class="tree-icon" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="#26b5a0" opacity=".15" stroke="#26b5a0" stroke-width=".8"/><circle cx="8" cy="6" r="1.5" fill="#26b5a0"/><line x1="6" y1="10" x2="10" y2="10" stroke="#26b5a0" stroke-width="1" stroke-linecap="round"/></svg>`
+};
+let selectedAreaId='sewa';
+function buildTreeHTML(ns,d){let h='';ns.forEach(n=>{const has=n.children&&n.children.length>0,exp=d<2,sel=n.id===selectedAreaId;const tc=has?(exp?'tree-toggle expanded':'tree-toggle'):'tree-toggle leaf';h+=`<li><div class="tree-row${sel?' selected':''}" onclick="selectAreaNode('${n.id}',this)"><span class="${tc}" onclick="event.stopPropagation();toggleNode(this)">▶</span>${iconSvgs[n.icon]||iconSvgs.area}<span class="tree-label">${n.label}</span></div>`;if(has){h+=`<ul class="children${exp?'':' collapsed'}">`;h+=buildTreeHTML(n.children,d+1);h+='</ul>';}h+='</li>';});return h;}
+function renderAreaTree(d){document.getElementById('areaTree').innerHTML='<ul>'+buildTreeHTML(d||areaTreeData,0)+'</ul>';}
+function toggleNode(t){t.classList.toggle('expanded');const u=t.closest('li').querySelector(':scope>ul');if(u)u.classList.toggle('collapsed');}
+function selectAreaNode(id,el){document.querySelectorAll('.tree-row.selected').forEach(e=>e.classList.remove('selected'));el.classList.add('selected');selectedAreaId=id;}
+function expandAllNodes(){document.querySelectorAll('.tree-toggle').forEach(t=>t.classList.add('expanded'));document.querySelectorAll('.children').forEach(c=>c.classList.remove('collapsed'));}
+function collapseAllNodes(){document.querySelectorAll('.tree-toggle').forEach(t=>{if(!t.classList.contains('leaf'))t.classList.remove('expanded')});document.querySelectorAll('.children').forEach(c=>c.classList.add('collapsed'));}
+function filterAreaTree(q){if(!q.trim()){renderAreaTree();return;}const lq=q.toLowerCase();function f(ns){return ns.reduce((a,n)=>{const m=n.label.toLowerCase().includes(lq),fc=n.children?f(n.children):[];if(m||fc.length)a.push({...n,children:fc.length?fc:n.children});return a;},[]);}document.getElementById('areaTree').innerHTML='<ul>'+buildTreeHTML(f(areaTreeData),0)+'</ul>';expandAllNodes();}
+function refreshAreaTree(){renderAreaTree();}
+renderAreaTree();
+const areaTabs={region:'areaTabRegion',group:'areaTabGroup',favorites:'areaTabFavorites'};
+function switchAreaTab(t,b){document.querySelectorAll('.icon-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');Object.values(areaTabs).forEach(id=>document.getElementById(id).classList.remove('active'));document.getElementById(areaTabs[t]).classList.add('active');document.getElementById('areaSearchInput').placeholder={region:'Department',group:'Group',favorites:'Favorites'}[t];document.getElementById('areaSearchInput').value='';}
+document.getElementById('groupList').innerHTML=[{l:'Residential',c:5200},{l:'Commercial',c:1800},{l:'Industrial',c:640},{l:'Government',c:900}].map(g=>`<div class="group-item" onclick="this.parentElement.querySelectorAll('.group-item').forEach(e=>e.classList.remove('selected'));this.classList.add('selected')"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="3" fill="#8b5cf6" opacity=".15" stroke="#8b5cf6" stroke-width=".8"/></svg><span style="flex:1">${g.l}</span><span style="color:#bbb;font-size:10px">${g.c}</span></div>`).join('');
+document.getElementById('favList').innerHTML=[{l:'Sharjah-E',t:'Area'},{l:'Industrial Group',t:'Group'}].map(f=>`<div class="fav-item"><span class="fav-star">★</span><span style="flex:1">${f.l}</span><span style="color:#bbb;font-size:10px">${f.t}</span></div>`).join('');
+
+function setGranularity(g,btn){document.querySelectorAll('.btn-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+
+// ══ COLORS ══
+const teal='#26b5a0',red='#f56c6c',amber='#e6a23c',blue='#409eff',purple='#8b5cf6',gray='#c0c4cc';
+
+// 1. Main Weekly Trend (current vs last year)
+const weeks=['W1 Jan','W2 Jan','W3 Jan','W4 Jan','W1 Feb','W2 Feb','W3 Feb','W4 Feb','W1 Mar','W2 Mar','W3 Mar','W4 Mar','W1 Apr','W2 Apr','W3 Apr'];
+const curr2026=[9.8,10.2,10.5,10.1,10.8,11.2,11.0,10.9,11.4,11.8,12.1,11.9,12.4,12.8,13.1];
+const prev2025=[9.1,9.4,9.6,9.3,9.8,10.1,10.0,9.9,10.3,10.6,10.9,10.7,11.1,11.4,11.7];
+new Chart(document.getElementById('chartMainTrend'),{type:'line',
+  data:{labels:weeks,datasets:[
+    {label:'2026 (GWh/week)',data:curr2026,borderColor:teal,backgroundColor:'rgba(38,181,160,.08)',fill:true,pointRadius:3,tension:.35,borderWidth:2},
+    {label:'2025 (GWh/week)',data:prev2025,borderColor:gray,backgroundColor:'transparent',borderDash:[4,3],pointRadius:2,tension:.35,borderWidth:1.5},
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    scales:{y:{ticks:{callback:v=>v+' GWh',font:{size:9}}},x:{ticks:{font:{size:9}}}},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:10},padding:10}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw} GWh`}}}}
+});
+
+// 2. Avg Daily Load Profile (96 x 15-min intervals)
+const intervals=[];for(let h=0;h<24;h++)for(let m=0;m<60;m+=15)intervals.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+const loadProfile=intervals.map((_,i)=>{
+  const h=Math.floor(i/4);
+  if(h>=0&&h<6)return+(1.2+Math.random()*.3).toFixed(2);
+  if(h>=6&&h<9)return+(2.4+Math.random()*.6).toFixed(2);
+  if(h>=9&&h<12)return+(3.2+Math.random()*.5).toFixed(2);
+  if(h>=12&&h<14)return+(2.8+Math.random()*.4).toFixed(2);
+  if(h>=14&&h<18)return+(3.6+Math.random()*.5).toFixed(2);
+  if(h>=18&&h<21)return+(3.1+Math.random()*.4).toFixed(2);
+  return+(2.0+Math.random()*.3).toFixed(2);
+});
+// shade peak hours
+const peakBg=intervals.map((_,i)=>{const h=Math.floor(i/4);return(h>=9&&h<18)?'rgba(245,108,108,.15)':'rgba(38,181,160,.12)';});
+new Chart(document.getElementById('chartLoadProfile'),{type:'bar',
+  data:{labels:intervals,datasets:[
+    {label:'Avg Load (MWh/15min)',data:loadProfile,backgroundColor:peakBg,borderWidth:0,borderRadius:1},
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{
+      x:{ticks:{maxTicksLimit:12,font:{size:8}},grid:{display:false}},
+      y:{ticks:{callback:v=>v+' MWh',font:{size:9}}}
+    },
+    plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>`${ctx.raw} MWh`}}}}
+});
+
+// 3. Peak vs Off-Peak by Week
+new Chart(document.getElementById('chartPeakOffpeak'),{type:'bar',
+  data:{labels:['W1 Jan','W2 Jan','W3 Jan','W4 Jan','W1 Feb','W2 Feb','W3 Feb','W4 Feb','W1 Mar','W2 Mar','W3 Mar','W4 Mar','W1 Apr','W2 Apr','W3 Apr'],
+    datasets:[
+      {label:'Peak (GWh)',data:[6.2,6.5,6.7,6.4,6.9,7.1,7.0,6.9,7.2,7.5,7.7,7.5,7.9,8.1,8.3],backgroundColor:red,borderRadius:2},
+      {label:'Off-Peak (GWh)',data:[3.6,3.7,3.8,3.7,3.9,4.1,4.0,4.0,4.2,4.3,4.4,4.4,4.5,4.7,4.8],backgroundColor:blue,borderRadius:2},
+    ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{stacked:true,ticks:{font:{size:8},maxRotation:45}},y:{stacked:true,ticks:{callback:v=>v+' GWh',font:{size:9}}}},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:9},padding:6}}}}
+});
+
+// 4. By Area (horizontal bar)
+new Chart(document.getElementById('chartByArea'),{type:'bar',
+  data:{labels:['Sharjah-E','Sharjah-W','Al Dhaid','Kalba','Khorfakkan','Dibba'],
+    datasets:[
+      {label:'Peak',data:[5.8,4.2,2.8,2.1,1.8,1.2],backgroundColor:red,borderRadius:2},
+      {label:'Off-Peak',data:[3.4,2.5,1.6,1.2,1.0,0.7],backgroundColor:blue,borderRadius:2},
+    ]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    scales:{x:{stacked:true,ticks:{callback:v=>v+' GWh',font:{size:9}}},y:{stacked:true,ticks:{font:{size:9}}}},
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:9},padding:6}}}}
+});
+
+// 5. By Model (doughnut)
+new Chart(document.getElementById('chartByModel'),{type:'doughnut',
+  data:{labels:['KAIFA-1PH','KAIFA-3PH','KAIFA-CT'],
+    datasets:[{data:[22.4,18.6,7.6],backgroundColor:[teal,blue,amber]}]},
+  options:{responsive:true,maintainAspectRatio:false,cutout:'45%',
+    plugins:{legend:{position:'right',labels:{padding:10,font:{size:10}}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} GWh (${(ctx.raw/48.6*100).toFixed(1)}%)`}}}}
+});
+
+// ══ AREA SUMMARY TABLE ══
+const areas=[
+  {name:'Sharjah-E',meters:2380,total:17.4,peak:10.2,offpeak:7.2,loadFactor:'58.2%',yoy:'+7.1%',trend:'Growth'},
+  {name:'Sharjah-W',meters:1520,total:12.6,peak:7.4,offpeak:5.2,loadFactor:'56.8%',yoy:'+5.9%',trend:'Growth'},
+  {name:'Al Dhaid',meters:880,total:7.8,peak:4.6,offpeak:3.2,loadFactor:'57.5%',yoy:'+4.2%',trend:'Growth'},
+  {name:'Kalba',meters:620,total:5.8,peak:3.4,offpeak:2.4,loadFactor:'59.1%',yoy:'+2.8%',trend:'Stable'},
+  {name:'Khorfakkan',meters:510,total:4.8,peak:2.8,offpeak:2.0,loadFactor:'57.9%',yoy:'+1.4%',trend:'Stable'},
+  {name:'Dibba',meters:370,total:3.6,peak:2.1,offpeak:1.5,loadFactor:'55.4%',yoy:'-0.8%',trend:'Decline'},
+];
+const trendCls={Growth:'badge-growth',Stable:'badge-stable',Decline:'badge-decline'};
+const atbl=document.getElementById('areaTable');
+let ah=`<thead><tr><th>Area</th><th>Meters</th><th>Total (GWh)</th><th>Peak (GWh)</th><th>Off-Peak (GWh)</th><th>Peak Ratio</th><th>Load Factor</th><th>YoY Growth</th><th>Trend</th><th>Action</th></tr></thead><tbody>`;
+areas.forEach(a=>{
+  const peakRatio=(a.peak/a.total*100).toFixed(1)+'%';
+  const yoyColor=a.yoy.startsWith('-')?teal:red;
+  const maxGwh=17.4;
+  ah+=`<tr>
+    <td style="font-weight:600;color:#26b5a0;cursor:pointer" onclick="openAreaDrawer('${a.name}')">${a.name}</td>
+    <td>${a.meters.toLocaleString()}</td>
+    <td>
+      <div class="bar-wrap">
+        <div class="bar-track"><div class="bar-fill" style="width:${(a.total/maxGwh*100).toFixed(0)}%;background:${teal}"></div></div>
+        <span style="font-size:11px;font-weight:600;color:#333">${a.total}</span>
+      </div>
+    </td>
+    <td style="color:#f56c6c;font-weight:600">${a.peak}</td>
+    <td style="color:#409eff;font-weight:600">${a.offpeak}</td>
+    <td>${peakRatio}</td>
+    <td style="color:#8b5cf6;font-weight:600">${a.loadFactor}</td>
+    <td style="font-weight:600;color:${yoyColor}">${a.yoy}</td>
+    <td><span class="badge ${trendCls[a.trend]}">${a.trend}</span></td>
+    <td><button class="btn btn-outline" style="padding:2px 8px;font-size:11px" onclick="openAreaDrawer('${a.name}')">Detail</button></td>
+  </tr>`;
+});
+ah+=`<tr style="background:#f7f7f7;font-weight:700"><td>Total</td><td>6,280</td><td>52.0 GWh</td><td>30.5</td><td>21.5</td><td>58.7%</td><td>57.5%</td><td style="color:#f56c6c">+4.8%</td><td></td><td></td></tr>`;
+ah+='</tbody>';
+atbl.innerHTML=ah;
+
+// ══ DRAWER ══
+function openAreaDrawer(name){
+  const a=areas.find(x=>x.name===name);if(!a)return;
+  const months=['Nov 2025','Dec 2025','Jan 2026','Feb 2026','Mar 2026','Apr 2026'];
+  const monthlyData=months.map((m,i)=>{
+    const base=a.total*(0.72+i*0.04+Math.random()*.02);
+    return {month:m,total:+base.toFixed(1),peak:+(base*.585).toFixed(1),offpeak:+(base*.415).toFixed(1)};
+  });
+  document.getElementById('drawerTitle').textContent=`Area: ${name} — Consumption Detail`;
+  document.getElementById('drawerBody').innerHTML=`
+    <div class="drawer-kpi-row">
+      <div class="drawer-kpi"><div class="dk-val" style="color:#333">${a.total} GWh</div><div class="dk-lbl">Total Apr</div></div>
+      <div class="drawer-kpi"><div class="dk-val" style="color:#f56c6c">${a.peak} GWh</div><div class="dk-lbl">Peak</div></div>
+      <div class="drawer-kpi"><div class="dk-val" style="color:#409eff">${a.offpeak} GWh</div><div class="dk-lbl">Off-Peak</div></div>
+      <div class="drawer-kpi"><div class="dk-val" style="color:#8b5cf6">${a.loadFactor}</div><div class="dk-lbl">Load Factor</div></div>
+      <div class="drawer-kpi"><div class="dk-val" style="color:${a.yoy.startsWith('-')?teal:red}">${a.yoy}</div><div class="dk-lbl">YoY</div></div>
+    </div>
+    <div class="drawer-section">Monthly Consumption Trend</div>
+    <canvas id="drawerChart" height="80" style="margin-bottom:12px"></canvas>
+    <div class="drawer-section">Monthly Detail</div>
+    <table style="box-shadow:none">
+      <thead><tr><th>Month</th><th>Total (GWh)</th><th>Peak (GWh)</th><th>Off-Peak (GWh)</th><th>Peak Ratio</th><th>MoM</th></tr></thead>
+      <tbody>${monthlyData.map((d,i)=>{
+        const prev=i>0?monthlyData[i-1].total:null;
+        const mom=prev===null?'—':((d.total-prev)/prev*100).toFixed(1);
+        const momColor=prev===null?gray:parseFloat(mom)>0?red:teal;
+        const momStr=prev===null?'—':(parseFloat(mom)>0?`<span style="color:${red}">▲ +${mom}%</span>`:`<span style="color:${teal}">▼ ${mom}%</span>`);
+        return `<tr><td>${d.month}</td><td style="font-weight:600">${d.total}</td><td style="color:#f56c6c">${d.peak}</td><td style="color:#409eff">${d.offpeak}</td><td>${(d.peak/d.total*100).toFixed(1)}%</td><td style="font-size:11px">${momStr}</td></tr>`;
+      }).join('')}</tbody>
+    </table>
+  `;
+  // render drawer chart after DOM insert
+  setTimeout(()=>{
+    new Chart(document.getElementById('drawerChart'),{type:'line',
+      data:{labels:months,datasets:[
+        {label:'Total',data:monthlyData.map(d=>d.total),borderColor:teal,backgroundColor:'rgba(38,181,160,.08)',fill:true,pointRadius:3,tension:.35},
+        {label:'Peak',data:monthlyData.map(d=>d.peak),borderColor:red,pointRadius:3,tension:.35},
+        {label:'Off-Peak',data:monthlyData.map(d=>d.offpeak),borderColor:blue,pointRadius:3,tension:.35},
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        scales:{y:{ticks:{callback:v=>v+' GWh',font:{size:9}}},x:{ticks:{font:{size:9}}}},
+        plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:9},padding:6}}}}
+    });
+  },50);
+  document.getElementById('drawerOverlay').classList.add('open');
+  document.getElementById('detailDrawer').classList.add('open');
+}
+
+function closeDrawer(){
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.getElementById('detailDrawer').classList.remove('open');
+}
+</script>
+</body>
+</html>

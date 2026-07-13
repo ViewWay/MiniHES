@@ -59,8 +59,8 @@ def test_list_audit_logs(client: TestClient, auth_headers):
     assert r.status_code == 200
 
 
-def test_system_health(client: TestClient):
-    r = client.get("/api/v1/system/health")
+def test_system_health(client: TestClient, auth_headers):
+    r = client.get("/api/v1/system/health", headers=auth_headers)
     assert r.status_code == 200
 
 
@@ -366,8 +366,8 @@ class TestMeters:
         assert r.status_code == 404
 
     def test_unauthorized_access(self, client: TestClient):
-        """POST requires auth, GET does not."""
+        """RBAC 生效后，无 token 的 GET 和 POST 都应返回 403。"""
         r = client.get("/api/v1/meters")
-        assert r.status_code == 200  # GET is public
+        assert r.status_code == 403  # GET 需 devices 权限
         r2 = client.post("/api/v1/meters", json={"serial_number": "X", "meter_name": "Y"})
-        assert r2.status_code == 403  # POST requires auth
+        assert r2.status_code == 403  # POST 同样需要权限

@@ -28,7 +28,12 @@ class Task(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_name: Mapped[str] = mapped_column(String(100))
-    task_type: Mapped[str] = mapped_column(String(20))  # cron, interval, once
+    task_type: Mapped[str] = mapped_column(String(20))  # cron, interval, once (调度类型)
+    device_type: Mapped[str] = mapped_column(String(30), default="electric_meter")
+    task_category: Mapped[str] = mapped_column(String(30), default="metering")  # p2p/metering/dcu/...
+    obis_template_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("obis_template.id", ondelete="SET NULL"), nullable=True
+    )
     schedule_config: Mapped[dict] = mapped_column(JSON, default=dict)
     execution_content: Mapped[dict] = mapped_column(JSON, default=dict)
     filter_config: Mapped[dict] = mapped_column(JSON, default=dict)

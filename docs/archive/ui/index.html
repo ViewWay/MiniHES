@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAIFA HES — Use Case & Reporting Prototypes</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+/* ── Top Bar ── */
+.topbar {
+  display: flex; align-items: center; height: 44px; background: #1a2332;
+  padding: 0 20px; flex-shrink: 0; gap: 12px;
+}
+.topbar .logo { font-weight: 700; font-size: 16px; color: #26b5a0; letter-spacing: 1px; margin-right: 8px; white-space: nowrap; }
+.topbar .subtitle { font-size: 12px; color: #8899aa; }
+.topbar .spacer { flex: 1; }
+.topbar .badge { font-size: 11px; color: #8899aa; background: #243040; padding: 3px 10px; border-radius: 10px; }
+
+/* ── Body Layout ── */
+.body { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Left Nav ── */
+.nav { width: 240px; background: #fff; border-right: 1px solid #e8e8e8; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+.nav-header { padding: 12px 16px 8px; font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #f0f0f0; }
+
+.nav-scroll { flex: 1; overflow-y: auto; padding-bottom: 12px; }
+.nav-scroll::-webkit-scrollbar { width: 4px; }
+.nav-scroll::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 2px; }
+
+/* Group header */
+.nav-group { margin-top: 4px; }
+.nav-group-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px 7px 12px; font-size: 11px; font-weight: 700;
+  color: #888; text-transform: uppercase; letter-spacing: .4px;
+  cursor: pointer; user-select: none; transition: background .12s;
+}
+.nav-group-header:hover { background: #f9f9f9; }
+.nav-group-header .arrow { font-size: 9px; transition: transform .2s; margin-left: auto; color: #bbb; }
+.nav-group-header.collapsed .arrow { transform: rotate(-90deg); }
+.nav-group-header .group-icon { font-size: 13px; }
+
+.nav-group-items { overflow: hidden; }
+.nav-group-items.collapsed { display: none; }
+
+/* Nav item */
+.nav-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px 7px 24px; font-size: 12px; color: #555;
+  cursor: pointer; border-left: 3px solid transparent; transition: all .12s;
+  line-height: 1.3;
+}
+.nav-item:hover { color: #26b5a0; background: #f5fffe; }
+.nav-item.active { color: #26b5a0; border-left-color: #26b5a0; font-weight: 600; background: #edfaf7; }
+.nav-item .item-num { font-size: 10px; color: #bbb; min-width: 28px; flex-shrink: 0; }
+.nav-item.active .item-num { color: #26b5a0; }
+
+/* ── Content ── */
+.content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Breadcrumb */
+.breadcrumb {
+  display: flex; align-items: center; gap: 6px; padding: 8px 16px;
+  background: #fff; border-bottom: 1px solid #e8e8e8; font-size: 12px; color: #999; flex-shrink: 0;
+}
+.breadcrumb .sep { color: #ddd; }
+.breadcrumb .current { color: #333; font-weight: 500; }
+
+/* Welcome screen */
+.welcome {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #bbb; gap: 12px;
+}
+.welcome .welcome-icon { font-size: 48px; }
+.welcome .welcome-title { font-size: 18px; color: #999; font-weight: 600; }
+.welcome .welcome-sub { font-size: 13px; color: #bbb; }
+
+/* iframe */
+#frameContainer { flex: 1; display: none; overflow: hidden; }
+#frameContainer iframe { width: 100%; height: 100%; border: none; display: block; }
+
+/* Unclassified section */
+.nav-unclassified .nav-item { padding-left: 24px; }
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <span class="logo">⊙ HES</span>
+  <span class="subtitle">Use Case Realization &amp; Reporting Solution — SEWA AMI</span>
+  <span class="spacer"></span>
+  <span class="badge">UI Prototype Index</span>
+</div>
+
+<div class="body">
+  <!-- Left Navigation -->
+  <div class="nav">
+    <div class="nav-header">Prototype Navigator</div>
+    <div class="nav-scroll" id="navScroll"></div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content">
+    <div class="breadcrumb" id="breadcrumb">
+      <span>SEWA AMI HES</span>
+      <span class="sep">›</span>
+      <span class="current" id="breadcrumbCurrent">Select a prototype from the left</span>
+    </div>
+
+    <div class="welcome" id="welcomeScreen">
+      <div class="welcome-icon">📊</div>
+      <div class="welcome-title">KAIFA HES Prototype Library</div>
+      <div class="welcome-sub">Select a use case or report from the left panel to preview</div>
+    </div>
+
+    <div id="frameContainer">
+      <iframe id="protoFrame" src="" title="Prototype"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+const menu = [
+  {
+    id: 'core-uc',
+    label: '2.1 Core Operational Use Cases',
+    icon: '⚡',
+    items: [
+      { num: 'UC 7', label: 'Daily Comm Statistics',      file: 'daily-comm-statistics.html' },
+      { num: 'UC 8', label: 'Non-Communicating Devices',   file: 'non-comm-devices.html' },
+      { num: 'UC 9', label: 'Asset Mismatch',               file: 'asset-mismatch.html' },
+    ]
+  },
+  {
+    id: 'gis-uc',
+    label: '2.3 GIS-Based Use Cases',
+    icon: '🗺️',
+    items: [
+      { num: 'UC 24', label: 'Communication Coverage Map',  file: 'gis-comm-coverage-map.html' },
+      { num: 'UC 25', label: 'Consumption Outlier Map',     file: 'gis-consumption-outlier-map.html' },
+      { num: 'UC 26', label: 'Health & Battery Map',        file: 'gis-health-battery-map.html' },
+      { num: 'UC 27', label: 'Missing Read Area Map',       file: 'gis-missing-read-area-map.html' },
+      { num: 'UC 28', label: 'Missing Read Cluster Map',    file: 'gis-missing-read-cluster-map.html' },
+      { num: 'UC 29', label: 'Overload Pattern Map',        file: 'gis-overload-pattern-map.html' },
+      { num: 'UC 30', label: 'Phase Imbalance Map',         file: 'gis-phase-imbalance-map.html' },
+      { num: 'UC 31', label: 'Power Quality Hotspot Map',   file: 'gis-power-quality-hotspot-map.html' },
+      { num: 'UC 32', label: 'Reverse Power Flow Map',      file: 'gis-reverse-power-flow-map.html' },
+      { num: 'UC —',  label: 'Tamper Pattern Map',          file: 'gis-tamper-pattern-map.html' },
+      { num: 'UC —',  label: 'Voltage Issue Map',           file: 'gis-voltage-issue-map.html' },
+    ]
+  },
+  {
+    id: 'r01',
+    label: '3.1 Communication & Network Health',
+    icon: '📡',
+    items: [
+      { num: 'R-01', label: 'Comm Success & Failure Rate',  file: 'comm-success-failure-rate.html' },
+      { num: 'R-04', label: 'Aging Non-Comm Devices',       file: 'aging-non-comm.html' },
+      { num: 'R-05', label: 'Signal Quality (RSSI/SNR)',    file: 'signal-quality.html' },
+      { num: 'R-06', label: 'Comm Latency Summary',         file: 'comm-latency-summary.html' },
+    ]
+  },
+  {
+    id: 'r02',
+    label: '3.2 Meter Reading & Data Collection',
+    icon: '📖',
+    items: [
+      { num: 'R-07', label: 'Read Completeness',            file: 'read-completeness.html' },
+      { num: 'R-08', label: 'Scheduled Read Success/Fail',  file: 'scheduled-read-success.html' },
+      { num: 'R-09', label: 'Partial / Gapped Interval',    file: 'partial-gapped-interval.html' },
+      { num: 'R-10', label: 'Retry Analysis',               file: 'retry-analysis.html' },
+      { num: 'R-11', label: 'On-Demand Read History',       file: 'ondemand-history.html' },
+    ]
+  },
+  {
+    id: 'r03',
+    label: '3.3 Events & Alarms',
+    icon: '🔔',
+    items: [
+      { num: 'R-12', label: 'Open / Unacknowledged Alarms', file: 'open-alarms.html' },
+      { num: 'R-13', label: 'Alarm Trend & Volume',         file: 'alarm-trend-volume.html' },
+      { num: 'R-14', label: 'Alarm Closure SLA',            file: 'alarm-closure-sla.html' },
+      { num: 'R-15', label: 'Meter Event Summary',          file: 'meter-event-summary.html' },
+    ]
+  },
+  {
+    id: 'r04',
+    label: '3.4 Meter Health & Diagnostics',
+    icon: '🔧',
+    items: [
+      { num: 'R-16', label: 'Device Health Model',          file: 'device-health-model.html' },
+      { num: 'R-17', label: 'Meter Failure Trend',          file: 'meter-failure-trend.html' },
+      { num: 'R-18', label: 'Battery Status & Aging',       file: 'battery-status-aging.html' },
+      { num: 'R-19', label: 'Temp Threshold Alert',         file: 'temp-threshold-alert.html' },
+    ]
+  },
+  {
+    id: 'r05',
+    label: '3.5 Configuration & Firmware',
+    icon: '⚙️',
+    items: [
+      { num: 'R-20', label: 'Firmware Distribution',        file: 'firmware-distribution.html' },
+      { num: 'R-21', label: 'Firmware Upgrade Campaign',    file: 'firmware-upgrade-campaign.html' },
+      { num: 'R-22', label: 'Firmware Upgrade Success/Fail',file: 'firmware-upgrade-success-failure.html' },
+      { num: 'R-23', label: 'Config Drift',                 file: 'config-drift.html' },
+    ]
+  },
+  {
+    id: 'r06',
+    label: '3.6 Time & Data Integrity',
+    icon: '🕐',
+    items: [
+      { num: 'R-24', label: 'Meter Time Drift',             file: 'meter-time-drift.html' },
+      { num: 'R-25', label: 'Time Sync Success',            file: 'time-sync-success.html' },
+      { num: 'R-26', label: 'Data Validation & Rejection',  file: 'data-validation-rejection.html' },
+    ]
+  },
+  {
+    id: 'r07',
+    label: '3.7 Asset & Identity Governance',
+    icon: '🏷️',
+    items: [
+      { num: 'R-27', label: 'Meter–Customer Mapping',       file: 'report27-meter-customer-mapping.html' },
+      { num: 'R-28', label: 'Asset Data Mismatch',          file: 'report28-asset-data-mismatch.html' },
+      { num: 'R-29', label: 'Rogue / Duplicate Meter',      file: 'report29-rogue-duplicate-meter.html' },
+    ]
+  },
+  {
+    id: 'r08',
+    label: '3.8 Consumption Analytics',
+    icon: '📈',
+    items: [
+      { num: 'R-30', label: 'Interval Consumption Trend',   file: 'interval-consumption-trend.html' },
+      { num: 'R-31', label: 'Low / No Consumption',         file: 'low-no-consumption.html' },
+      { num: 'R-32', label: 'Reverse Energy Flow',          file: 'reverse-energy-flow.html' },
+    ]
+  },
+  {
+    id: 'r09',
+    label: '3.9 Customer & Service Support',
+    icon: '👤',
+    items: [
+      { num: 'R-33', label: 'Customer Consumption Profile', file: 'report33-customer-consumption-profile.html' },
+      { num: 'R-34', label: 'Move-In / Move-Out Completion',file: 'report34-mimo-completion.html' },
+      { num: 'R-35', label: 'Manual vs. AMI Read',          file: 'report35-manual-vs-ami-read.html' },
+    ]
+  },
+  {
+    id: 'r10',
+    label: '3.10 Audit, Compliance & Governance',
+    icon: '📋',
+    items: [
+      { num: 'R-36', label: 'Command & Event Audit Log',    file: 'report36-command-event-audit-log.html' },
+      { num: 'R-37', label: 'Read Lifecycle Audit',         file: 'report37-read-lifecycle-audit.html' },
+      { num: 'R-38', label: 'Regulatory Compliance Report', file: 'report38-regulatory-compliance.html' },
+    ]
+  },
+  {
+    id: 'r11',
+    label: '3.11 GIS Reports',
+    icon: '🌍',
+    items: [
+      { num: 'R-39', label: 'GIS: Meter Comm Coverage Map', file: 'gis-comm-coverage-map.html' },
+      { num: 'R-40', label: 'GIS: Missing Reads by Area',   file: 'gis-missing-read-area-map.html' },
+      { num: 'R-41', label: 'GIS: Meter Health / Battery',  file: 'gis-health-battery-map.html' },
+    ]
+  },
+  {
+    id: 'other',
+    label: 'Unclassified',
+    icon: '📁',
+    items: [
+      { num: '—', label: 'Config Change Log',               file: 'config-change-log.html' },
+      { num: '—', label: 'Duplicate / Invalid Read',        file: 'duplicate-invalid-read.html' },
+      { num: '—', label: 'Compliance Reports',              file: 'compliance-reports.html' },
+    ]
+  },
+];
+
+let activeFile = null;
+
+function buildNav() {
+  const scroll = document.getElementById('navScroll');
+  let html = '';
+  menu.forEach(group => {
+    html += `
+      <div class="nav-group" id="grp-${group.id}">
+        <div class="nav-group-header" onclick="toggleGroup('${group.id}', this)">
+          <span class="group-icon">${group.icon}</span>
+          <span style="flex:1;font-size:11px;">${group.label}</span>
+          <span class="arrow">▼</span>
+        </div>
+        <div class="nav-group-items" id="items-${group.id}">`;
+    group.items.forEach(item => {
+      html += `
+          <div class="nav-item" id="nav-${item.file}" onclick="loadProto('${item.file}', '${escHtml(item.label)}', '${escHtml(group.label)}', this)">
+            <span class="item-num">${item.num}</span>
+            <span>${item.label}</span>
+          </div>`;
+    });
+    html += `</div></div>`;
+  });
+  scroll.innerHTML = html;
+}
+
+function escHtml(s) { return s.replace(/'/g, "\\'"); }
+
+function toggleGroup(id, headerEl) {
+  headerEl.classList.toggle('collapsed');
+  document.getElementById('items-' + id).classList.toggle('collapsed');
+}
+
+function loadProto(file, label, groupLabel, navEl) {
+  // Update active nav
+  document.querySelectorAll('.nav-item.active').forEach(el => el.classList.remove('active'));
+  navEl.classList.add('active');
+
+  // Breadcrumb
+  document.getElementById('breadcrumbCurrent').textContent = label;
+
+  // Show iframe
+  document.getElementById('welcomeScreen').style.display = 'none';
+  const fc = document.getElementById('frameContainer');
+  fc.style.display = 'flex';
+  fc.style.flex = '1';
+
+  const frame = document.getElementById('protoFrame');
+  if (activeFile !== file) {
+    frame.src = file;
+    activeFile = file;
+  }
+
+  // Scroll nav item into view
+  navEl.scrollIntoView({ block: 'nearest' });
+}
+
+buildNav();
+</script>
+</body>
+</html>

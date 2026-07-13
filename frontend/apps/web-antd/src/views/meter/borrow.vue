@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { Page } from '@vben/common-ui';
 import {
-  Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag, Popconfirm, message,
+  Button, Card, DatePicker, Form, Input, Modal, Select, Space, Table, Tag, Popconfirm, message,
 } from 'ant-design-vue';
 import type { TableColumnType } from 'ant-design-vue';
 import { getMeterList, getBorrowRecords, approveBorrow, createBorrowRequest, returnBorrow } from '#/api/modules/meter';
@@ -152,27 +152,36 @@ onMounted(() => {
       </template>
 
       <!-- Filters -->
-      <Row :gutter="16" style="margin-bottom: 16px">
-        <Col :span="6">
-          <Select
-            v-model:value="filterStatus"
-            placeholder="审批状态"
-            allow-clear
-            :options="approvalStatusOptions"
-            style="width: 100%"
-            @change="handleFilter"
-          />
-        </Col>
-        <Col :span="6">
-          <Button @click="resetFilter">重置</Button>
-        </Col>
-      </Row>
+      <Card :bordered="false" style="margin-bottom: 16px">
+        <Form layout="inline">
+          <Form.Item label="审批状态">
+            <Select
+              v-model:value="filterStatus"
+              placeholder="全部状态"
+              allow-clear
+              :options="approvalStatusOptions"
+              style="width: 160px"
+              @change="handleFilter"
+            />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" @click="handleFilter">查询</Button>
+            <Button style="margin-left: 8px" @click="resetFilter">重置</Button>
+          </Form.Item>
+        </Form>
+      </Card>
 
       <Table
         :columns="columns"
         :data-source="tableData"
         :loading="loading"
-        :pagination="{ current: pagination.current, pageSize: pagination.pageSize, total }"
+        :pagination="{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total,
+          showSizeChanger: true,
+          showTotal: (t: number) => `共 ${t} 条`,
+        }"
         row-key="id"
         @change="handleTableChange"
         :scroll="{ x: 1400 }"

@@ -4,6 +4,7 @@ import { ref } from 'vue';
 import {
   getMeterList,
   getMeterDetail,
+  getMeterStatusHistory,
   getBorrowRecords,
   changeMeterStatus,
 } from '#/api/modules/meter';
@@ -149,8 +150,8 @@ export const useMeterStore = defineStore('meter', () => {
   ) {
     statusHistoryLoading.value = true;
     try {
-      const res = await getMeterDetail(id);
-      statusHistory.value = res.status_history || [];
+      const res = await getMeterStatusHistory(id);
+      statusHistory.value = Array.isArray(res) ? res : res.items || [];
     } finally {
       statusHistoryLoading.value = false;
     }

@@ -3,22 +3,22 @@ import uuid
 from starlette.testclient import TestClient
 
 
-def test_list_meter_types(client: TestClient):
-    r = client.get("/api/v1/meter-types")
+def test_list_meter_types(client: TestClient, auth_headers):
+    r = client.get("/api/v1/meter-types", headers=auth_headers)
     assert r.status_code == 200
     items = r.json()["data"]
     assert len(items) >= 3
 
 
-def test_list_wire_types(client: TestClient):
-    r = client.get("/api/v1/wire-types")
+def test_list_wire_types(client: TestClient, auth_headers):
+    r = client.get("/api/v1/wire-types", headers=auth_headers)
     assert r.status_code == 200
     items = r.json()["data"]
     assert len(items) >= 3
 
 
-def test_list_meter_points(client: TestClient):
-    r = client.get("/api/v1/meter-points")
+def test_list_meter_points(client: TestClient, auth_headers):
+    r = client.get("/api/v1/meter-points", headers=auth_headers)
     assert r.status_code == 200
     items = r.json()["data"]
     assert len(items) >= 0  # may be empty depending on seed

@@ -6,13 +6,15 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "aiomysql==0.2.0",
+    "aiosmtplib>=3.0.0",
     "alembic>=1.18.4",
     "apscheduler==3.10.4",
     "asyncpg==0.30.0",
     "fastapi==0.115.0",
-    "influxdb-client>=1.50.0",
+    "influxdb-client>=1.50.0",  # DEPRECATED: InfluxDB 已弃用，时序用 PG 时序表，暂保留避免破坏 lockfile
     "motor==3.6.0",
     "numpy==1.26.0",
+    "openpyxl>=3.1.0",
     "pandas==2.2.0",
     "passlib[bcrypt]>=1.7.4",
     "psycopg2-binary>=2.9.12",
@@ -24,6 +26,7 @@ dependencies = [
     "python-jose[cryptography]>=3.5.0",
     "python-multipart==0.0.12",
     "redis==5.2.0",
+    "reportlab>=4.0.0",
     "sqlalchemy==2.0.36",
     "structlog>=25.5.0",
     "uvicorn[standard]==0.32.0",
@@ -63,7 +66,7 @@ select = ["E", "F", "I", "N", "W"]
 
 [tool.ruff.lint.per-file-ignores]
 "app/models/**" = ["F821", "E501"]
-"app/db/seed.py" = ["E501"]
+"app/db/seed.py" = ["E501", "N806"]
 
 [tool.black]
 line-length = 120

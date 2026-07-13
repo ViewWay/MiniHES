@@ -92,6 +92,16 @@ class MeterComm(Base, TimestampMixin):
     retry_times: Mapped[int] = mapped_column(Integer, default=3)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    # ── Excel Meter sheet 扩展字段 ──
+    device_type: Mapped[str] = mapped_column(String(30), default="electric_meter")
+    pos: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 表台位置（基表任务必填）
+    meter_mac: Mapped[str | None] = mapped_column(String(50), nullable=True)  # 蓝牙地址
+    src_wport: Mapped[int | None] = mapped_column(Integer, nullable=True)  # WPDU 源端口
+    dst_wport: Mapped[int | None] = mapped_column(Integer, nullable=True)  # WPDU 目的端口
+    lls_key: Mapped[str | None] = mapped_column(String(200), nullable=True)  # 低级安全密钥
+    hls_key: Mapped[str | None] = mapped_column(String(200), nullable=True)  # 高级安全密钥
+    comm_layer: Mapped[str] = mapped_column(String(10), default="HDLC")  # HDLC/WPDU/FEP
+
     meter: Mapped["Meter"] = relationship(back_populates="comm")
 
 

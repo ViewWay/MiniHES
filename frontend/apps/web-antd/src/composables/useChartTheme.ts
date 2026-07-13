@@ -1,4 +1,4 @@
-import { computed, watch } from 'vue';
+import { computed, nextTick, watch } from 'vue';
 
 import { usePreferences } from '@vben/preferences';
 
@@ -72,7 +72,9 @@ export function useChartTheme() {
 
   function watchThemeAndRerender(renderFn: () => void, immediate = false) {
     watch(isDark, () => {
-      renderFn();
+      nextTick(() => {
+        renderFn();
+      });
     }, { immediate });
   }
 

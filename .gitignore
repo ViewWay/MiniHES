@@ -37,6 +37,15 @@
 .DS_Store
 Thumbs.db
 
+# Python venv (anywhere，防误装到 docs 等)
+**/lib/python*/site-packages/
+
+# Agent/tool caches
+**/.omc/
+
+# Temp/junk
+docs/testdata/~/
+
 # Claude local settings
 .claude/settings.local.json
 **/.claude/settings.local.json

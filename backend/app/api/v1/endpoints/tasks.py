@@ -23,6 +23,8 @@ async def list_tasks(
         page=page,
         page_size=page_size,
         task_type=task_type,
+        task_category=task_category,
+        status=status,
         is_enabled=is_enabled,
     )
     return success(data)

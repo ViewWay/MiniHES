@@ -1,0 +1,418 @@
+
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report 38 — Regulatory Compliance Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;color:#333}
+  .topbar{display:flex;align-items:center;height:40px;background:#fff;border-bottom:1px solid #e0e0e0;padding:0 20px;font-size:12px}
+  .topbar .logo{font-weight:700;font-size:16px;color:#26b5a0;margin-right:24px;letter-spacing:1px}
+  .topbar .nav-link{padding:0 14px;line-height:40px;color:#555;cursor:pointer;position:relative}
+  .topbar .nav-link:hover{color:#26b5a0}.topbar .nav-link.active{color:#26b5a0;font-weight:600}
+  .topbar .nav-link.active::after{content:'';position:absolute;bottom:0;left:14px;right:14px;height:2px;background:#26b5a0}
+  .topbar .spacer{flex:1}.topbar .meta{color:#999;font-size:12px}
+  .topbar .online-badge{display:inline-block;padding:2px 8px;border-radius:10px;background:#e6f7f4;color:#26b5a0;font-size:11px;margin-left:12px}
+  .layout{display:flex;height:calc(100vh - 40px)}
+  .sidebar{width:200px;background:#fff;border-right:1px solid #e8e8e8;padding-top:12px;overflow-y:auto;flex-shrink:0}
+  .sidebar .section-title{padding:8px 16px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px}
+  .sidebar .nav-item{padding:9px 20px;font-size:13px;color:#666;cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+  .sidebar .nav-item:hover{color:#26b5a0;background:#f9fffe}
+  .sidebar .nav-item.active{color:#26b5a0;border-left-color:#26b5a0;font-weight:600;background:#f0faf8}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .content{flex:1;padding:12px 16px;overflow-y:auto}
+  /* Filter */
+  .filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .filter-bar select,.filter-bar input{padding:4px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:12px;outline:none}
+  .filter-bar select:focus,.filter-bar input:focus{border-color:#26b5a0}
+  .btn{padding:4px 12px;border:none;border-radius:4px;font-size:12px;cursor:pointer;transition:opacity .2s}.btn:hover{opacity:.85}
+  .btn-primary{background:#26b5a0;color:#fff}
+  .btn-outline{background:#fff;color:#26b5a0;border:1px solid #26b5a0}
+  .btn-export{background:#fff;color:#555;border:1px solid #d9d9d9}.btn-export:hover{border-color:#26b5a0;color:#26b5a0}
+  .btn-sm{padding:3px 10px;font-size:11px;border-radius:3px;border:none;cursor:pointer}
+  .btn-sm-teal{background:#26b5a0;color:#fff}.btn-sm-teal:hover{opacity:.85}
+  .btn-sm-outline{background:#fff;color:#26b5a0;border:1px solid #26b5a0}.btn-sm-outline:hover{opacity:.85}
+  /* KPI */
+  .kpi-row{display:flex;gap:10px;margin-bottom:10px}
+  .kpi-card{flex:1;background:#fff;border-radius:6px;padding:8px 14px;box-shadow:0 1px 3px rgba(0,0,0,.06);position:relative;overflow:hidden}
+  .kpi-card .kpi-label{font-size:11px;color:#999;margin-bottom:2px}
+  .kpi-card .kpi-value{font-size:20px;font-weight:700}
+  .kpi-card .kpi-sub{font-size:11px;color:#999;margin-top:2px}
+  .kpi-card .kpi-bar{position:absolute;bottom:0;left:0;right:0;height:3px}
+  /* Charts */
+  .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .chart-card{background:#fff;border-radius:6px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .chart-card canvas{max-height:130px}
+  .chart-title{font-size:12px;font-weight:600;color:#333;margin-bottom:6px}
+  /* Section cards */
+  .section-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .section-card{background:#fff;border-radius:6px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .section-card.full{grid-column:1/-1}
+  .sc-title{font-size:12px;font-weight:600;color:#333;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+  .sc-title .sc-badge{font-size:11px;font-weight:400;padding:2px 8px;border-radius:10px}
+  /* Metric rows */
+  .metric-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f5f5f5;font-size:12px}
+  .metric-row:last-child{border-bottom:none}
+  .metric-name{flex:1;color:#555}
+  .metric-value{font-weight:600;min-width:60px;text-align:right}
+  .metric-target{font-size:11px;color:#aaa;min-width:80px;text-align:right}
+  .metric-bar-wrap{width:100px;height:6px;background:#eee;border-radius:3px;overflow:hidden;flex-shrink:0}
+  .metric-bar-fill{height:100%;border-radius:3px}
+  .metric-status{min-width:60px;text-align:right}
+  /* Tags */
+  .tag{display:inline-block;padding:2px 7px;border-radius:3px;font-size:11px}
+  .tag-pass{background:#e6f7f4;color:#26b5a0}
+  .tag-warn{background:#fff3e0;color:#e6a23c}
+  .tag-fail{background:#fde2e2;color:#f56c6c}
+  .tag-na{background:#f0f0f0;color:#909399}
+  /* Schedule table */
+  .section-label{font-size:12px;font-weight:600;color:#333;margin:8px 0 6px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  th{background:#f7f7f7;text-align:left;padding:6px 10px;font-size:11px;font-weight:600;color:#555;border-bottom:1px solid #e8e8e8;white-space:nowrap}
+  td{padding:6px 10px;font-size:12px;border-bottom:1px solid #f0f0f0;color:#444;vertical-align:middle}
+  tr:hover td{background:#f9fffe}
+  /* Progress ring */
+  .ring-wrap{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+  .ring-item{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .ring-item svg{width:56px;height:56px}
+  .ring-item .ring-val{font-size:13px;font-weight:700}
+  .ring-item .ring-lbl{font-size:10px;color:#999;text-align:center;max-width:60px}
+  /* Overall score banner */
+  .score-banner{display:flex;align-items:center;gap:16px;background:#fff;border-radius:6px;padding:12px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:10px;border-left:4px solid #26b5a0}
+  .score-banner .sb-score{font-size:36px;font-weight:700;color:#26b5a0;line-height:1}
+  .score-banner .sb-label{font-size:11px;color:#999}
+  .score-banner .sb-title{font-size:14px;font-weight:600}
+  .score-banner .sb-sub{font-size:12px;color:#666;margin-top:2px}
+  .score-banner .sb-right{margin-left:auto;display:flex;gap:20px}
+  .score-banner .sb-stat{text-align:center}
+  .score-banner .sb-stat .sv{font-size:18px;font-weight:700}
+  .score-banner .sb-stat .sl{font-size:10px;color:#999}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">⊙ HES</span>
+  <span class="nav-link">Dashboard</span>
+  <span class="nav-link">Device ▾</span>
+  <span class="nav-link">Operation ▾</span>
+  <span class="nav-link">Collection ▾</span>
+  <span class="nav-link">Readings ▾</span>
+  <span class="nav-link">Network ▾</span>
+  <span class="nav-link">Exception ▾</span>
+  <span class="nav-link">Master Data ▾</span>
+  <span class="nav-link active">Report ▾</span>
+  <span class="spacer"></span>
+  <span class="meta">22/04/2026 10:32:18</span>
+  <span class="online-badge">Online: 118</span>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="section-title">Report</div>
+    <div class="nav-item">Report Dashboard</div>
+    <div class="nav-item">Meter Reading Report</div>
+    <div class="nav-item">Communication Report</div>
+    <div class="nav-item">Event Report</div>
+    <div class="section-title" style="margin-top:8px;">Audit &amp; Compliance</div>
+    <div class="nav-item">Command &amp; Event Audit</div>
+    <div class="nav-item">Read Lifecycle Audit</div>
+    <div class="nav-item active">Regulatory Compliance</div>
+    <div class="nav-item">User Access Log</div>
+    <div class="nav-item">Data Integrity Report</div>
+  </div>
+
+  <div class="main">
+    <div class="content">
+
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <select id="fPeriod" style="width:140px">
+          <option>Q1 2026 (Jan–Mar)</option>
+          <option selected>April 2026 (Monthly)</option>
+          <option>Q4 2025 (Oct–Dec)</option>
+          <option>Q3 2025 (Jul–Sep)</option>
+        </select>
+        <select id="fFramework" style="width:180px">
+          <option value="">All Frameworks</option>
+          <option>UAE TRA</option>
+          <option>SEWA Internal</option>
+          <option>IEC 62056</option>
+          <option>ISO 27001</option>
+        </select>
+        <select id="fStatus" style="width:120px">
+          <option value="">All Status</option>
+          <option>Pass</option>
+          <option>Warning</option>
+          <option>Fail</option>
+        </select>
+        <button class="btn btn-primary" onclick="generateReport()">Generate Report</button>
+        <button class="btn btn-outline">Reset</button>
+        <button class="btn btn-export">⬇ Export PDF</button>
+        <button class="btn btn-export">⬇ Export XLSX</button>
+        <span style="margin-left:auto;font-size:11px;color:#999;">
+          Auto-scheduled: <b style="color:#333;">Monthly — 1st of each month 06:00</b>
+        </span>
+      </div>
+
+      <!-- Overall Score Banner -->
+      <div class="score-banner">
+        <div>
+          <div class="sb-label">Overall Compliance Score</div>
+          <div class="sb-score">91.4<span style="font-size:18px;color:#aaa;">%</span></div>
+          <div style="font-size:11px;color:#26b5a0;margin-top:2px;">▲ +1.2% vs last period</div>
+        </div>
+        <div style="margin-left:20px">
+          <div class="sb-title">April 2026 — Regulatory Compliance Report</div>
+          <div class="sb-sub">SEWA AMI HES · UAE TRA / SEWA Internal / IEC 62056 / ISO 27001</div>
+          <div style="margin-top:6px;display:flex;gap:6px;">
+            <span class="tag tag-pass">22 Pass</span>
+            <span class="tag tag-warn">4 Warning</span>
+            <span class="tag tag-fail">2 Fail</span>
+          </div>
+        </div>
+        <div class="sb-right">
+          <div class="sb-stat"><div class="sv" style="color:#26b5a0;">99.7%</div><div class="sl">System Availability</div></div>
+          <div class="sb-stat"><div class="sv" style="color:#26b5a0;">97.2%</div><div class="sl">Data Completeness</div></div>
+          <div class="sb-stat"><div class="sv" style="color:#e6a23c;">88.1%</div><div class="sl">SLA Achievement</div></div>
+          <div class="sb-stat"><div class="sv" style="color:#26b5a0;">0</div><div class="sl">Critical Incidents</div></div>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">System Availability</div>
+          <div class="kpi-value" style="color:#26b5a0;">99.7%</div>
+          <div class="kpi-sub">Target: ≥ 99.5%</div>
+          <div class="kpi-bar" style="background:#26b5a0;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Data Collection Completeness</div>
+          <div class="kpi-value" style="color:#26b5a0;">97.2%</div>
+          <div class="kpi-sub">Target: ≥ 95%</div>
+          <div class="kpi-bar" style="background:#26b5a0;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">SLA Achievement</div>
+          <div class="kpi-value" style="color:#e6a23c;">88.1%</div>
+          <div class="kpi-sub">Target: ≥ 95%</div>
+          <div class="kpi-bar" style="background:#e6a23c;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Security Incidents</div>
+          <div class="kpi-value" style="color:#26b5a0;">0</div>
+          <div class="kpi-sub">Critical / High severity</div>
+          <div class="kpi-bar" style="background:#26b5a0;"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Data Retention Compliance</div>
+          <div class="kpi-value" style="color:#26b5a0;">100%</div>
+          <div class="kpi-sub">7-year retention policy</div>
+          <div class="kpi-bar" style="background:#26b5a0;"></div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Compliance Score by Framework</div>
+          <canvas id="chartFramework" height="110"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Monthly Compliance Trend</div>
+          <canvas id="chartTrend" height="110"></canvas>
+        </div>
+      </div>
+
+      <!-- Section Cards -->
+      <div class="section-grid">
+
+        <!-- 1. System Availability -->
+        <div class="section-card">
+          <div class="sc-title">
+            1. System Availability
+            <span class="sc-badge tag-pass">PASS</span>
+          </div>
+          <div id="secAvail"></div>
+        </div>
+
+        <!-- 2. Data Collection Completeness -->
+        <div class="section-card">
+          <div class="sc-title">
+            2. Data Collection Completeness
+            <span class="sc-badge tag-pass">PASS</span>
+          </div>
+          <div id="secData"></div>
+        </div>
+
+        <!-- 3. SLA Achievement -->
+        <div class="section-card">
+          <div class="sc-title">
+            3. SLA Achievement
+            <span class="sc-badge tag-warn">WARNING</span>
+          </div>
+          <div id="secSla"></div>
+        </div>
+
+        <!-- 4. Security Incident Summary -->
+        <div class="section-card">
+          <div class="sc-title">
+            4. Security Incident Summary
+            <span class="sc-badge tag-pass">PASS</span>
+          </div>
+          <div id="secSec"></div>
+        </div>
+
+        <!-- 5. Data Retention Compliance -->
+        <div class="section-card full">
+          <div class="sc-title">
+            5. Data Retention Compliance
+            <span class="sc-badge tag-pass">PASS</span>
+          </div>
+          <div id="secRetention"></div>
+        </div>
+
+      </div>
+
+      <!-- Scheduled Reports -->
+      <div class="section-label">Automated Report Schedule</div>
+      <table id="scheduleTable"></table>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const teal='#26b5a0', red='#f56c6c', amber='#e6a23c', blue='#409eff', gray='#909399';
+
+// ── Charts ────────────────────────────────────────
+new Chart(document.getElementById('chartFramework'),{
+  type:'bar',
+  data:{
+    labels:['UAE TRA','SEWA Internal','IEC 62056','ISO 27001'],
+    datasets:[
+      {label:'Score %',data:[93.2,91.4,94.8,88.1],backgroundColor:[teal,teal,teal,amber],borderRadius:4}
+    ]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{y:{min:70,max:100,ticks:{font:{size:10},callback:v=>v+'%'}},x:{ticks:{font:{size:10}}}}}
+});
+
+new Chart(document.getElementById('chartTrend'),{
+  type:'line',
+  data:{
+    labels:['Nov','Dec','Jan','Feb','Mar','Apr'],
+    datasets:[
+      {label:'Overall',data:[88.2,89.1,89.8,90.2,90.2,91.4],borderColor:teal,backgroundColor:teal+'22',fill:true,tension:.3,pointRadius:3},
+      {label:'SLA',data:[84.0,85.5,86.2,87.0,87.5,88.1],borderColor:amber,borderDash:[4,3],tension:.3,pointRadius:2},
+    ]
+  },
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{usePointStyle:true,font:{size:10}}}},
+    scales:{y:{min:80,max:100,ticks:{font:{size:9},callback:v=>v+'%'}},x:{ticks:{font:{size:9}}}}}
+});
+
+// ── Helper ────────────────────────────────────────
+function metricRow(name, value, target, pct, color, status){
+  const tagCls = status==='Pass'?'tag-pass':status==='Warning'?'tag-warn':'tag-fail';
+  return `<div class="metric-row">
+    <span class="metric-name">${name}</span>
+    <div class="metric-bar-wrap"><div class="metric-bar-fill" style="width:${Math.min(pct,100)}%;background:${color}"></div></div>
+    <span class="metric-value" style="color:${color}">${value}</span>
+    <span class="metric-target">${target}</span>
+    <span class="metric-status"><span class="tag ${tagCls}">${status}</span></span>
+  </div>`;
+}
+
+// 1. System Availability
+document.getElementById('secAvail').innerHTML =
+  metricRow('HES Platform Uptime',       '99.7%', 'Target ≥ 99.5%', 99.7, teal,  'Pass') +
+  metricRow('DCU Communication Uptime',  '99.4%', 'Target ≥ 99.0%', 99.4, teal,  'Pass') +
+  metricRow('Planned Maintenance Windows','2 events','Max 4/month',  50,   teal,  'Pass') +
+  metricRow('Unplanned Downtime',        '1.9 hrs', 'Target < 4 hrs', 52,  teal,  'Pass');
+
+// 2. Data Collection Completeness
+document.getElementById('secData').innerHTML =
+  metricRow('Electricity Meter Read Rate', '97.8%', 'Target ≥ 95%', 97.8, teal,  'Pass') +
+  metricRow('Water Meter Read Rate',       '96.1%', 'Target ≥ 95%', 96.1, teal,  'Pass') +
+  metricRow('15-min Interval Completeness','94.2%', 'Target ≥ 95%', 94.2, amber, 'Warning') +
+  metricRow('MDMS Delivery Rate',          '99.1%', 'Target ≥ 98%', 99.1, teal,  'Pass') +
+  metricRow('SAP CIS Delivery Rate',       '98.8%', 'Target ≥ 98%', 98.8, teal,  'Pass');
+
+// 3. SLA Achievement
+document.getElementById('secSla').innerHTML =
+  metricRow('Meter Read SLA (24h)',        '91.2%', 'Target ≥ 95%', 91.2, amber, 'Warning') +
+  metricRow('Alarm Response SLA (1h)',     '84.5%', 'Target ≥ 90%', 84.5, red,   'Fail') +
+  metricRow('Command Execution SLA (30s)', '96.8%', 'Target ≥ 95%', 96.8, teal,  'Pass') +
+  metricRow('Billing Data Delivery SLA',   '99.2%', 'Target ≥ 99%', 99.2, teal,  'Pass') +
+  metricRow('Incident Resolution SLA',     '87.0%', 'Target ≥ 90%', 87.0, amber, 'Warning');
+
+// 4. Security Incidents
+document.getElementById('secSec').innerHTML =
+  metricRow('Critical Security Incidents', '0',     'Target = 0',   100,  teal,  'Pass') +
+  metricRow('High Severity Incidents',     '0',     'Target = 0',   100,  teal,  'Pass') +
+  metricRow('Medium Severity Incidents',   '3',     'Target ≤ 5',   60,   teal,  'Pass') +
+  metricRow('Rogue Meter Detections',      '47',    'Monitored',    80,   amber, 'Warning') +
+  metricRow('Unauthorized Access Attempts','2',     'Target ≤ 5',   40,   teal,  'Pass') +
+  metricRow('Patch Compliance',            '98.4%', 'Target ≥ 95%', 98.4, teal,  'Pass');
+
+// 5. Data Retention
+document.getElementById('secRetention').innerHTML = `
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;">
+    ${[
+      {label:'Meter Readings',period:'7 years',stored:'2019–2026',status:'Pass'},
+      {label:'Event Logs',period:'5 years',stored:'2021–2026',status:'Pass'},
+      {label:'Audit Trails',period:'7 years',stored:'2019–2026',status:'Pass'},
+      {label:'Config History',period:'5 years',stored:'2021–2026',status:'Pass'},
+      {label:'Alarm Records',period:'5 years',stored:'2021–2026',status:'Pass'},
+      {label:'Security Logs',period:'7 years',stored:'2019–2026',status:'Pass'},
+      {label:'Billing Data',period:'10 years',stored:'2016–2026',status:'Pass'},
+      {label:'Firmware Versions',period:'3 years',stored:'2023–2026',status:'Pass'},
+    ].map(r=>`<div style="background:#f9fffe;border:1px solid #e6f7f4;border-radius:5px;padding:8px 10px;">
+      <div style="font-size:11px;font-weight:600;color:#333;">${r.label}</div>
+      <div style="font-size:10px;color:#888;margin-top:2px;">Retention: ${r.period}</div>
+      <div style="font-size:10px;color:#888;">Stored: ${r.stored}</div>
+      <div style="margin-top:4px;"><span class="tag tag-pass">${r.status}</span></div>
+    </div>`).join('')}
+  </div>
+  <div style="font-size:11px;color:#888;">Storage policy enforced via automated archival. All data encrypted at rest (AES-256). Backup verified monthly.</div>
+`;
+
+// ── Schedule Table ────────────────────────────────
+const schedules = [
+  {name:'Monthly Regulatory Compliance Report', framework:'UAE TRA / SEWA Internal', freq:'Monthly',next:'2026-05-01 06:00',recipients:'compliance@sewa.ae, regulator@tra.gov.ae',status:'Active'},
+  {name:'Quarterly Audit Summary',              framework:'IEC 62056 / ISO 27001',   freq:'Quarterly',next:'2026-07-01 06:00',recipients:'audit@sewa.ae',status:'Active'},
+  {name:'Annual Security Compliance Report',    framework:'ISO 27001',               freq:'Annual',   next:'2027-01-01 06:00',recipients:'ciso@sewa.ae, audit@sewa.ae',status:'Active'},
+  {name:'SLA Performance Report',               framework:'SEWA Internal',           freq:'Monthly',  next:'2026-05-01 06:00',recipients:'ops@sewa.ae, management@sewa.ae',status:'Active'},
+  {name:'Data Retention Audit',                 framework:'UAE TRA',                 freq:'Quarterly',next:'2026-07-01 06:00',recipients:'dpo@sewa.ae',status:'Active'},
+];
+const tbl = document.getElementById('scheduleTable');
+let h = `<thead><tr><th>Report Name</th><th>Framework</th><th>Frequency</th><th>Next Run</th><th>Recipients</th><th>Status</th><th>Action</th></tr></thead><tbody>`;
+schedules.forEach(s=>{
+  h+=`<tr>
+    <td style="font-weight:600;">${s.name}</td>
+    <td style="font-size:11px;color:#888;">${s.framework}</td>
+    <td>${s.freq}</td>
+    <td style="white-space:nowrap;font-size:11px;">${s.next}</td>
+    <td style="font-size:11px;color:#888;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.recipients}</td>
+    <td><span class="tag tag-pass">${s.status}</span></td>
+    <td style="white-space:nowrap;">
+      <button class="btn-sm btn-sm-teal" style="margin-right:4px;" onclick="alert('Running: ${s.name}')">Run Now</button>
+      <button class="btn-sm btn-sm-outline" onclick="alert('Edit schedule: ${s.name}')">Edit</button>
+    </td>
+  </tr>`;
+});
+h+='</tbody>';
+tbl.innerHTML=h;
+
+function generateReport(){
+  const period = document.getElementById('fPeriod').value;
+  alert(`Generating Regulatory Compliance Report for: ${period}\n\nReport will be available for download shortly.`);
+}
+</script>
+</body>
+</html>

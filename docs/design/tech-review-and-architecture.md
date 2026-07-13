@@ -74,7 +74,7 @@
 │  ├── security.py     (JWT, 密码哈希)                               │
 │  ├── database.py     (SQLAlchemy 异步引擎, Session 管理)           │
 │  ├── redis.py        (Redis 连接池)                                 │
-│  ├── influxdb.py     (InfluxDB 客户端封装)                         │
+│  ├── influxdb.py     (已弃用 - InfluxDB 不再使用，时序数据存 PG 时序表)│
 │  ├── dependencies.py (通用 Depends: get_db, get_current_user)     │
 │  └── exceptions.py   (自定义异常 + 全局处理器)                     │
 ├───────────────────────────────────────────────────────────────────┤
@@ -315,7 +315,8 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # InfluxDB
+    # DEPRECATED: InfluxDB 已弃用，时序数据改用 PG 时序表
+    # (col_meter_reading + col_reading_daily_summary)
     INFLUXDB_URL: str = "http://localhost:8086"
     INFLUXDB_TOKEN: str = ""
     INFLUXDB_ORG: str = "metering"
@@ -407,7 +408,7 @@ backend/
     │   ├── config.py           # Settings
     │   ├── database.py         # 异步引擎 + Session
     │   ├── redis.py            # Redis 连接
-    │   ├── influxdb.py         # InfluxDB 客户端
+    │   ├── influxdb.py         # 已弃用（InfluxDB 不再使用，时序存 PG）
     │   ├── security.py         # JWT 编解码 + 密码哈希
     │   ├── dependencies.py     # get_db, get_current_user
     │   ├── exceptions.py       # 自定义异常 + 全局处理器
@@ -523,7 +524,7 @@ Week 1: 任务 CRUD
 Week 2: APScheduler 调度引擎
   ├── services/scheduler.py → 任务调度（JobStore=PostgreSQL）
   ├── services/collector.py → 采集执行引擎
-  └── core/influxdb.py      → InfluxDB 写入封装
+  └── core/influxdb.py      → 已弃用（时序数据写入 PG 时序表 col_meter_reading）
 
 Week 3: DLMS 协议对接
   ├── 接入私有 DLMS 库
@@ -616,5 +617,6 @@ chore: 构建/工具
 |------|------|------|
 | 响应格式 | 标准 HTTP 状态码 + 业务码 | HTTP 层用标准状态码，业务层用 code 字段区分具体错误 |
 | motor 依赖 | 保留 | 暂不卸载，后续按需决定 |
+| InfluxDB | **已弃用** | 时序数据改用 PostgreSQL 时序表（`col_meter_reading` + `col_reading_daily_summary`），简化部署。配置项保留备未来高并发场景复用 |
 | DLMS 协议栈 | 使用私有库 | Phase 3 时替换当前简化实现 |
 | 部署方式 | Docker Compose + systemd 双支持 | 提供两种部署配置，按场景选择 |

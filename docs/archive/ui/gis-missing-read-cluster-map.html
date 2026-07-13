@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GIS Integration - Missing Read Cluster Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',Arial,sans-serif; background:#f5f5f5; color:#333; }
+.layout { display:flex; height:100vh; }
+
+.sidebar { width:160px; background:#fff; border-right:1px solid #e8e8e8; padding-top:16px; flex-shrink:0; }
+.nav-item { padding:12px 20px; font-size:14px; color:#666; cursor:pointer; border-left:3px solid transparent; }
+.nav-item:hover { color:#26b5a0; background:#f9fffe; }
+.nav-item.active { color:#26b5a0; border-left-color:#26b5a0; font-weight:600; }
+.nav-group-title { padding:10px 20px 4px; font-size:11px; color:#aaa; text-transform:uppercase; letter-spacing:.5px; }
+.nav-item.sub { padding-left:32px; font-size:13px; }
+
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.top-bar { background:#fff; padding:14px 24px; border-bottom:1px solid #e8e8e8; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.top-bar h2 { font-size:16px; font-weight:600; color:#333; }
+.breadcrumb { font-size:12px; color:#999; }
+.breadcrumb span { color:#26b5a0; }
+.btn { padding:6px 16px; border:none; border-radius:4px; font-size:13px; cursor:pointer; transition:opacity .2s; }
+.btn:hover { opacity:.85; }
+.btn-primary { background:#26b5a0; color:#fff; }
+.btn-outline { background:#fff; color:#26b5a0; border:1px solid #26b5a0; }
+
+.content-area { flex:1; display:flex; overflow:hidden; position:relative; }
+
+.area-panel { width:240px; background:#fff; border-right:1px solid #e8e8e8; display:flex; flex-direction:column; flex-shrink:0; z-index:5; }
+.area-search { padding:10px 12px; border-bottom:1px solid #e8e8e8; }
+.area-search input {
+  width:100%; padding:6px 10px 6px 30px; border:1px solid #d9d9d9; border-radius:4px;
+  font-size:13px; outline:none; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 8px center no-repeat;
+}
+.area-search input:focus { border-color:#26b5a0; }
+.area-tree { flex:1; overflow-y:auto; padding:8px 0; font-size:13px; }
+
+.map-wrap { flex:1; position:relative; }
+#map { width:100%; height:100%; }
+
+/* 悬浮统计卡片 */
+.stats-overlay {
+  position:absolute; top:12px; left:12px; right:12px; z-index:1000;
+  display:flex; gap:8px; pointer-events:none;
+}
+.stat-card {
+  flex:1; background:rgba(255,255,255,.92); backdrop-filter:blur(6px);
+  border-radius:6px; padding:8px 12px; box-shadow:0 2px 8px rgba(0,0,0,.12);
+  pointer-events:auto; min-width:0;
+}
+.stat-card .stat-label { font-size:10px; color:#888; margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.stat-card .stat-value { font-size:16px; font-weight:700; }
+.stat-card .stat-value.red { color:#f56c6c; }
+.stat-card .stat-value.orange { color:#e6a23c; }
+.stat-card .stat-value.yellow { color:#c9b200; }
+.stat-card .stat-value.teal { color:#26b5a0; }
+.stat-card .stat-value.blue { color:#409eff; }
+.stat-card .stat-value.purple { color:#7b68ee; }
+
+/* 图例 */
+.map-legend {
+  position:absolute; bottom:24px; right:12px; z-index:1000;
+  background:rgba(255,255,255,.94); backdrop-filter:blur(6px);
+  border-radius:6px; padding:12px 16px; box-shadow:0 2px 8px rgba(0,0,0,.12);
+  font-size:12px;
+}
+.legend-title { font-weight:600; color:#555; margin-bottom:6px; }
+.legend-item { display:flex; align-items:center; gap:8px; margin-bottom:5px; color:#555; }
+.legend-icon { width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+
+/* 右侧详情面板 */
+.detail-panel {
+  width:340px; background:#fff; border-left:1px solid #e8e8e8;
+  display:none; flex-direction:column; flex-shrink:0; z-index:5;
+}
+.detail-panel.open { display:flex; }
+.panel-header { padding:14px 18px; border-bottom:1px solid #e8e8e8; display:flex; justify-content:space-between; align-items:center; }
+.panel-title { font-size:14px; font-weight:600; color:#333; }
+.panel-close { cursor:pointer; color:#999; font-size:16px; }
+.panel-close:hover { color:#f56c6c; }
+.panel-body { flex:1; overflow-y:auto; padding:16px 18px; }
+
+.tree-node { display:flex; align-items:center; padding:4px 8px; cursor:pointer; white-space:nowrap; }
+.tree-node:hover { background:#f0faf8; }
+.tree-node.selected { background:#e6f7f4; }
+.tree-node.hidden { display:none; }
+.tree-toggle { width:16px; text-align:center; color:#999; font-size:10px; flex-shrink:0; margin-right:2px; user-select:none; }
+.tree-icon { width:18px; height:18px; margin-right:6px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; }
+.tree-label { font-size:13px; color:#333; }
+.icon-dept { color:#26b5a0; } .icon-city { color:#5b9bd5; } .icon-sub { color:#e6a23c; } .icon-feeder { color:#7b68ee; } .icon-tr { color:#26b5a0; font-weight:700; }
+.tree-children { padding-left:18px; }
+.tree-children.collapsed { display:none; }
+
+.info-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f5f5f5; font-size:13px; }
+.info-label { color:#999; }
+.info-value { color:#333; font-weight:500; }
+.section-title { font-size:13px; font-weight:600; color:#555; margin:14px 0 8px; padding-bottom:4px; border-bottom:1px solid #e8e8e8; }
+.severity-badge { display:inline-block; padding:2px 10px; border-radius:3px; font-size:12px; font-weight:600; }
+.severity-badge.critical { background:#fde2e2; color:#f56c6c; }
+.severity-badge.warning { background:#fdf0d5; color:#e6a23c; }
+.severity-badge.minor { background:#fdf8d5; color:#a89600; }
+.stat-mini { display:flex; gap:8px; margin:8px 0; }
+.stat-mini-item { flex:1; background:#fafafa; border-radius:4px; padding:8px 6px; text-align:center; }
+.stat-mini-item .sm-val { font-size:15px; font-weight:700; }
+.stat-mini-item .sm-lbl { font-size:10px; color:#999; margin-top:2px; }
+.mini-chart { display:flex; align-items:flex-end; gap:3px; height:50px; margin:8px 0 4px; }
+.mini-bar { flex:1; border-radius:2px 2px 0 0; min-width:6px; }
+.mini-bar.ok { background:#26b5a0; } .mini-bar.miss { background:#f56c6c; }
+.chart-labels { display:flex; justify-content:space-between; font-size:10px; color:#bbb; }
+.profile-table { width:100%; border-collapse:collapse; margin:8px 0; font-size:12px; }
+.profile-table th { background:#f7f7f7; padding:7px 10px; text-align:left; font-weight:600; color:#555; border-bottom:1px solid #e8e8e8; }
+.profile-table td { padding:7px 10px; border-bottom:1px solid #f0f0f0; }
+.profile-table tr:hover td { background:#f9fffe; }
+.pct-bar-bg { width:100%; height:6px; background:#f0f0f0; border-radius:3px; overflow:hidden; }
+.pct-bar { height:100%; border-radius:3px; }
+.pct-bar.good { background:#26b5a0; } .pct-bar.warn { background:#e6a23c; } .pct-bar.bad { background:#f56c6c; }
+
+/* 工单状态卡片 */
+.wo-card { background:#fafafa; border:1px solid #e8e8e8; border-radius:6px; padding:12px 14px; margin:8px 0; }
+.wo-row { display:flex; justify-content:space-between; padding:4px 0; font-size:13px; }
+.wo-label { color:#999; }
+.wo-val { font-weight:600; }
+.wo-val.dispatched { color:#409eff; }
+.wo-val.unhandled { color:#e6a23c; }
+.wo-val.processing { color:#7b68ee; }
+.wo-val.completed { color:#26b5a0; }
+.wo-val.undispatched { color:#999; }
+.btn-service { display:block; width:100%; padding:10px; margin-top:12px; background:#26b5a0; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; text-align:center; }
+.btn-service:hover { background:#1fa08c; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <div class="nav-item">Dashboard</div>
+    <div class="nav-item">Collection Statistics</div>
+    <div class="nav-item">On Demand</div>
+    <div class="nav-item">Firmware Mgmt</div>
+    <div class="nav-group-title">GIS Integration</div>
+    <div class="nav-item sub active">Missing Read Cluster</div>
+    <div class="nav-item sub">Meter Location</div>
+    <div class="nav-item sub">Coverage Map</div>
+    <div class="nav-item">Reports</div>
+    <div class="nav-item">Config</div>
+    <div class="nav-item">Logs</div>
+  </div>
+  <div class="main">
+    <div class="top-bar">
+      <div>
+        <div class="breadcrumb">GIS Integration → <span>Missing Read Cluster Map</span></div>
+        <h2>Missing Read Cluster Map</h2>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <select id="severityFilter" style="padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;">
+          <option value="">All Severity</option>
+          <option value="critical">Critical (&gt; 48h)</option>
+          <option value="warning">Warning (&gt; 24h)</option>
+          <option value="minor">Minor (&gt; 12h)</option>
+        </select>
+        <button class="btn btn-primary" onclick="applyFilter()">Apply</button>
+        <button class="btn btn-outline" onclick="location.reload()">↻ Refresh</button>
+      </div>
+    </div>
+    <div class="content-area">
+      <div class="area-panel">
+        <div class="area-search"><input type="text" id="treeSearch" placeholder="Department" oninput="filterTree(this.value)"></div>
+        <div class="area-tree" id="areaTree"></div>
+      </div>
+      <div class="map-wrap">
+        <div class="stats-overlay">
+          <div class="stat-card"><div class="stat-label">Total Missing</div><div class="stat-value red">1,247</div></div>
+          <div class="stat-card"><div class="stat-label">Critical (&gt;48h)</div><div class="stat-value red">312</div></div>
+          <div class="stat-card"><div class="stat-label">Warning (&gt;24h)</div><div class="stat-value orange">485</div></div>
+          <div class="stat-card"><div class="stat-label">Minor (&gt;12h)</div><div class="stat-value yellow">450</div></div>
+          <div class="stat-card"><div class="stat-label">Clusters</div><div class="stat-value teal">18</div></div>
+          <div class="stat-card"><div class="stat-label">Dispatched</div><div class="stat-value blue">9</div></div>
+          <div class="stat-card"><div class="stat-label">Unhandled</div><div class="stat-value orange">3</div></div>
+          <div class="stat-card"><div class="stat-label">Processing</div><div class="stat-value purple">4</div></div>
+          <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value teal">2</div></div>
+        </div>
+        <!-- 图例 -->
+        <div class="map-legend">
+          <div class="legend-title">Work Order Status</div>
+          <div class="legend-item"><div class="legend-icon">△</div> Undispatched</div>
+          <div class="legend-item"><div class="legend-icon">◎</div> Unhandled</div>
+          <div class="legend-item"><div class="legend-icon">✎</div> Processing</div>
+          <div class="legend-item"><div class="legend-icon">☑</div> Completed</div>
+        </div>
+        <div id="map"></div>
+      </div>
+      <div id="detailPanel" class="detail-panel">
+        <div class="panel-header">
+          <span class="panel-title">Device Details</span>
+          <span class="panel-close" onclick="closePanel()">✕</span>
+        </div>
+        <div id="panelContent" class="panel-body"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
+<script>
+// ========== Area Tree ==========
+const treeData = [
+  { id:'kaifa', label:'KAIFA', icon:'🏢', iconClass:'icon-dept', children:[
+    { id:'chengdu', label:'ChengDu', icon:'🌆', iconClass:'icon-city', children:[
+      { id:'cd-sub', label:'CD-Substation', icon:'🏭', iconClass:'icon-sub', children:[
+        { id:'cd-feeder', label:'CD-Feeder', icon:'⚡', iconClass:'icon-feeder', children:[
+          { id:'cd-tr-1', label:'CD-TR-1', icon:'🔌', iconClass:'icon-tr' },
+          { id:'cd-tr-2', label:'CD-TR-2', icon:'🔌', iconClass:'icon-tr' },
+          { id:'cd-tr-3', label:'CD-TR-3', icon:'🔌', iconClass:'icon-tr' },
+        ]},
+      ]},
+      { id:'exhibition', label:'Exhibition', icon:'🌆', iconClass:'icon-city' },
+    ]},
+    { id:'m-dept', label:'M_Department', icon:'🏢', iconClass:'icon-dept', children:[
+      { id:'m-sub1', label:'M-Substation', icon:'🏭', iconClass:'icon-sub' },
+    ]},
+    { id:'showregion', label:'ShowRegion', icon:'🌆', iconClass:'icon-city' },
+    { id:'testo', label:'TestO', icon:'🏢', iconClass:'icon-dept', children:[
+      { id:'test-sub', label:'Test-Sub', icon:'🏭', iconClass:'icon-sub' },
+    ]},
+    { id:'w-dept', label:'W_Department', icon:'🏢', iconClass:'icon-dept', children:[
+      { id:'w-sub1', label:'W-Substation', icon:'🏭', iconClass:'icon-sub' },
+    ]},
+  ]}
+];
+function buildTree(nodes, container, depth) {
+  nodes.forEach(n => {
+    const hasKids = n.children && n.children.length > 0;
+    const el = document.createElement('div');
+    el.className = 'tree-node'; el.setAttribute('data-id', n.id); el.setAttribute('data-label', n.label.toLowerCase());
+    el.style.paddingLeft = (8 + depth * 18) + 'px';
+    el.innerHTML = `<span class="tree-toggle">${hasKids?'▶':''}</span><span class="tree-icon ${n.iconClass}">${n.icon}</span><span class="tree-label">${n.label}</span>`;
+    container.appendChild(el);
+    let childBox = null;
+    if (hasKids) { childBox = document.createElement('div'); childBox.className = 'tree-children collapsed'; container.appendChild(childBox); buildTree(n.children, childBox, depth+1); }
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.tree-node.selected').forEach(e => e.classList.remove('selected'));
+      el.classList.add('selected');
+      if (childBox) { const c = childBox.classList.toggle('collapsed'); el.querySelector('.tree-toggle').textContent = c?'▶':'▼'; }
+      onTreeSelect(n.id);
+    });
+  });
+}
+function filterTree(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('.tree-node').forEach(el => el.classList.toggle('hidden', q && !el.getAttribute('data-label').includes(q)));
+  if (q) document.querySelectorAll('.tree-children').forEach(el => el.classList.remove('collapsed'));
+}
+function onTreeSelect(id) {
+  const c = { 'chengdu':[30.572,104.066,12],'cd-sub':[30.58,104.07,14],'cd-feeder':[30.575,104.065,15],'cd-tr-1':[30.578,104.062,16],'cd-tr-2':[30.573,104.068,16],'cd-tr-3':[30.569,104.058,16],'exhibition':[30.585,104.055,14] };
+  if (c[id]) map.setView([c[id][0],c[id][1]], c[id][2]);
+}
+
+// ========== Work Order Statuses ==========
+// undispatched: △ yellow/orange triangle
+// unhandled: ◎ orange circle
+// processing: ✎ purple pencil
+// completed: ☑ green check
+
+// ========== Device Data ==========
+const devices = [
+  { id:'MTR-CD-001', lat:30.5785, lng:104.0620, sev:'critical', area:'CD-TR-1', missingHours:72, lastRead:'Apr 18, 2026 14:30', totalReads:720, missedReads:48, addr:'Block A, Jinjiang', type:'Single Phase', comm:'RF Mesh', daily:[95,92,88,0,0,0,85],
+    wo:{ status:'unhandled', dispatch:'Dispatched', orderNo:'WO-2026-00281', updated:'Apr 20, 2026 17:32', assignee:'Zhang Wei' },
+    profiles:{ daily:{expected:720,received:672,missing:48,rate:93.3}, monthly:{expected:30,received:27,missing:3,rate:90.0}, energyLoad:{expected:2880,received:2650,missing:230,rate:92.0}, powerQuality:{expected:720,received:680,missing:40,rate:94.4} } },
+  { id:'MTR-CD-002', lat:30.5770, lng:104.0635, sev:'critical', area:'CD-TR-1', missingHours:56, lastRead:'Apr 19, 2026 02:15', totalReads:720, missedReads:38, addr:'Tower 3, Jinjiang', type:'Three Phase', comm:'RF Mesh', daily:[98,95,90,85,0,0,78],
+    wo:{ status:'processing', dispatch:'Dispatched', orderNo:'WO-2026-00275', updated:'Apr 21, 2026 09:15', assignee:'Li Ming' },
+    profiles:{ daily:{expected:720,received:682,missing:38,rate:94.7}, monthly:{expected:30,received:28,missing:2,rate:93.3}, energyLoad:{expected:2880,received:2720,missing:160,rate:94.4}, powerQuality:{expected:720,received:695,missing:25,rate:96.5} } },
+  { id:'MTR-CD-003', lat:30.5760, lng:104.0610, sev:'warning', area:'CD-TR-1', missingHours:36, lastRead:'Apr 19, 2026 18:45', totalReads:720, missedReads:24, addr:'Villa 12, Jinjiang', type:'Single Phase', comm:'GPRS', daily:[100,98,95,92,88,0,82],
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—' },
+    profiles:{ daily:{expected:720,received:696,missing:24,rate:96.7}, monthly:{expected:30,received:29,missing:1,rate:96.7}, energyLoad:{expected:2880,received:2810,missing:70,rate:97.6}, powerQuality:{expected:720,received:710,missing:10,rate:98.6} } },
+  { id:'MTR-CD-004', lat:30.5735, lng:104.0680, sev:'critical', area:'CD-TR-2', missingHours:68, lastRead:'Apr 18, 2026 20:00', totalReads:720, missedReads:45, addr:'Bldg 8, Wuhou', type:'Three Phase', comm:'RF Mesh', daily:[92,88,0,0,0,0,80],
+    wo:{ status:'processing', dispatch:'Dispatched', orderNo:'WO-2026-00268', updated:'Apr 21, 2026 08:40', assignee:'Wang Fang' },
+    profiles:{ daily:{expected:720,received:675,missing:45,rate:93.8}, monthly:{expected:30,received:26,missing:4,rate:86.7}, energyLoad:{expected:2880,received:2580,missing:300,rate:89.6}, powerQuality:{expected:720,received:660,missing:60,rate:91.7} } },
+  { id:'MTR-CD-005', lat:30.5720, lng:104.0695, sev:'warning', area:'CD-TR-2', missingHours:30, lastRead:'Apr 20, 2026 00:30', totalReads:720, missedReads:20, addr:'Block C, Wuhou', type:'Single Phase', comm:'GPRS', daily:[100,100,95,90,85,0,88],
+    wo:{ status:'completed', dispatch:'Dispatched', orderNo:'WO-2026-00250', updated:'Apr 20, 2026 14:20', assignee:'Chen Jie' },
+    profiles:{ daily:{expected:720,received:700,missing:20,rate:97.2}, monthly:{expected:30,received:29,missing:1,rate:96.7}, energyLoad:{expected:2880,received:2830,missing:50,rate:98.3}, powerQuality:{expected:720,received:712,missing:8,rate:98.9} } },
+  { id:'MTR-CD-006', lat:30.5745, lng:104.0660, sev:'minor', area:'CD-TR-2', missingHours:14, lastRead:'Apr 20, 2026 16:00', totalReads:720, missedReads:10, addr:'Tower 7, Wuhou', type:'Single Phase', comm:'RF Mesh', daily:[100,100,98,95,92,90,88],
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—' },
+    profiles:{ daily:{expected:720,received:710,missing:10,rate:98.6}, monthly:{expected:30,received:30,missing:0,rate:100}, energyLoad:{expected:2880,received:2860,missing:20,rate:99.3}, powerQuality:{expected:720,received:718,missing:2,rate:99.7} } },
+  { id:'MTR-CD-007', lat:30.5695, lng:104.0575, sev:'critical', area:'CD-TR-3', missingHours:80, lastRead:'Apr 18, 2026 06:00', totalReads:720, missedReads:54, addr:'Unit 5, Qingyang', type:'Three Phase', comm:'PLC', daily:[88,0,0,0,0,0,75],
+    wo:{ status:'unhandled', dispatch:'Dispatched', orderNo:'WO-2026-00290', updated:'Apr 21, 2026 07:00', assignee:'Zhao Peng' },
+    profiles:{ daily:{expected:720,received:666,missing:54,rate:92.5}, monthly:{expected:30,received:25,missing:5,rate:83.3}, energyLoad:{expected:2880,received:2500,missing:380,rate:86.8}, powerQuality:{expected:720,received:640,missing:80,rate:88.9} } },
+  { id:'MTR-CD-008', lat:30.5680, lng:104.0590, sev:'warning', area:'CD-TR-3', missingHours:28, lastRead:'Apr 20, 2026 02:00', totalReads:720, missedReads:18, addr:'Block 2, Qingyang', type:'Single Phase', comm:'PLC', daily:[100,98,95,92,88,0,90],
+    wo:{ status:'processing', dispatch:'Dispatched', orderNo:'WO-2026-00278', updated:'Apr 21, 2026 10:05', assignee:'Sun Lei' },
+    profiles:{ daily:{expected:720,received:702,missing:18,rate:97.5}, monthly:{expected:30,received:29,missing:1,rate:96.7}, energyLoad:{expected:2880,received:2840,missing:40,rate:98.6}, powerQuality:{expected:720,received:715,missing:5,rate:99.3} } },
+  { id:'MTR-CD-009', lat:30.5710, lng:104.0560, sev:'minor', area:'CD-TR-3', missingHours:16, lastRead:'Apr 20, 2026 14:00', totalReads:720, missedReads:12, addr:'Villa 3, Qingyang', type:'Single Phase', comm:'GPRS', daily:[100,100,100,95,90,88,85],
+    wo:{ status:'completed', dispatch:'Dispatched', orderNo:'WO-2026-00245', updated:'Apr 19, 2026 16:30', assignee:'Liu Yan' },
+    profiles:{ daily:{expected:720,received:708,missing:12,rate:98.3}, monthly:{expected:30,received:30,missing:0,rate:100}, energyLoad:{expected:2880,received:2855,missing:25,rate:99.1}, powerQuality:{expected:720,received:716,missing:4,rate:99.4} } },
+  { id:'MTR-CD-010', lat:30.5800, lng:104.0700, sev:'warning', area:'CD-TR-1', missingHours:40, lastRead:'Apr 19, 2026 14:00', totalReads:720, missedReads:28, addr:'Bldg 15, Jinjiang', type:'Three Phase', comm:'RF Mesh', daily:[98,95,90,85,0,0,82],
+    wo:{ status:'unhandled', dispatch:'Dispatched', orderNo:'WO-2026-00285', updated:'Apr 20, 2026 22:10', assignee:'Zhang Wei' },
+    profiles:{ daily:{expected:720,received:692,missing:28,rate:96.1}, monthly:{expected:30,received:28,missing:2,rate:93.3}, energyLoad:{expected:2880,received:2780,missing:100,rate:96.5}, powerQuality:{expected:720,received:700,missing:20,rate:97.2} } },
+  { id:'MTR-CD-011', lat:30.5820, lng:104.0580, sev:'minor', area:'Exhibition', missingHours:13, lastRead:'Apr 20, 2026 17:30', totalReads:720, missedReads:9, addr:'Hall B, Exhibition', type:'Single Phase', comm:'GPRS', daily:[100,100,100,98,95,92,88],
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—' },
+    profiles:{ daily:{expected:720,received:711,missing:9,rate:98.8}, monthly:{expected:30,received:30,missing:0,rate:100}, energyLoad:{expected:2880,received:2865,missing:15,rate:99.5}, powerQuality:{expected:720,received:718,missing:2,rate:99.7} } },
+  { id:'MTR-CD-012', lat:30.5830, lng:104.0550, sev:'critical', area:'Exhibition', missingHours:52, lastRead:'Apr 19, 2026 06:00', totalReads:720, missedReads:35, addr:'Hall D, Exhibition', type:'Three Phase', comm:'RF Mesh', daily:[95,90,0,0,0,0,82],
+    wo:{ status:'processing', dispatch:'Dispatched', orderNo:'WO-2026-00272', updated:'Apr 21, 2026 08:00', assignee:'Wang Fang' },
+    profiles:{ daily:{expected:720,received:685,missing:35,rate:95.1}, monthly:{expected:30,received:27,missing:3,rate:90.0}, energyLoad:{expected:2880,received:2680,missing:200,rate:93.1}, powerQuality:{expected:720,received:675,missing:45,rate:93.8} } },
+  { id:'MTR-CD-013', lat:30.5750, lng:104.0520, sev:'warning', area:'CD-TR-3', missingHours:26, lastRead:'Apr 20, 2026 04:00', totalReads:720, missedReads:17, addr:'Tower 2, Qingyang', type:'Single Phase', comm:'PLC', daily:[100,100,95,90,88,0,85],
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—' },
+    profiles:{ daily:{expected:720,received:703,missing:17,rate:97.6}, monthly:{expected:30,received:29,missing:1,rate:96.7}, energyLoad:{expected:2880,received:2845,missing:35,rate:98.8}, powerQuality:{expected:720,received:714,missing:6,rate:99.2} } },
+  { id:'MTR-CD-014', lat:30.5810, lng:104.0650, sev:'critical', area:'CD-TR-1', missingHours:60, lastRead:'Apr 18, 2026 22:00', totalReads:720, missedReads:40, addr:'Block D, Jinjiang', type:'Three Phase', comm:'RF Mesh', daily:[92,88,82,0,0,0,78],
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—' },
+    profiles:{ daily:{expected:720,received:680,missing:40,rate:94.4}, monthly:{expected:30,received:27,missing:3,rate:90.0}, energyLoad:{expected:2880,received:2640,missing:240,rate:91.7}, powerQuality:{expected:720,received:670,missing:50,rate:93.1} } },
+  { id:'MTR-CD-015', lat:30.5700, lng:104.0650, sev:'minor', area:'CD-TR-2', missingHours:15, lastRead:'Apr 20, 2026 15:00', totalReads:720, missedReads:10, addr:'Villa 9, Wuhou', type:'Single Phase', comm:'GPRS', daily:[100,100,98,95,92,90,88],
+    wo:{ status:'undispatched', dispatch:'Undispatched', orderNo:'—', updated:'—', assignee:'—' },
+    profiles:{ daily:{expected:720,received:710,missing:10,rate:98.6}, monthly:{expected:30,received:30,missing:0,rate:100}, energyLoad:{expected:2880,received:2862,missing:18,rate:99.4}, powerQuality:{expected:720,received:717,missing:3,rate:99.6} } },
+];
+
+// ========== Marker Icons by WO status ==========
+function getMarkerSvg(woStatus) {
+  const icons = {
+    undispatched: `<svg width="24" height="24" viewBox="0 0 24 24"><polygon points="12,3 22,21 2,21" fill="#e6a23c" stroke="#fff" stroke-width="1.5"/></svg>`,
+    unhandled: `<svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="#fff" stroke="#e6a23c" stroke-width="2.5"/><circle cx="11" cy="11" r="4" fill="#e6a23c"/></svg>`,
+    processing: `<svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="#fff" stroke="#7b68ee" stroke-width="2.5"/><path d="M8 14 L14 8 M14 8 L14 12" fill="none" stroke="#7b68ee" stroke-width="2" stroke-linecap="round"/></svg>`,
+    completed: `<svg width="22" height="22" viewBox="0 0 22 22"><rect x="2" y="2" width="18" height="18" rx="3" fill="#26b5a0" stroke="#fff" stroke-width="1.5"/><path d="M6 11 L10 15 L16 7" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  };
+  return icons[woStatus] || icons.undispatched;
+}
+
+// ========== Map ==========
+let map, heatLayer, markerLayer, markers = [];
+
+function initMap() {
+  map = L.map('map', { zoomControl:false }).setView([30.572, 104.066], 13);
+  L.control.zoom({ position:'bottomleft' }).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution:'&copy; OpenStreetMap, &copy; CARTO', maxZoom:19, subdomains:'abcd'
+  }).addTo(map);
+
+  const heatPts = devices.map(d => [d.lat, d.lng, d.sev==='critical'?1.0:d.sev==='warning'?0.6:0.3]);
+  heatLayer = L.heatLayer(heatPts, {
+    radius:35, blur:25, maxZoom:15, max:1.0,
+    gradient:{0.2:'#c9b200',0.5:'#e6a23c',0.8:'#f56c6c',1.0:'#d32f2f'}
+  }).addTo(map);
+
+  markerLayer = L.layerGroup();
+  devices.forEach(d => {
+    const svg = getMarkerSvg(d.wo.status);
+    const icon = L.divIcon({
+      className:'', html:svg, iconSize:[24,24], iconAnchor:[12,12]
+    });
+    const m = L.marker([d.lat,d.lng],{icon}).on('click',()=>showDevice(d));
+    m.bindTooltip(`${d.id}<br><span style="font-size:11px;color:#888;">${d.wo.status}</span>`,{direction:'top',offset:[0,-12]});
+    markers.push({marker:m,data:d});
+    markerLayer.addLayer(m);
+  });
+
+  map.on('zoomend', updateLayers);
+  updateLayers();
+}
+
+function updateLayers() {
+  if (map.getZoom() >= 15) { map.removeLayer(heatLayer); map.addLayer(markerLayer); }
+  else { map.removeLayer(markerLayer); map.addLayer(heatLayer); }
+}
+
+// ========== Show Device ==========
+function showDevice(d) {
+  document.getElementById('detailPanel').classList.add('open');
+  setTimeout(() => map.invalidateSize(), 50);
+
+  const sevLabel = d.sev==='critical'?'Critical (> 48h)':d.sev==='warning'?'Warning (> 24h)':'Minor (> 12h)';
+  const successRate = ((d.totalReads-d.missedReads)/d.totalReads*100).toFixed(1);
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  let bars = '';
+  d.daily.forEach((v,i) => { bars += `<div class="mini-bar ${v===0?'miss':'ok'}" style="height:${Math.max(v*0.48,2)}px;" title="${days[i]}: ${v}%"></div>`; });
+
+  const p = d.profiles;
+  const wo = d.wo;
+  const woStatusLabel = { undispatched:'Undispatched', unhandled:'Unhandled', processing:'Processing', completed:'Completed' };
+
+  document.getElementById('panelContent').innerHTML = `
+    <div style="margin-bottom:12px;">
+      <div class="info-row"><span class="info-label">Device ID</span><span class="info-value" style="font-weight:700;">${d.id}</span></div>
+      <div class="info-row"><span class="info-label">Severity</span><span class="severity-badge ${d.sev}">${sevLabel}</span></div>
+      <div class="info-row"><span class="info-label">Area</span><span class="info-value">${d.area}</span></div>
+      <div class="info-row"><span class="info-label">Address</span><span class="info-value">${d.addr}</span></div>
+      <div class="info-row"><span class="info-label">Meter Type</span><span class="info-value">${d.type}</span></div>
+      <div class="info-row"><span class="info-label">Comm Module</span><span class="info-value">${d.comm}</span></div>
+      <div class="info-row"><span class="info-label">Last Read</span><span class="info-value">${d.lastRead}</span></div>
+    </div>
+
+    <div class="section-title">Work Order Status</div>
+    <div class="wo-card">
+      <div class="wo-row"><span class="wo-label">Dispatch</span><span class="wo-val ${wo.status}">${wo.dispatch}</span></div>
+      <div class="wo-row"><span class="wo-label">Progress</span><span class="wo-val ${wo.status}">${woStatusLabel[wo.status]}</span></div>
+      <div class="wo-row"><span class="wo-label">Order No.</span><span class="wo-val" style="color:#409eff;">${wo.orderNo}</span></div>
+      <div class="wo-row"><span class="wo-label">Assignee</span><span class="wo-val">${wo.assignee}</span></div>
+      <div class="wo-row"><span class="wo-label">Updated</span><span class="wo-val">${wo.updated}</span></div>
+    </div>
+
+    <div class="section-title">Overall Missing Statistics</div>
+    <div class="stat-mini">
+      <div class="stat-mini-item"><div class="sm-val" style="color:#f56c6c;">${d.missingHours}h</div><div class="sm-lbl">Current Gap</div></div>
+      <div class="stat-mini-item"><div class="sm-val">${d.missedReads}</div><div class="sm-lbl">Missed (30d)</div></div>
+      <div class="stat-mini-item"><div class="sm-val" style="color:#26b5a0;">${successRate}%</div><div class="sm-lbl">Success Rate</div></div>
+    </div>
+
+    <div class="section-title">Collection Rate (Last 7 Days)</div>
+    <div class="mini-chart">${bars}</div>
+    <div class="chart-labels"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+
+    <div class="section-title">Profile Missing Breakdown</div>
+    <table class="profile-table">
+      <thead><tr><th>Profile</th><th>Expected</th><th>Missing</th><th>Rate</th><th style="width:70px"></th></tr></thead>
+      <tbody>
+        ${profileRow('Daily', p.daily)}
+        ${profileRow('Monthly', p.monthly)}
+        ${profileRow('Energy Load', p.energyLoad)}
+        ${profileRow('Power Quality', p.powerQuality)}
+      </tbody>
+    </table>
+
+    <button class="btn-service" onclick="alert('Service order created for ${d.id}!')">+ Service Order</button>
+  `;
+  map.setView([d.lat, d.lng], Math.max(map.getZoom(), 16));
+}
+
+function profileRow(name, p) {
+  const cls = p.rate >= 97 ? 'good' : p.rate >= 90 ? 'warn' : 'bad';
+  const clr = p.rate >= 97 ? '#26b5a0' : p.rate >= 90 ? '#e6a23c' : '#f56c6c';
+  return `<tr><td style="font-weight:500;">${name}</td><td>${p.expected}</td><td style="color:#f56c6c;font-weight:600;">${p.missing}</td><td style="color:${clr};font-weight:600;">${p.rate}%</td><td><div class="pct-bar-bg"><div class="pct-bar ${cls}" style="width:${p.rate}%"></div></div></td></tr>`;
+}
+
+function closePanel() {
+  document.getElementById('detailPanel').classList.remove('open');
+  setTimeout(() => map.invalidateSize(), 50);
+}
+
+function applyFilter() {
+  const sev = document.getElementById('severityFilter').value;
+  markerLayer.clearLayers();
+  markers.forEach(m => { if (!sev || m.data.sev === sev) markerLayer.addLayer(m.marker); });
+  map.removeLayer(heatLayer);
+  const pts = devices.filter(d => !sev || d.sev === sev).map(d => [d.lat,d.lng,d.sev==='critical'?1.0:d.sev==='warning'?0.6:0.3]);
+  heatLayer = L.heatLayer(pts, { radius:35,blur:25,maxZoom:15,max:1.0, gradient:{0.2:'#c9b200',0.5:'#e6a23c',0.8:'#f56c6c',1.0:'#d32f2f'} });
+  updateLayers();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  buildTree(treeData, document.getElementById('areaTree'), 0);
+  initMap();
+});
+</script>

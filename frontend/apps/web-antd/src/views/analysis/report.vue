@@ -25,6 +25,11 @@ import { useRouter } from 'vue-router';
 
 import { getAnalysisReports, exportAnalysisReport } from '#/api/modules/analysis';
 import { getProjectList } from '#/api/modules/project';
+import { useChartTheme } from '#/composables/useChartTheme';
+
+const RangePicker = DatePicker.RangePicker;
+
+const { themedAxis, themedTooltip, watchThemeAndRerender } = useChartTheme();
 
 const router = useRouter();
 
@@ -124,37 +129,32 @@ function renderCharts() {
   );
 
   renderQualityChart({
-    title: {
-      text: '质量评分趋势',
-      left: 'center',
-      textStyle: { fontSize: 14 },
-    },
-    tooltip: {
+    tooltip: themedTooltip({
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       formatter: (params: any) => {
         const p = params[0];
         return `${p.axisValue}<br/>质量评分: <b>${p.value}</b>`;
       },
-    },
+    }),
     grid: {
-      top: 50,
+      top: 30,
       left: '3%',
       right: '4%',
       bottom: 10,
       containLabel: true,
     },
-    xAxis: {
+    xAxis: themedAxis('x', {
       type: 'category',
       data: dates,
       axisLabel: { rotate: 30 },
-    },
-    yAxis: {
+    }),
+    yAxis: themedAxis('y', {
       type: 'value',
       name: '评分',
       min: 0,
       max: 100,
-    },
+    }),
     series: [
       {
         type: 'bar',
@@ -176,32 +176,27 @@ function renderCharts() {
   const abnormalCounts = items.map((i: any) => Number(i.abnormal_count) || 0);
 
   renderAbnormalChart({
-    title: {
-      text: '异常数量趋势',
-      left: 'center',
-      textStyle: { fontSize: 14 },
-    },
-    tooltip: {
+    tooltip: themedTooltip({
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-    },
+    }),
     grid: {
-      top: 50,
+      top: 30,
       left: '3%',
       right: '4%',
       bottom: 10,
       containLabel: true,
     },
-    xAxis: {
+    xAxis: themedAxis('x', {
       type: 'category',
       data: dates,
       axisLabel: { rotate: 30 },
-    },
-    yAxis: {
+    }),
+    yAxis: themedAxis('y', {
       type: 'value',
       name: '异常数',
       min: 0,
-    },
+    }),
     series: [
       {
         type: 'bar',
@@ -220,6 +215,8 @@ function renderCharts() {
     ],
   });
 }
+
+watchThemeAndRerender(renderCharts);
 
 function handleViewDetail(record: any) {
   router.push({
@@ -252,6 +249,13 @@ function handlePageChange(page: number, size: number) {
   fetchData();
 }
 
+function handleReset() {
+  dateRange.value = null;
+  selectedProject.value = undefined;
+  currentPage.value = 1;
+  fetchData();
+}
+
 onMounted(() => {
   fetchProjects();
   fetchData();
@@ -267,7 +271,7 @@ watch(selectedProject, () => {
   <Page auto-content-height>
     <!-- Summary stats -->
     <Row v-if="summaryStats" :gutter="16" style="margin-bottom: 16px">
-      <Col :span="8">
+      <Col :span="6">
         <Card>
           <Statistic
             title="平均质量评分"
@@ -276,7 +280,7 @@ watch(selectedProject, () => {
           />
         </Card>
       </Col>
-      <Col :span="8">
+      <Col :span="6">
         <Card>
           <Statistic
             title="异常总数"
@@ -287,13 +291,18 @@ watch(selectedProject, () => {
           />
         </Card>
       </Col>
-      <Col :span="8">
+      <Col :span="6">
         <Card>
           <Statistic
             title="高质量报告数 (>= 90分)"
             :value="summaryStats.highQuality"
             :suffix="`/ ${tableData.length}`"
           />
+        </Card>
+      </Col>
+      <Col :span="6">
+        <Card>
+          <Statistic title="报告总数" :value="total" />
         </Card>
       </Col>
     </Row>
@@ -316,37 +325,15 @@ watch(selectedProject, () => {
           />
         </Form.Item>
         <Form.Item label="日期范围">
-          <DatePicker
-            :value="dateRange?.[0]"
-            placeholder="开始日期"
-            style="width: 140px"
-            @change="
-              (val: any) => {
-                if (!dateRange.value) dateRange.value = [null, null];
-                dateRange.value[0] = val;
-              }
-            "
-          />
-          <span style="margin: 0 8px; color: #999">-</span>
-          <DatePicker
-            :value="dateRange?.[1]"
-            placeholder="结束日期"
-            style="width: 140px"
-            @change="
-              (val: any) => {
-                if (!dateRange.value) dateRange.value = [null, null];
-                dateRange.value[1] = val;
-              }
-            "
-          />
+          <RangePicker v-model:value="dateRange" style="width: 260px" />
         </Form.Item>
         <Form.Item>
-          <Button type="primary" @click="fetchData" :loading="loading">
-            查询
-          </Button>
-        </Form.Item>
-        <Form.Item>
-          <Button @click="fetchData">刷新</Button>
+          <Space>
+            <Button type="primary" @click="fetchData" :loading="loading">
+              查询
+            </Button>
+            <Button @click="handleReset">重置</Button>
+          </Space>
         </Form.Item>
       </Form>
     </Card>

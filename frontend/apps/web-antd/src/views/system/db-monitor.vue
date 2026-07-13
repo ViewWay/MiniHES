@@ -11,6 +11,7 @@ import {
   Alert,
   Card,
   Col,
+  message,
   Row,
   Spin,
   Statistic,
@@ -95,29 +96,8 @@ async function fetchData() {
     };
     renderCharts();
   } catch {
-    // Use demo data when API unavailable
-    stats.value = {
-      postgres: {
-        connections: 25,
-        slow_queries: 2,
-        lock_waits: 0,
-        table_bloat: 5.2,
-        connection_trend: [18, 22, 20, 25, 30, 28, 35, 32, 27, 24, 22, 25],
-      },
-      influxdb: {
-        write_performance: 8500,
-        query_duration: 45,
-        disk_usage: 67.3,
-        write_trend: [7800, 8200, 8100, 8500, 9000, 8800, 8500, 8300, 8100, 8400, 8600, 8500],
-      },
-      redis: {
-        memory_usage: 1.2,
-        memory_total: 2.0,
-        cache_hit_rate: 95,
-        connected_clients: 12,
-      },
-    };
-    renderCharts();
+    // API 不可用时不显示假数据
+    message.error('数据库监控数据加载失败');
   } finally {
     loading.value = false;
   }

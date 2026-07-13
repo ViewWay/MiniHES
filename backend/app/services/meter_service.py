@@ -82,6 +82,9 @@ def _snapshot_to_dict(s: MeterSnapshot | None) -> dict | None:
         "signal_strength": s.signal_strength,
         "firmware_version": s.firmware_version,
         "error_code": s.error_code,
+        "stack_usage": s.stack_usage,
+        "eeprom_write_count": s.eeprom_write_count,
+        "last_data_time": s.last_data_time.strftime("%Y-%m-%d %H:%M:%S") if s.last_data_time else None,
     }
 
 

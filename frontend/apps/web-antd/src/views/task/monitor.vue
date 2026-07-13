@@ -141,12 +141,12 @@ onUnmounted(() => {
   <Page auto-content-height>
     <!-- Real-time Stats -->
     <Row :gutter="16" style="margin-bottom: 16px">
-      <Col :span="5">
+      <Col :span="6">
         <Card>
           <Statistic title="活跃任务" :value="stats.total" />
         </Card>
       </Col>
-      <Col :span="5">
+      <Col :span="6">
         <Card>
           <Statistic title="执行中" :value="stats.running" :value-style="{ color: '#1890ff' }">
             <template #prefix>
@@ -155,17 +155,17 @@ onUnmounted(() => {
           </Statistic>
         </Card>
       </Col>
-      <Col :span="5">
+      <Col :span="6">
         <Card>
           <Statistic title="已完成" :value="stats.completed" :value-style="{ color: '#52c41a' }" />
         </Card>
       </Col>
-      <Col :span="5">
+      <Col :span="6">
         <Card>
           <Statistic title="失败" :value="stats.failed" :value-style="{ color: '#ff4d4f' }" />
         </Card>
       </Col>
-      <Col :span="4">
+      <Col :span="6">
         <Card>
           <Statistic title="平均成功率" :value="stats.avgSuccessRate" suffix="%">
             <template #formatter="{ value }">

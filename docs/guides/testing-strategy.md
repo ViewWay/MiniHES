@@ -35,37 +35,38 @@
 
 | 层级 | 工具 | 目标 | 目录 |
 |------|------|------|------|
-| 单元测试 | pytest | Service/工具函数逻辑 | `tests/backend/unit/` |
-| API 集成测试 | pytest + httpx | 端点请求/响应 | `tests/backend/api/` |
-| 数据库测试 | pytest + PostgreSQL | ORM + 迁移 | `tests/backend/db/` |
-| 性能测试 | Locust | API 压力/并发 | `tests/backend/perf/` |
+| API 集成测试 | pytest + httpx | 端点请求/响应（含 Service 逻辑） | `backend/tests/` |
+| 数据库测试 | pytest + PostgreSQL | ORM 模型 | `backend/tests/` |
+| 性能测试 | Locust | API 压力/并发 | `tests/backend/perf/`（占位） |
 
-### 2.2 后端测试目录结构
+> **实际测试位置说明**：真实后端测试（83 个）位于 `backend/tests/`（CI 实际运行此目录）。
+> `tests/backend/` 是早期规划的占位目录（仅 5 个 stub），不再使用。
+> `backend/pyproject.toml` 配置 `testpaths = ["tests"]`，在 `backend/` 下执行 `uv run pytest` 即可。
+
+### 2.2 后端测试目录结构（实际）
 
 ```
-tests/backend/
-├── conftest.py              # 全局 fixtures
-├── pytest.ini
-├── factories.py             # 测试数据工厂 (faker)
-├── unit/                    # 单元测试
-│   ├── test_security.py     # JWT/密码哈希
-│   ├── test_response.py     # 统一响应格式
-│   └── test_scheduler.py    # 调度器逻辑
-├── api/                     # API 集成测试
-│   ├── test_auth.py         # 登录/登出/刷新
-│   ├── test_meters.py       # 样机 CRUD + 状态流转
-│   ├── test_projects.py     # 项目管理
-│   ├── test_tasks.py        # 采集任务
-│   ├── test_analysis.py     # 数据分析
-│   ├── test_alarms.py       # 告警
-│   ├── test_tests.py        # 测试管理
-│   ├── test_system.py       # 用户/角色/部门
-│   └── test_screens.py      # 大屏
-├── db/                      # 数据库测试
-│   ├── test_models.py       # ORM 模型
-│   └── test_migrations.py   # 迁移一致性
-└── perf/                    # 性能测试
-    └── locustfile.py        # Locust 压测脚本
+backend/tests/                    # ← 真实测试目录，CI 运行此处（83 个测试）
+├── conftest.py                   # 全局 fixtures（async client + db session）
+├── factories.py                  # 测试数据工厂
+├── test_alarms.py                # 告警 API（12 个）
+├── test_api.py                   # 通用 API 测试
+├── test_health.py                # 健康检查
+├── test_reference.py             # 基础数据/采集点（14 个）
+├── test_roles.py                 # 角色管理（5 个）
+├── test_tasks.py                 # 采集任务（9 个）
+└── test_tests.py                 # 测试任务/缺陷（7 个）
+
+tests/                            # ← 早期占位 + E2E（CI 不运行）
+├── backend/                      # 早期规划占位（仅 5 个 stub，已废弃）
+│   ├── unit/test_response.py
+│   ├── api/test_health.py
+│   ├── db/test_models.py
+│   └── perf/locustfile.py
+└── e2e/                          # Playwright E2E（9 个，CI 未运行）
+    ├── auth/login.spec.ts
+    ├── meter/list.spec.ts
+    └── visual/pages.spec.ts
 ```
 
 ### 2.3 关键 Fixtures 设计
