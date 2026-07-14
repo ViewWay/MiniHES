@@ -76,20 +76,22 @@ class MongoSessionRepo:
 
         优先返回有完整 DLMS 数据的文档（total_points >= 50，即真实 DCPP 巡检），
         避免被 execute_task 写入的空壳文档（4 个点）覆盖。
+
+        projection: 传入 {} 返回完整文档（无投影）；
+                    传入 None 或省略使用 PROJ_META（轻量元数据）。
         """
-        # 先查有完整数据的最新文档
+        proj = self.PROJ_META if projection is None else projection
         doc = await self.col.find_one(
             {"meter_id": meter_id, "total_points": {"$gte": 50}},
             sort=[("collected_at", -1)],
-            projection=projection or self.PROJ_META,
+            projection=proj,
         )
         if doc:
             return doc
-        # 退化：返回任意最新文档
         return await self.col.find_one(
             {"meter_id": meter_id},
             sort=[("collected_at", -1)],
-            projection=projection or self.PROJ_META,
+            projection=proj,
         )
 
     async def get_sessions_by_date_range(

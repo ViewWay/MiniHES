@@ -526,7 +526,7 @@ async def meter_detail(
     repo = MongoSessionRepo(mongo)
     doc = None
     if meter_id:
-        doc = await repo.get_latest_by_meter(meter_id)
+        doc = await repo.get_latest_by_meter(meter_id, projection={})
     elif db_name and collection:
         col = mongo[collection]
         doc = await col.find_one({}, sort=[("collected_at", -1)])
