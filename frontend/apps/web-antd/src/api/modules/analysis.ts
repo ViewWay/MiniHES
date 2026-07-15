@@ -89,7 +89,7 @@ export interface MeterDetailParams {
   days?: number;
 }
 
-export function getMeterDetail(params: MeterDetailParams) {
+export function getAnalysisMeterDetail(params: MeterDetailParams) {
   return requestClient.get('/analysis/meter-detail', { params });
 }
 

@@ -22,7 +22,7 @@ import {
   Tag,
 } from 'ant-design-vue';
 
-import { getDailyMeters, getMeterDetail } from '#/api/modules/analysis';
+import { getDailyMeters, getAnalysisMeterDetail } from '#/api/modules/analysis';
 import { getProjectList } from '#/api/modules/project';
 import { useChartTheme } from '#/composables/useChartTheme';
 
@@ -177,7 +177,7 @@ async function handleSearch() {
       if (!directDb.value || !directCollection.value) return;
       params = { db: directDb.value, collection: directCollection.value, days: 60 };
     }
-    const res = await getMeterDetail(params);
+    const res = await getAnalysisMeterDetail(params);
     detailData.value = res;
     setTimeout(() => renderAllCharts(), 100);
   } catch (e: any) {
