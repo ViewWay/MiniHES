@@ -501,3 +501,202 @@ async def ondemand_history(
         page_size=page_size,
     )
     return success(data)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 电表详情看板
+# ══════════════════════════════════════════════════════════════════════
+
+
+@router.get("/meter-detail")
+async def meter_detail(
+    meter_id: int | None = Query(default=None),
+    db_name: str | None = Query(default=None, alias="db"),
+    collection: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=365),
+    db: DbSession = ...,
+    mongo: MongoDb = ...,
+    _user: CurrentUser = ...,
+):
+    """电表详情看板：解析 MongoDB DLMS 文档为完整数据结构。"""
+    from datetime import datetime, timezone
+
+    from app.services.mongo_session_repo import MongoSessionRepo
+
+    repo = MongoSessionRepo(mongo)
+    doc = None
+    if meter_id:
+        doc = await repo.get_latest_by_meter(meter_id, projection={})
+    elif db_name and collection:
+        col = mongo[collection]
+        doc = await col.find_one({}, sort=[("collected_at", -1)])
+
+    if not doc:
+        raise BusinessException(code=404, message="未找到采集数据")
+
+    kvp = doc.get("key_value_pairs", {})
+
+    def _kvp_get(*keys):
+        for k in keys:
+            v = kvp.get(k)
+            if v is not None and v != "ObjectUndefined":
+                return v
+        return None
+
+    device_id = _kvp_get("Device ID.value")
+    logical_name = _kvp_get("LogicalName.value")
+    clock_time = _kvp_get("Clock.time", "Clock.Clock.Time")
+    has_l2 = _kvp_get("Instantaneous voltage L2.value") is not None
+    meter_type = "three" if has_l2 else "single"
+    phase_count = 3 if has_l2 else 1
+    connection = {
+        "app1_version": doc.get("app1_version", ""),
+        "app2_version": doc.get("app2_version", ""),
+    }
+
+    instantaneous = {}
+    for key, value in kvp.items():
+        if key.endswith(".value") and value is not None and value != "ObjectUndefined":
+            kl = key.lower()
+            if any(w in kl for w in ["voltage", "current", "power", "frequency"]):
+                instantaneous[key.replace(".value", "").strip()] = value
+
+    energy = {
+        "cumulative_positive": _kvp_get("Active energy import.value", "Energy.Cumulative A Positive.Value"),
+        "cumulative_negative": _kvp_get("Active energy export.value", "Energy.Cumulative A Negative.Value"),
+    }
+
+    event_buckets = {
+        "standard": [],
+        "fraud": [],
+        "quality": [],
+        "communication": [],
+        "disconnector": [],
+        "other": [],
+    }
+    for key, value in kvp.items():
+        if not key.endswith(".Buffer") or not isinstance(value, dict):
+            continue
+        items = []
+        for _idx, entry in value.items():
+            if isinstance(entry, list) and len(entry) >= 2:
+                items.append(
+                    {
+                        "t": str(entry[0])[:19] if entry[0] else "",
+                        "code": str(entry[1]) if len(entry) > 1 else "",
+                    }
+                )
+        kl = key.lower()
+        if "fraud" in kl:
+            event_buckets["fraud"].extend(items)
+        elif "quality" in kl:
+            event_buckets["quality"].extend(items)
+        elif "communication" in kl or "comm" in kl:
+            event_buckets["communication"].extend(items)
+        elif "standard" in kl:
+            event_buckets["standard"].extend(items)
+        elif "disconnector" in kl:
+            event_buckets["disconnector"].extend(items)
+        elif items:
+            event_buckets["other"].extend(items)
+
+    # 电能质量
+    pq_buf = kvp.get("PowerQualityProfile1.buffer", {})
+    pq_points = []
+    sag_count = 0
+    swell_count = 0
+    if isinstance(pq_buf, dict):
+        for idx in sorted(pq_buf.keys(), key=lambda x: int(x) if x.isdigit() else 0):
+            entry = pq_buf[idx]
+            if isinstance(entry, list) and len(entry) >= 2:
+                ts = str(entry[0])[:16] if entry[0] else f"#{idx}"
+                vals = entry[1] if isinstance(entry[1], list) else [entry[1]]
+                vmin = vals[0] if len(vals) > 0 else 0
+                vmax = vals[1] if len(vals) > 1 else vmin
+                vavg = vals[2] if len(vals) > 2 else (vmin + vmax) / 2
+                if vavg and vavg < 198:
+                    sag_count += 1
+                if vavg and vavg > 242:
+                    swell_count += 1
+                pq_points.append({"t": ts, "vmin": vmin, "vmax": vmax, "vavg": vavg})
+    pq_total = len(pq_points)
+    pq_pass = pq_total - sag_count - swell_count
+    power_quality = {
+        "points": pq_points,
+        "total": pq_total,
+        "sag_count": sag_count,
+        "swell_count": swell_count,
+        "pass_rate": round(pq_pass / pq_total * 100, 1) if pq_total > 0 else 0,
+    }
+
+    # 负荷曲线
+    lp_buf = kvp.get("Load profile with period 1.buffer") or kvp.get("Load Profile.Energy Profile.Buffer") or {}
+    load_profile = []
+    if isinstance(lp_buf, dict):
+        for idx in sorted(lp_buf.keys(), key=lambda x: int(x) if x.isdigit() else 0):
+            entry = lp_buf[idx]
+            if isinstance(entry, list) and len(entry) >= 3:
+                i = int(idx) if idx.isdigit() else 0
+                load_profile.append(
+                    {
+                        "index": i,
+                        "time_slot": f"{i * 15 // 60:02d}:{i * 15 % 60:02d}",
+                        "raw_timestamp": str(entry[0]),
+                        "cumulative_energy": entry[2],
+                    }
+                )
+
+    # 硬件诊断
+    eeprom_raw = doc.get("eeprom_write_times")
+    stack_raw = doc.get("stack_information")
+    stack_segments = {}
+    eeprom_top = []
+    eeprom_max = 0
+    eeprom_total = 0
+    if isinstance(stack_raw, list) and len(stack_raw) >= 4:
+        for m in stack_raw[2] if isinstance(stack_raw[2], list) else []:
+            if isinstance(m, list) and len(m) >= 5:
+                name = m[0] if isinstance(m[0], str) else f"task_{len(stack_segments)}"
+                stack_segments[name] = {"used": m[3] or 0, "size": m[1] or 0}
+    if isinstance(eeprom_raw, list) and len(eeprom_raw) >= 4:
+        writes = eeprom_raw[3] if isinstance(eeprom_raw[3], list) else []
+        eeprom_total = sum(writes)
+        eeprom_max = max(writes) if writes else 0
+        indexed = sorted([(i, w) for i, w in enumerate(writes)], key=lambda x: x[1], reverse=True)
+        eeprom_top = [{"idx": i, "val": w} for i, w in indexed[:15] if w > 0]
+
+    collected_at = doc.get("collected_at", datetime.now(timezone.utc))
+    t_str = collected_at.strftime("%Y-%m-%d %H:%M") if hasattr(collected_at, "strftime") else str(collected_at)[:16]
+    hardware_timeline = [
+        {
+            "t": t_str,
+            "stack": {"segments": stack_segments},
+            "flash": {},
+            "eeprom": {"top": eeprom_top, "max": eeprom_max, "total": eeprom_total},
+        }
+    ]
+    for key, value in kvp.items():
+        if "flash" in key.lower() and isinstance(value, (int, float)):
+            hardware_timeline[0]["flash"][key.split(".")[0][-2:]] = value
+
+    return success(
+        {
+            "device_meta": {
+                "device_id": str(device_id) if device_id else "",
+                "logical_name": str(logical_name) if logical_name else "",
+                "clock_time": str(clock_time) if clock_time else "",
+            },
+            "meter_type": meter_type,
+            "phase_count": phase_count,
+            "connection": connection,
+            "mongo_db": doc.get("project_name", ""),
+            "mongo_collection": "meter_sessions",
+            "instantaneous": instantaneous,
+            "energy": energy,
+            "events": {"buckets": event_buckets},
+            "power_quality": power_quality,
+            "load_profile": load_profile,
+            "hardware": {"timeline": hardware_timeline},
+            "warning": None,
+        }
+    )

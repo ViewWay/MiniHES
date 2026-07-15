@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # MongoDB（原始采集文档存储）
+    # MongoDB（DLMS 采集原始大文档存储，详见 docs/design/mongodb-integration.md）
     MONGODB_URL: str = "mongodb://localhost:27017"
     MONGODB_DATABASE: str = "minihes"
 
@@ -34,13 +34,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-
-    # SMTP 邮件服务
-    SMTP_HOST: str = ""
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
-    SMTP_FROM: str = ""
 
     COLLECTOR_MAX_WORKERS: int = 10
     COLLECTOR_DEFAULT_TIMEOUT: int = 30
